@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+[project]
+name = "atlas-workbench"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["fastapi", "uvicorn", "sqlalchemy", "psycopg[binary]", "alembic", "redis", "pydantic-settings", "httpx", "cryptography", "argon2-cffi", "webauthn", "pyotp", "typer", "pyyaml", "beautifulsoup4", "pypdf", "python-docx", "pgvector", "numpy", "python-multipart"]
+[project.scripts]
+atlas = "atlas.cli:app"
+[dependency-groups]
+dev = ["pytest", "pytest-asyncio", "hypothesis", "ruff", "jsonschema"]
+[tool.hatch.build.targets.wheel]
+packages = ["atlas"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -1,2 +1,2 @@
 # Resume point
-Implement WP0 dependencies/test harness, WP1 persistence and WP2 policy. Read AGENTS.md and SPECIFICATION.md. Continue all independent work, keep exact test results and corpus counts. Never label missing features verified.
+Continue building API, durable workers/verifier, broker and Web/CLI. Modules currently present: config/db/auth/vault/policy/gateway/records/corpus. Alembic initial applied, foundation tests 4 passed. Real GitHub advisory bulk sync running via exec session 31221, log .runtime/ingestion.log. Diagnose quarantines, complete corpus connectors and conversion tests. All non-foundation gates remain pending. Never deploy VPS or probe live targets.
