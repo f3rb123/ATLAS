@@ -27,3 +27,22 @@ def rewrap(blob,identity,old,new):
 def redact(text):
     text=re.sub(r'(?i)(bearer\s+|(?:api[_-]?key|token|password|secret)\s*[=:]\s*)[^\s,;"\']+',r'\1[REDACTED]',text)
     return re.sub(r'\b(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]+','[REDACTED]',text)
+
+def rotate_database_keys(db,new_key,old_key=None):
+    """Transactional DEK rewrapping. Operator freezes services and switches KEK after commit."""
+    if len(new_key)!=32:raise ValueError('New KEK must be 32 bytes')
+    from .db import User,Document,canonical,append
+    old_key=old_key or master();count=0
+    for d in db.query(Document).filter_by(kind='provider').with_for_update():
+        v=d.value()
+        for field,identity in [('secret',f'provider:{d.owner}:{d.id}:1'),('secret_headers',f'headers:{d.owner}:{d.id}:1')]:
+            if v.get(field):v[field]=rewrap(v[field],identity,old_key,new_key);count+=1
+        d.data=canonical(v)
+    for u in db.query(User).with_for_update():
+        if u.totp:u.totp=rewrap(u.totp,f'totp:{u.id}',old_key,new_key);count+=1
+    for d in db.query(Document).filter_by(kind='totp_pending').with_for_update():
+        s=db.get(__import__('atlas.db',fromlist=['Session']).Session,d.owner)
+        if not s:db.delete(d);continue
+        v=d.value();v['secret']=rewrap(v['secret'],f'totp:{s.user_id}',old_key,new_key);d.data=canonical(v);count+=1
+    append(db,'key-management','host_operator','kek_rewrapped',{'old_version':digest(old_key)[:12],'new_version':digest(new_key)[:12],'envelopes':count})
+    return count

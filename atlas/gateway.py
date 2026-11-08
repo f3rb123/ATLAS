@@ -75,7 +75,10 @@ def safe_metadata(d):
     v=d.value();return {'id':d.id,'version':d.version,**{k:x for k,x in v.items() if k not in ('secret','secret_headers','headers')},'headers':{k:val for k,val in v.get('headers',{}).items() if k.lower() not in ('authorization','x-api-key')},'secret_configured':bool(v.get('secret'))}
 
 def create_provider(db,owner,input,id=None):
-    v=input.model_dump();validate_headers(v['headers']);validate_headers(v['secret_headers']);provider_scope(v['base_url'])
+    v=input.model_dump()
+    if urlsplit(v['base_url']).query or urlsplit(v['base_url']).fragment:raise Denied('Provider base URL cannot include query credentials or fragments')
+    if v['auth_mode']=='custom' and not v['auth_header_name']:raise Denied('Custom authentication requires a header name')
+    validate_headers(v['headers']);validate_headers(v['secret_headers']);provider_scope(v['base_url'])
     if v['auth_header_name']:validate_headers({v['auth_header_name']:'x'})
     if any(k.lower() in ('authorization','x-api-key','x-goog-api-key') for k in v['headers']):raise Denied('Credentials must use encrypted fields')
     if v['api_path'] and (not v['api_path'].startswith('/') or '://' in v['api_path'] or '..' in v['api_path'] or '?' in v['api_path']):raise Denied('Invalid path override')
@@ -124,9 +127,13 @@ class Adapter:
             result={'model':r.model,'messages':messages,'max_tokens':r.max_tokens,'temperature':r.temperature}
             if r.structured:result['response_format']={'type':'json_object'}
             if r.tools:result['tools']=r.tools
+        if r.tools and protocol in ('anthropic_messages','gemini','openai_responses'):
+            functions=[t['function'] for t in r.tools]
+            if protocol=='anthropic_messages':result['tools']=[{'name':f['name'],'description':f.get('description',''),'input_schema':f['parameters']} for f in functions]
+            elif protocol=='gemini':result['tools']=[{'functionDeclarations':functions}]
+            else:result['tools']=[{'type':'function',**f} for f in functions]
         if stream:
-            if protocol=='gemini':raise ProviderError('Gemini streaming requires streamGenerateContent transport; unsupported')
-            result['stream']=True
+            if protocol!='gemini':result['stream']=True
         return result
     def normalize(self,p,r):
         protocol=self.v['adapter_type'];usage=p.get('usage') or {};calls=[];finish=None
@@ -138,6 +145,8 @@ class Adapter:
             content=''.join(c.get('text','') for o in p.get('output',[]) for c in o.get('content',[]) if c.get('type')=='output_text');calls=[o for o in p.get('output',[]) if o.get('type')=='function_call'];inp=usage.get('input_tokens');out=usage.get('output_tokens');finish=p.get('status')
         else:
             c=p['choices'][0];m=c['message'];content=m.get('content') or '';calls=m.get('tool_calls',[]);inp=usage.get('prompt_tokens');out=usage.get('completion_tokens');finish=c.get('finish_reason')
+        for count in (inp,out):
+            if count is not None and (type(count) is not int or count<0):raise ProviderError('Malformed usage counters')
         est=inp is None or out is None
         inp=inp if isinstance(inp,int) and inp>=0 else sum(len(m.get('content','')) for m in r.messages)
         out=out if isinstance(out,int) and out>=0 else len(content)
@@ -148,21 +157,35 @@ class Adapter:
             except (TypeError,json.JSONDecodeError):raise ProviderError('Provider did not return valid JSON')
             if not isinstance(structured,dict):raise ProviderError('Structured object required')
         return ModelResponse(content=content,structured_content=structured,tool_calls=calls,finish_reason=finish,input_tokens=inp,output_tokens=out,usage_estimated=est,model_id=r.model,request_id=p.get('id'))
+    def capabilities(self,model_id):
+        return {'streaming':True,'structured_output':'requires_probe','tool_calling':'requires_probe','vision':'requires_configuration','usage':'provider_or_estimated','adapter_version':self.version}
+    def scrub(self,text):
+        from .vault import redact
+        values=[]
+        if self.v.get('secret'):values.append(open_secret(self.v['secret'],f'provider:{self.d.owner}:{self.d.id}:1'))
+        if self.v.get('secret_headers'):values.extend(json.loads(open_secret(self.v['secret_headers'],f'headers:{self.d.owner}:{self.d.id}:1')).values())
+        for value in values:
+            if value:text=text.replace(value,'[REDACTED]')
+        return redact(text)
     def generate(self,r):
         url=self.path('generate',r.model);scope=provider_scope(url);t=time.monotonic()
         try:
             status,_,body=request(url,'POST',self.headers(),canonical(self.serialize(r)).encode(),scope,2*1024*1024,30)
             if status!=200:raise ProviderError({401:'authentication_failed',403:'access_denied',429:'rate_limited'}.get(status,'provider_http_error'))
-            result=self.normalize(json.loads(body),r);result.latency_ms=(time.monotonic()-t)*1000;return result
-        except (TimeoutError,ConnectionError,OSError):raise ProviderError('Provider transport/TLS failure') from None
+            result=self.normalize(json.loads(self.scrub(body.decode())),r);result.latency_ms=(time.monotonic()-t)*1000;return result
+        except __import__('ssl').SSLError:raise ProviderError('TLS verification or handshake failure') from None
+        except TimeoutError:raise ProviderError('Provider request timed out') from None
+        except (ConnectionError,OSError):raise ProviderError('Provider transport failure') from None
         except (KeyError,IndexError,json.JSONDecodeError):raise ProviderError('Provider response parse failure') from None
     def stream(self,r):
         # Real protocol event iterator; no simulated streaming of a buffered response.
         from .policy import authorize,PinnedConnection
-        url=self.path('generate',r.model);n,h,p,ips=authorize(provider_scope(url),url,'POST');u=urlsplit(n)
+        url=self.path('generate',r.model)
+        if self.v['adapter_type']=='gemini':url=url.replace(':generateContent',':streamGenerateContent')+'?alt=sse'
+        n,h,p,ips=authorize(provider_scope(url),url,'POST');u=urlsplit(n)
         c=PinnedConnection(h,ips[0],p,u.scheme=='https',30)
         try:
-            c.request('POST',u.path,body=canonical(self.serialize(r,True)).encode(),headers=self.headers());response=c.getresponse()
+            c.request('POST',u.path+('?' +u.query if u.query else ''),body=canonical(self.serialize(r,True)).encode(),headers=self.headers());response=c.getresponse()
             if response.status!=200:raise ProviderError('Streaming provider request failed')
             total=0
             while True:
@@ -172,11 +195,17 @@ class Adapter:
                 if not line.startswith(b'data:'):continue
                 data=line[5:].strip()
                 if data==b'[DONE]':break
-                event=json.loads(data);protocol=self.v['adapter_type']
+                event=json.loads(self.scrub(data.decode()));protocol=self.v['adapter_type']
                 if protocol=='anthropic_messages':text=event.get('delta',{}).get('text','')
+                elif protocol=='gemini':text=''.join(part.get('text','') for cand in event.get('candidates',[]) for part in cand.get('content',{}).get('parts',[]))
                 elif protocol=='openai_responses':text=event.get('delta','') if event.get('type')=='response.output_text.delta' else ''
                 else:text=next(iter(event.get('choices',[])),{}).get('delta',{}).get('content','')
                 yield {'type':'content_delta','text':text}
+                if event.get('usage') or event.get('usageMetadata'):yield {'type':'usage','usage':event.get('usage',event.get('usageMetadata'))}
+                if protocol not in ('gemini','anthropic_messages','openai_responses'):
+                    for choice in event.get('choices',[]):
+                        for call in choice.get('delta',{}).get('tool_calls',[]):yield {'type':'tool_call_delta','tool_call':call}
+                elif event.get('type') in ('content_block_start','content_block_delta','response.function_call_arguments.delta'):yield {'type':'structured_delta','data':event}
         finally:c.close()
     def list_models(self):
         url=self.path('models');status,_,body=request(url,'GET',self.headers(),scope=provider_scope(url),max_bytes=256000,timeout=10)
@@ -184,28 +213,58 @@ class Adapter:
         p=json.loads(body);return p.get('data',p.get('models',[]))
     def health_check(self):return {'status':'reachable','models':self.list_models()}
 
-def reserve(db,owner,run_id,ceiling):
+def reserve(db,owner,run_id,ceiling,role=None):
     # Global mutex row locks serialize reservations across workers and request contexts.
     d=db.query(Document).filter_by(id='budget-global').with_for_update().first()
     if not d:d=document(db,'budget','system',{'cap':settings().monthly_budget,'spent':{},'reserved':{}},'budget-global')
     v=d.value();month=now()[:7];spent=v['spent'].get(month,0);pending=sum(x['amount'] for x in v['reserved'].values())
     if spent+pending+ceiling>v['cap']:raise ProviderError('Monthly budget exhausted')
-    id=uid();v['reserved'][id]={'amount':ceiling,'month':month,'run_id':run_id};d.data=canonical(v);db.commit();return id
+    run=db.get(Document,run_id)
+    if run and run.kind=='run':
+        rv=run.value();pending_run=sum(x['amount'] for x in v['reserved'].values() if x['run_id']==run_id)
+        if rv.get('budget_used',0)+pending_run+ceiling>rv['budget_limit']:raise ProviderError('Run budget exhausted')
+        if role:
+            pending_role=sum(x['amount'] for x in v['reserved'].values() if x['run_id']==run_id and x.get('role')==role)
+            if rv.get('role_spent',{}).get(role,0)+pending_role+ceiling>rv.get('role_budgets',{}).get(role,rv['budget_limit']):raise ProviderError('Role budget exhausted')
+        campaign=db.get(Document,rv.get('campaign_id',''))
+        if campaign:
+            campaign_runs={r.id for r in db.query(Document).filter_by(kind='run',owner=owner) if r.value().get('campaign_id')==campaign.id}
+            used=sum(u.value()['cost'] for u in db.query(Document).filter_by(kind='usage',owner=owner) if u.value().get('campaign_id')==campaign.id)
+            pending_campaign=sum(x['amount'] for x in v['reserved'].values() if x['run_id'] in campaign_runs)
+            if used+pending_campaign+ceiling>campaign.value().get('budget_limit',10):raise ProviderError('Campaign budget exhausted')
+    id=uid();v['reserved'][id]={'amount':ceiling,'month':month,'run_id':run_id,'role':role};d.data=canonical(v);db.commit();return id
 
 def settle(db,reservation,cost):
     d=db.query(Document).filter_by(id='budget-global').with_for_update().one();v=d.value();r=v['reserved'].pop(reservation)
     v['spent'][r['month']]=v['spent'].get(r['month'],0)+cost;d.data=canonical(v)
 
-def generate_budgeted(db,provider,model,req,run):
-    m=model.value();rv=run.value();estimate=(sum(len(x['content']) for x in req.messages)*m['input_price']+req.max_tokens*m['output_price'])/1000000
+def generate_budgeted(db,provider,model,req,run,role='reasoning'):
+    m=model.value();rv=run.value();input_upper=sum(len(x['content'].encode('utf-8')) for x in req.messages)
+    if input_upper+req.max_tokens>m['context_window']:raise ProviderError('Conservative context/token limit exceeded')
+    estimate=(input_upper*m['input_price']+req.max_tokens*m['output_price'])/1000000
     if rv.get('budget_used',0)+estimate>rv['budget_limit']:raise ProviderError('Run budget exhausted')
-    reservation=reserve(db,run.owner,run.id,estimate)
+    if rv.get('model_calls',0)>=rv.get('max_model_calls',20):raise ProviderError('Model call limit exhausted')
+    role_spent=rv.get('role_spent',{}).get(role,0)
+    if role_spent+estimate>rv.get('role_budgets',{}).get(role,rv['budget_limit']):raise ProviderError('Role budget exhausted')
+    reservation=reserve(db,run.owner,run.id,estimate,role)
+    campaign=db.get(Document,rv['campaign_id']) if rv.get('campaign_id') else None
+    if campaign:
+        campaign_id=rv['campaign_id'];total=0
+        for usage in db.query(Document).filter_by(kind='usage',owner=run.owner):
+            if usage.value().get('campaign_id')==campaign_id:total+=usage.value()['cost']
+        if total+estimate>campaign.value().get('budget_limit',10):
+            settle(db,reservation,0);db.commit();raise ProviderError('Campaign budget exhausted')
+    db.refresh(run);rv=run.value()
+    kill=db.get(Document,'kill-switch')
+    if rv['status'] not in ('queued','running') or (kill and kill.value()['enabled']):
+        settle(db,reservation,0);db.commit();raise ProviderError('Run was stopped before dispatch')
+    rv['model_calls']=rv.get('model_calls',0)+1;run.data=canonical(rv);db.commit()
     # Unknown transport outcomes retain their full reservation; never assume no bill.
     try:response=Adapter(provider).generate(req)
     except Exception:raise
     cost=(response.input_tokens*m['input_price']+response.output_tokens*m['output_price'])/1000000
     settle(db,reservation,max(cost,estimate) if response.usage_estimated else cost)
-    document(db,'usage',run.owner,{'run_id':run.id,'provider_id':provider.id,'model':req.model,'input_tokens':response.input_tokens,'output_tokens':response.output_tokens,'cost':cost,'estimated':response.usage_estimated})
-    db.refresh(run);rv=run.value();rv['budget_used']=rv.get('budget_used',0)+cost;run.data=canonical(rv);db.commit()
+    document(db,'usage',run.owner,{'run_id':run.id,'provider_id':provider.id,'model':req.model,'campaign_id':rv.get('campaign_id'),'role':role,'pricing_version':model.version,'input_tokens':response.input_tokens,'output_tokens':response.output_tokens,'cost':cost,'estimated':response.usage_estimated})
+    db.refresh(run);rv=run.value();rv['budget_used']=rv.get('budget_used',0)+cost;rv.setdefault('role_spent',{})[role]=rv.get('role_spent',{}).get(role,0)+cost;run.data=canonical(rv);db.commit()
     if rv['status'] not in ('running','queued'):raise ProviderError('Run was paused or cancelled during provider request')
     return response

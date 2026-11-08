@@ -10,6 +10,11 @@ from .vault import redact
 
 EXCLUDED={'.git','.env','.venv','node_modules','vendor','dist','build','.next','__pycache__'}
 SECRET=re.compile(r'(?i)(\.env|id_rsa|id_ed25519|\.pem$|\.key$|credentials|secret|\.p12$)')
+class HttpInput(Strict):
+    url:str=Field(max_length=4096)
+    method:Literal['GET','HEAD']='GET'
+    max_redirects:int=Field(default=0,ge=0,le=3)
+
 class ReadInput(Strict):
     path:str
     start:int=Field(default=1,ge=1)
@@ -91,9 +96,10 @@ def execute_offline(repo,args):
     if not shutil.which('bwrap'):raise Denied('Offline sandbox unavailable')
     target=repo.path(args.test_path)
     if not target.exists():raise Denied('Test path missing')
-    if args.template=='python_unittest':command=['/usr/bin/python3','-I','-m','unittest','discover','-s','/work/'+args.test_path,'-v']
-    else:command=['/usr/bin/python3','-I','-m','compileall','-q','/work/'+args.test_path]
-    base=['bwrap','--unshare-all','--die-with-parent','--new-session','--cap-drop','ALL','--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--ro-bind',str(repo.root),'/work','--chdir','/work','--clearenv','--setenv','PATH','/usr/bin:/bin','--setenv','HOME','/tmp','--setenv','PYTHONDONTWRITEBYTECODE','1']
+    python='/usr/bin/python3' if Path('/usr/bin/python3').exists() else '/usr/local/bin/python3'
+    if args.template=='python_unittest':command=[python,'-I','-m','unittest','discover','-s','/work/'+args.test_path,'-v']
+    else:command=[python,'-I','-c','import ast,pathlib,sys; p=pathlib.Path(sys.argv[1]); files=p.rglob("*.py") if p.is_dir() else [p]; [ast.parse(f.read_text(),filename=str(f)) for f in files]','/work/'+args.test_path]
+    base=['bwrap','--unshare-all','--die-with-parent','--new-session','--cap-drop','ALL','--ro-bind','/usr','/usr','--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64','--dev','/dev','--tmpfs','/tmp','--ro-bind',str(repo.root),'/work','--chdir','/work','--clearenv','--setenv','LD_LIBRARY_PATH','/usr/local/lib','--setenv','PATH','/usr/bin:/bin','--setenv','HOME','/tmp','--setenv','PYTHONDONTWRITEBYTECODE','1']
     # Output to bounded file avoids PIPE RAM exhaustion; process creates a new session.
     import tempfile
     with tempfile.TemporaryFile() as f:
@@ -102,7 +108,7 @@ def execute_offline(repo,args):
             f.seek(0);text=redact(f.read(1024*1024).decode(errors='replace'));return {'exit_code':p.returncode,'output':text,'template':args.template,'snapshot':repo.inventory()['snapshot_hash'],'timed_out':False}
         except subprocess.TimeoutExpired:return {'exit_code':None,'output':'Sandbox timeout','timed_out':True}
 
-TOOLS={'list_repo_files':('read_only',None),'read_file_range':('read_only',ReadInput),'search_symbols':('read_only',SearchInput),'search_text':('read_only',SearchInput),'read_manifest':('read_only',ReadInput),'read_test_metadata':('read_only',ReadInput),'get_repo_commit_metadata':('read_only',None),'run_approved_test_command':('gated',ExecutionInput),'run_local_reproduction':('gated',ExecutionInput)}
+TOOLS={'http_request':('low_impact',HttpInput),'fetch_allowed_url':('low_impact',HttpInput),'inspect_redirect_chain':('low_impact',HttpInput),'list_repo_files':('read_only',None),'read_file_range':('read_only',ReadInput),'search_symbols':('read_only',SearchInput),'search_text':('read_only',SearchInput),'read_manifest':('read_only',ReadInput),'read_test_metadata':('read_only',ReadInput),'get_repo_commit_metadata':('read_only',None),'run_approved_test_command':('gated',ExecutionInput),'run_local_reproduction':('gated',ExecutionInput)}
 
 def broker(db,run,repo,name,payload,actor):
     v=run.value();decision='deny'
@@ -114,12 +120,21 @@ def broker(db,run,repo,name,payload,actor):
         if v.get('tool_calls',0)>=v.get('max_tool_calls',50):raise Denied('Tool budget exhausted')
         risk,model=TOOLS[name];args=model.model_validate(payload) if model else None
         if risk=='gated' and not v.get('offline_execution_approved'):raise Denied('Explicit offline execution approval required')
-        if name=='list_repo_files':result=repo.inventory()
+        if name in ('http_request','fetch_allowed_url','inspect_redirect_chain'):
+            if not settings().relay_url or not settings().service_token_file:raise Denied('Scoped target relay is not configured')
+            import httpx
+            token=Path(settings().service_token_file).read_text().strip()
+            with httpx.Client(timeout=60,trust_env=False) as client:
+                response=client.post(settings().relay_url+'/request',headers={'Authorization':'Bearer '+token},json={'run_id':run.id,**args.model_dump()})
+                if response.status_code!=200:raise Denied('Scoped relay denied or failed the target request')
+                result=response.json()
+        elif repo is None:raise Denied('Repository tool requires a snapshot')
+        elif name=='list_repo_files':result=repo.inventory()
         elif name in ('read_file_range','read_manifest','read_test_metadata'):result=repo.read(args)
         elif name in ('search_symbols','search_text'):result=repo.search(args.query)
         elif name=='get_repo_commit_metadata':result={'snapshot_hash':repo.inventory()['snapshot_hash'],'origin':'owner_upload'}
         else:result=execute_offline(repo,args)
         v['tool_calls']=v.get('tool_calls',0)+1;run.data=canonical(v);decision='allow'
-        artifact=document(db,'artifact',run.owner,{'sha256':digest(canonical(result)),'media_type':'application/json','payload':result,'sensitivity':'campaign_private'})
+        artifact=document(db,'artifact',run.owner,{'run_id':run.id,'campaign_id':v['campaign_id'],'tool_name':name,'tool_version':'1.0','sha256':digest(canonical(result)),'media_type':'application/json','payload':result,'sensitivity':'campaign_private'})
         return {'artifact_id':artifact.id,'trust':'untrusted_tool_data','result':result}
     finally:append(db,run.id,actor,'policy_decision',{'tool':name,'decision':decision,'input_hash':digest(canonical(payload))},v['campaign_id'])

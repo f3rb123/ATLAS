@@ -25,3 +25,16 @@ def test_envelope_identity_rotation():
  assert open_secret(rewrap(blob,'owner:provider:1',a,b),'owner:provider:1',b)=='testing-secret'
 def test_master_corrupt():
  with pytest.raises(InvalidTag):open_secret(seal('x','id',os.urandom(32)),'id',os.urandom(32))
+
+def test_database_kek_rotation_transaction(db,provider_server=None):
+ from atlas.db import User,Document,document,canonical,uid
+ from atlas.auth import ph
+ from atlas.vault import rotate_database_keys,master
+ old=master();new=os.urandom(32)
+ u=User(id=uid(),email='fixture@example.invalid',password=ph.hash('long fixture-only password 123456'))
+ u.totp=seal('TOTP-FIXTURE',f'totp:{u.id}',old);db.add(u)
+ id=uid();d=document(db,'provider',u.id,{'secret':seal('not-a-real-provider-key',f'provider:{u.id}:{id}:1',old),'secret_headers':seal('{}',f'headers:{u.id}:{id}:1',old)},id)
+ db.commit();assert rotate_database_keys(db,new,old)==3;db.commit()
+ assert open_secret(d.value()['secret'],f'provider:{u.id}:{id}:1',new)=='not-a-real-provider-key'
+ with pytest.raises(InvalidTag):open_secret(d.value()['secret'],f'provider:{u.id}:{id}:1',old)
+ assert open_secret(u.totp,f'totp:{u.id}',new)=='TOTP-FIXTURE'

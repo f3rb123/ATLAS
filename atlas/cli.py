@@ -3,10 +3,10 @@ import getpass,json,os,sys
 from pathlib import Path
 import typer,httpx
 from . import __version__
-app=typer.Typer(no_args_is_help=True)
+app=typer.Typer(no_args_is_help=True,pretty_exceptions_show_locals=False)
 groups={}
-for name in ['auth','campaign','run','finding','report','provider','corpus','skills','knowledge','scope','repo','host']:
- g=typer.Typer(no_args_is_help=True);app.add_typer(g,name=name);groups[name]=g
+for name in ['auth','campaign','run','finding','report','provider','corpus','skills','knowledge','scope','repo','host','benchmark']:
+ g=typer.Typer(no_args_is_help=True,pretty_exceptions_show_locals=False);app.add_typer(g,name=name);groups[name]=g
 
 def client_request(path,method='GET',body=None,files=None):
  token=os.environ.get('ATLAS_CLI_TOKEN')
@@ -121,4 +121,79 @@ def break_glass():
   for kind in ['passkey','recovery','challenge','totp_pending']:s.query(Document).filter_by(kind=kind).delete()
   append(s,u.id,'host_operator','break_glass_recovery',{});s.commit()
  typer.echo('All sessions and authenticators revoked. Sign in and enroll new passkeys.')
+
+
+@groups['provider'].command('add')
+def provider_add(config_file:Path):
+ v=json.loads(config_file.read_text());v['api_key']=getpass.getpass('Provider API key (write-only): ');out(client_request('providers','POST',v))
+@groups['provider'].command('test')
+def provider_test(id:str,model_id:str|None=None):out(client_request('providers/'+id+'/test','POST',{'model_id':model_id}))
+@groups['provider'].command('rotate-key')
+def provider_rotate(id:str):out(client_request('providers/'+id+'/secret','POST',{'api_key':getpass.getpass('New provider API key: ')}))
+@groups['provider'].command('disable')
+def provider_disable(id:str):out(client_request('providers/'+id,'DELETE'))
+@groups['provider'].command('set-model')
+def set_model(alias:str,provider_id:str,model_id:str):out(client_request('model-configs','PUT',{'alias':alias,'provider_id':provider_id,'model_id':model_id}))
+@groups['corpus'].command('sync')
+def api_sync(source:str,limit:int=1000):out(client_request('corpus/sync','POST',{'source':source,'limit':limit}))
+@groups['corpus'].command('resume')
+def api_resume(job_id:str,limit:int=1000):out(client_request('corpus/resume','POST',{'job_id':job_id,'limit':limit}))
+@groups['corpus'].command('import')
+def corpus_import(file:Path,license:str,source_url:str):knowledge_ingest(file,license,source_url)
+@groups['corpus'].command('validate')
+def corpus_validate_api():out(client_request('corpus/validate','POST',{}))
+@groups['corpus'].command('dedupe')
+def corpus_dedupe_api():out(client_request('corpus/dedupe','POST',{}))
+@groups['skills'].command('import')
+def skill_import(file:Path):out(client_request('skills/import','POST',{'package':file.read_text()}))
+def skill_control(action):
+ def command(id:str):out(client_request('skills/'+id+'/control/'+action,'POST',{}))
+ groups['skills'].command(action)(command)
+for action in ['review','validate','enable','disable','rollback']:skill_control(action)
+@groups['host'].command('corpus-load')
+def load_records():
+ from .records import Record
+ from .corpus import ingest
+ from .db import session
+ from .config import settings
+ n=0
+ with session() as s:
+  for line in sys.stdin:
+   r=Record.model_validate_json(line)
+   raw_path=Path(settings().data_dir)/'corpus_raw'/r.source.content_hash_sha256[:2]/r.source.content_hash_sha256
+   raw=raw_path.read_bytes()
+   if __import__('hashlib').sha256(raw).hexdigest()!=r.source.content_hash_sha256:raise ValueError('Raw artifact checksum mismatch')
+   ingest(s,r,raw);n+=1
+   if n%200==0:s.commit()
+  s.commit()
+ out({'processed':n})
+
+
+@groups['corpus'].command('embed')
+def corpus_embed():out(client_request('corpus/embed','POST',{}))
+@groups['corpus'].command('export')
+def corpus_export_api(path:Path):
+ token=os.environ.get('ATLAS_CLI_TOKEN')
+ if not token:raise typer.BadParameter('Set a fresh scoped CLI token from WebAuthn step-up')
+ with httpx.stream('GET',os.environ.get('ATLAS_API_URL','http://127.0.0.1:8000')+'/api/v1/corpus/export',headers={'Authorization':'Bearer '+token},timeout=120) as response:
+  if response.status_code!=200:raise typer.Exit(1)
+  with path.open('xb') as f:
+   for data in response.iter_bytes():f.write(data)
+ typer.echo('Corpus exported to '+str(path))
+
+
+@groups['benchmark'].command('run')
+def benchmark_run(model_id:str|None=None,budget:float=1):
+ if model_id:out(client_request('benchmarks/models','POST',{'model_ids':[model_id],'budget_per_model':budget}))
+ else:out(client_request('benchmarks/run','POST',{}))
+
+
+@groups['host'].command('rotate-kek')
+def rotate_kek(new_key_file:Path):
+ if not sys.stdin.isatty() or not typer.confirm('Have all API/gateway/worker processes been stopped for KEK maintenance?'):raise typer.Exit(1)
+ from .db import session
+ from .vault import rotate_database_keys
+ if new_key_file.stat().st_mode&0o077:raise typer.BadParameter('New key must be mode 0600/0400')
+ with session() as db:n=rotate_database_keys(db,new_key_file.read_bytes());db.commit()
+ typer.echo(f'Rewrapped {n} envelopes. Install the new KEK before restarting; keep the old KEK for old backups.')
 if __name__=='__main__':app()

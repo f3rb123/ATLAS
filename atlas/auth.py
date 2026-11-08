@@ -19,7 +19,7 @@ def password_ok(p):
     if len(p)<15 or len(p)>1024 or p.casefold().strip() in ('passwordpassword','this is a password','correct horse battery staple'):raise ValueError('Use a unique passphrase of 15–1024 characters')
 
 def throttle(db,key,limit=8,seconds=300):
-    key=digest(key);d=db.get(Document,key)
+    key=digest(key)[:36];d=db.get(Document,key)
     t=time.time();v=d.value() if d else {'start':t,'count':0}
     if t-v['start']>seconds:v={'start':t,'count':0}
     if v['count']>=limit:raise ValueError('Too many attempts; retry later')

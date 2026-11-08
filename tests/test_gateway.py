@@ -41,3 +41,13 @@ def test_budget_reservations(db):
  a=reserve(db,'u','r',60)
  with pytest.raises(ProviderError):reserve(db,'u','r',41)
  settle(db,a,20);db.commit();assert reserve(db,'u','r',80)
+
+def test_run_role_campaign_pending_caps(db):
+ c=document(db,'campaign','u',{'budget_limit':3})
+ r=document(db,'run','u',{'campaign_id':c.id,'budget_limit':2,'budget_used':0,'role_budgets':{'reasoning':1}});db.commit()
+ a=reserve(db,'u',r.id,.75,'reasoning')
+ with pytest.raises(ProviderError,match='Role budget'):reserve(db,'u',r.id,.5,'reasoning')
+ b=reserve(db,'u',r.id,1,'verifier')
+ with pytest.raises(ProviderError,match='Run budget'):reserve(db,'u',r.id,.5,'verifier')
+ other=document(db,'run','u',{'campaign_id':c.id,'budget_limit':2,'budget_used':0});db.commit()
+ with pytest.raises(ProviderError,match='Campaign budget'):reserve(db,'u',other.id,1.5,'reasoning')

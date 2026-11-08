@@ -1,7 +1,7 @@
 """Durable SQL entities; PostgreSQL in production, SQLite for isolated development."""
 import hashlib, json, uuid
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, String, Text, Integer, Float, ForeignKey, UniqueConstraint, event
+from sqlalchemy import create_engine, String, Text, Integer, Float, ForeignKey, UniqueConstraint, event, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from .config import settings
 
@@ -78,7 +78,7 @@ def engine():
     if _engine is None:
         from pathlib import Path
         Path(settings().data_dir).mkdir(mode=0o700,parents=True,exist_ok=True)
-        _engine=create_engine(settings().database_url,connect_args={'check_same_thread':False} if settings().database_url.startswith('sqlite') else {},pool_pre_ping=True)
+        _engine=create_engine(settings().database_url,connect_args={'check_same_thread':False} if settings().database_url.startswith('sqlite') else {},pool_pre_ping=True,hide_parameters=True)
         if settings().database_url.startswith('sqlite'):
             @event.listens_for(_engine,'connect')
             def sqlite_pragmas(conn, _):
@@ -93,6 +93,9 @@ def document(db,kind,owner,data,id=None):
 
 def append(db,stream,actor,event_type,payload,campaign_id=None):
     # Caller holds the stream document row lock; SQLite serializes writes in tests.
+    if db.bind.dialect.name=='postgresql':
+        lock=int.from_bytes(hashlib.sha256(stream.encode()).digest()[:8],signed=True)
+        db.execute(text('SELECT pg_advisory_xact_lock(:lock)'),{'lock':lock})
     tail=db.query(Journal).filter_by(stream=stream).order_by(Journal.sequence.desc()).first()
     seq=tail.sequence+1 if tail else 1;prev=tail.hash if tail else '0'*64
     value=canonical({'actor':actor,'type':event_type,'payload':payload,'timestamp':now(),'correlation_id':uid(),'campaign_id':campaign_id,'run_id':stream})

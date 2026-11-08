@@ -59,3 +59,8 @@ def test_recovery_single_use_and_totp_replay(db):
  uri=totp_setup(db,u,s);db.commit();seed=__import__('urllib.parse',fromlist=['parse_qs']).parse_qs(__import__('urllib.parse',fromlist=['urlsplit']).urlsplit(uri).query)['secret'][0]
  code=__import__('pyotp').TOTP(seed).now();totp_verify(db,u,s,code,True);db.commit()
  with __import__('pytest').raises(ValueError):totp_verify(db,u,s,code)
+
+def test_validation_errors_do_not_echo_passwords_or_keys(db):
+ with TestClient(app) as c:
+  r=c.post('/api/v1/auth/login',json={'email':'x'*300,'password':'fixture-secret-do-not-echo'})
+  assert r.status_code==422 and 'fixture-secret-do-not-echo' not in r.text

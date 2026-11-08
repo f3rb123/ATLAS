@@ -1,7 +1,9 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
 const boot=JSON.parse(fs.readFileSync('../../.runtime/e2e-bootstrap.json','utf8'));
 test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search',async({page,context})=>{
+ test.setTimeout(120000);
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  await page.goto('/');await expect(page.getByRole('heading',{name:'Welcome to ATLAS'})).toBeVisible();
  const setup=page.locator('section').filter({has:page.getByRole('heading',{name:'First owner setup'})});
@@ -12,8 +14,25 @@ test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search
  await page.getByRole('button',{name:'Campaigns',exact:true}).click();await page.getByLabel('Campaign name').fill('Local fixture campaign');await page.getByLabel('Authorization reference').fill('Synthetic source-only lab');await page.getByLabel('I am authorized').check();await page.getByRole('button',{name:'Create campaign',exact:true}).click();
  await expect(page.getByRole('button',{name:'Local fixture campaign',exact:false})).toBeVisible();
  await page.getByRole('button',{name:'Providers',exact:true}).click();await expect(page.getByRole('heading',{name:'Add custom provider'})).toBeVisible();await expect(page.getByLabel('Base URL including API prefix')).toBeVisible();
+ const providerSection=page.locator('section').filter({has:page.getByRole('heading',{name:'Add custom provider'})});
+ await providerSection.getByLabel('Display name').fill('Fixture Provider');await providerSection.getByLabel('Base URL including API prefix').fill('http://127.0.0.1:9001/custom/v1');await providerSection.getByLabel('API key (write-only)').fill('test-fixture-not-real');
+ const providerSaved=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/api/v1/providers'));await providerSection.getByRole('button',{name:'Save encrypted connection'}).click();const provider=await (await providerSaved).json();expect(provider.id).toBeTruthy();expect(JSON.stringify(provider)).not.toContain('test-fixture-not-real');await expect(providerSection.getByLabel('API key (write-only)')).toHaveValue('');
+ await page.getByRole('button',{name:'Fixture Provider',exact:false}).click();
+ const manual=page.locator('section').filter({has:page.getByRole('heading',{name:'Register model manually',exact:true})}).last();await manual.getByLabel('Remote model ID').fill('fixture-json');await manual.getByLabel('Display name',{exact:true}).fill('Fixture JSON');
+ const modelSaved=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/models'));await manual.getByRole('button',{name:'Save',exact:true}).click();const model=await(await modelSaved).json();expect(model.id).toBeTruthy();
+ await page.getByRole('button',{name:'Probe structured output'}).click();await expect(page.getByText('structured_output_verified',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Budgets',exact:true}).click();const alias=page.locator('section').filter({has:page.getByRole('heading',{name:'Assign model role alias'})});
+ for(const name of ['reasoning','verifier']){await alias.getByRole('combobox',{name:'Role',exact:true}).selectOption(name);await alias.getByLabel('Provider connection ID').fill(provider.id);await alias.getByLabel('Registered model ID (ATLAS UUID)').fill(model.id);const saved=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith('/model-configs'));await alias.getByRole('button',{name:'Save',exact:true}).click();expect((await saved).status()).toBe(200)}
+ await page.getByRole('button',{name:'Campaigns',exact:true}).click();await page.getByRole('button',{name:'Local fixture campaign',exact:false}).click();
+ const upload=page.locator('section').filter({has:page.getByRole('heading',{name:'Attach authorized repository snapshot'})}).last();await upload.getByLabel('Source ZIP',{exact:true}).setInputFiles('../../.runtime/e2e-repo.zip');const uploaded=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/repositories'));await upload.getByRole('button',{name:'Upload and index'}).click();const repo=await(await uploaded).json();expect(repo.id).toBeTruthy();
+ const wizard=page.locator('section').filter({has:page.getByRole('heading',{name:'Start bounded run'})}).last();await wizard.getByLabel('Repository ID from upload',{exact:false}).fill(repo.id);const started=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/runs'));await wizard.getByRole('button',{name:'Start run',exact:true}).click();const run=await(await started).json();expect(run.id).toBeTruthy();
+ await page.getByRole('button',{name:'Runs',exact:true}).click();await page.getByRole('button',{name:run.id,exact:false}).first().click();
+ await expect.poll(async()=>{const r=await page.request.get('/api/v1/runs/'+run.id);return(await r.json()).status},{timeout:65000}).toBe('completed');
+ await page.screenshot({path:'../../docs/test-results/workspace-run.png',fullPage:true});const download=page.waitForEvent('download');await page.getByRole('button',{name:'Generate report',exact:true}).click();expect((await download).suggestedFilename()).toContain('atlas-');
  await page.getByRole('button',{name:'Research Memory',exact:true}).click();await page.getByLabel('Boundary, framework, package, CWE or CVE').fill('tenant authorization');await page.getByRole('button',{name:'Search',exact:true}).click();await expect(page.getByRole('status').locator('pre')).toContainText('source_url');
  await page.screenshot({path:'../../docs/test-results/workspace-memory.png',fullPage:true});
  await page.getByRole('button',{name:'Security',exact:true}).click();await expect(page.getByRole('heading',{name:'Sessions and CLI tokens'})).toBeVisible();
+ const tokens=page.locator('section').filter({has:page.getByRole('heading',{name:'Scoped CLI token'})}).last();const issued=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/auth/cli-tokens'));await tokens.getByRole('button',{name:'Create token'}).click();const token=await(await issued).json();expect(token.token).toBeTruthy();
+ const cli=execFileSync('../../.venv/bin/atlas',['corpus','stats'],{env:{...process.env,ATLAS_CLI_TOKEN:token.token,ATLAS_API_URL:'http://localhost:8000'},encoding:'utf8'});expect(JSON.parse(cli).unique_normalized_records).toBeGreaterThanOrEqual(20000);
  await page.getByRole('button',{name:'Sign out'}).click();await expect(page.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
 });

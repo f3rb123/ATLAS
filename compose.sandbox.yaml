@@ -1,0 +1,11 @@
+# Linux hosts permitting unprivileged nested user namespaces only.
+# This extends the pinned Moby default syscall policy without SYS_ADMIN/privileged mode.
+services:
+  worker-research:
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./infra/security/seccomp-bwrap.json
+  worker-verify:
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./infra/security/seccomp-bwrap.json

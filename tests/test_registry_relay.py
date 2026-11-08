@@ -33,3 +33,10 @@ def test_relay_denials_audited_and_kill(db):
 def test_mixed_dns_and_redirect_rebinding():
  def mixed(*a,**k):return [(2,1,6,'',('8.8.8.8',443)),(2,1,6,'',('127.0.0.1',443))]
  with pytest.raises(Denied):addresses('example.com',443,resolver=mixed)
+
+def test_writeup_source_requires_explicit_terms_review(db):
+ from atlas.source_policy import SourcePolicy,register,acquire
+ p=SourcePolicy(name='Unreviewed candidate',source_url='https://example.invalid/report',terms_url='https://example.invalid/terms',license='unknown')
+ d=register(db,'u',p)
+ with pytest.raises(Denied):acquire(db,d)
+ with pytest.raises(Denied):register(db,'u',p.model_copy(update={'enabled':True}))

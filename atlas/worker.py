@@ -19,13 +19,25 @@ def tick(role):
             if v['status'] not in ('queued','running') or v.get('lease_until',0)>time.time():continue
             if (v['state']=='INDEPENDENT_VERIFICATION')!=(role=='verify'):continue
             v['lease_until']=time.time()+600;run.data=canonical(v);db.commit()
-            try:execute_stage(db,run,role)
+            try:
+                if v['state']=='BENCHMARK':
+                    from .model_benchmarks import step
+                    step(db,run)
+                else:execute_stage(db,run,role)
             except (ValueError,Denied,ProviderError) as e:
                 # Exception messages are controlled locally; provider payloads never logged.
-                db.rollback();run=db.get(Document,run.id);blocked(db,run,type(e).__name__+': '+str(e)[:200])
+                db.rollback();run=db.get(Document,run.id)
+                if run.value()['status'] not in ('paused','cancelled'):blocked(db,run,type(e).__name__+': '+str(e)[:200])
             except Exception:
                 db.rollback();run=db.get(Document,run.id);blocked(db,run,'Internal stage error; inspect worker diagnostics')
             current=run.value();current['lease_until']=0;run.data=canonical(current);db.commit()
+        if role=='research':
+            for job in db.query(Document).filter_by(kind='sandbox_benchmark_request').with_for_update(skip_locked=True).all():
+                value=job.value()
+                if value['status']!='queued' and not (value['status']=='running' and value.get('lease_until',0)<time.time()):continue
+                value.update(status='running',lease_until=time.time()+120);job.data=canonical(value);db.commit()
+                from .benchmarks import run_local
+                result=run_local(db,job.owner);value.update(status='completed' if result.value()['passed'] else 'blocked',result_id=result.id);job.data=canonical(value);db.commit()
         id='heartbeat-'+role;d=db.get(Document,id)
         if d:d.data=canonical({'role':role,'timestamp':time.time()})
         else:document(db,'heartbeat','system',{'role':role,'timestamp':time.time()},id)

@@ -74,6 +74,11 @@ def model_binding(db,run,alias):
 
 def role(db,run,stage,context,alias='reasoning'):
     p,m=model_binding(db,run,alias);schema=VerificationOutput if alias=='verifier' else RoleOutput
+    context['untrusted_validated_skills']=[]
+    for pin in run.value().get('skills',[]):
+        d=db.get(Document,pin['id'])
+        if not d or d.value()['content_hash']!=pin['hash'] or not d.value().get('enabled'):raise Denied('Pinned skill unavailable or disabled')
+        context['untrusted_validated_skills'].append({'hash':pin['hash'],'content':d.value()['content']})
     prompt=canonical({'stage':stage,'context':context,'response_schema':schema.model_json_schema()})
     if len(prompt)>64000:raise ProviderError('Context size limit exceeded')
     req=ModelRequest(model=m.value()['model_id'],messages=[{'role':'system','content':SYSTEM},{'role':'user','content':prompt}],max_tokens=min(m.value()['max_output_tokens'],4096))
@@ -87,7 +92,7 @@ def role(db,run,stage,context,alias='reasoning'):
             if response.status_code!=200:raise ProviderError('Gateway denied or unavailable')
             result=__import__('atlas.gateway',fromlist=['ModelResponse']).ModelResponse.model_validate(response.json())
         db.refresh(run)
-    else:result=generate_budgeted(db,p,m,req,run)
+    else:result=generate_budgeted(db,p,m,req,run,alias)
     return schema.model_validate(result.structured_content)
 
 def blocked(db,run,reason):
@@ -116,6 +121,8 @@ def execute_stage(db,run,worker_role):
         if not campaign.value().get('authorization_attested'):raise Denied('Authorization attestation missing')
         result={'authorized':True,'scope':policy.value()['scope']}
     elif s==State.CONTEXT_COLLECTION:
+        if campaign.value()['mode'] in ('repository','lab') and not repo:
+            blocked(db,run,'Attach a repository snapshot before source analysis');return
         result=repo.inventory() if repo else {'documents':v.get('knowledge_ids',[]),'mode':'knowledge_only'}
     elif s in (State.THREAT_MODEL,State.SURFACE_MAP,State.RESEARCH_SLICE_SELECTION,State.HYPOTHESIS_GENERATION,State.FOCUSED_INVESTIGATION,State.EXPERIMENT_PROPOSAL):
         context={'campaign':campaign.value(),'policy':policy.value(),'prior_stage_summaries':[d.value()['result'] for d in done][-4:]}
@@ -125,9 +132,12 @@ def execute_stage(db,run,worker_role):
             context['source']=[repo.read(__import__('atlas.tools',fromlist=['ReadInput']).ReadInput(path=f,end=80)) for f in inventory['files'][:6]]
         output=role(db,run,s.value,context);result=output.model_dump()
         for h in output.hypotheses:
-            hypothesis=Hypothesis.model_validate(h);document(db,'hypothesis',run.owner,{'run_id':run.id,**hypothesis.model_dump(),'status':'candidate'})
+            hypothesis=Hypothesis.model_validate(h)
+            existing=next((d for d in db.query(Document).filter_by(kind='hypothesis',owner=run.owner) if d.value()['run_id']==run.id and d.value()['claim']==hypothesis.claim),None)
+            created=existing or document(db,'hypothesis',run.owner,{'run_id':run.id,**hypothesis.model_dump(),'status':'candidate'})
+            h['id']=created.id
         for t in output.tool_requests:
-            if not repo:raise Denied('Repository tool requested without repository')
+            if not repo and t['name'] not in ('http_request','fetch_allowed_url','inspect_redirect_chain'):raise Denied('Repository tool requested without repository')
             broker(db,run,repo,t['name'],t.get('input',{}),worker_role)
         if s==State.EXPERIMENT_PROPOSAL and output.experiment:
             e=output.experiment
@@ -149,7 +159,7 @@ def execute_stage(db,run,worker_role):
             control=broker(db,run,repo,'run_local_reproduction',{'template':'python_unittest','test_path':e['control_test_path']},worker_role)
             result={'proof':proof,'control':control,'experiment':e}
         else:result={'no_experiment':True}
-    elif s==State.EVIDENCE_CAPTURE:result={'artifacts':[d.id for d in db.query(Document).filter_by(kind='artifact',owner=run.owner)],'note':'Tool status alone is not a vulnerability'}
+    elif s==State.EVIDENCE_CAPTURE:result={'artifacts':[d.id for d in db.query(Document).filter_by(kind='artifact',owner=run.owner) if d.value().get('run_id')==run.id],'note':'Tool status alone is not a vulnerability'}
     elif s==State.INDEPENDENT_VERIFICATION:
         from .verification import verify_candidates
         result=verify_candidates(db,run,repo,done)
@@ -157,5 +167,7 @@ def execute_stage(db,run,worker_role):
     elif s==State.REPORT_GENERATION:
         from .reporting import generate_report
         report=generate_report(db,run,'markdown');result={'report_id':report.id}
+    db.refresh(run,with_for_update=True)
+    if run.value()['status'] not in ('running','queued'):return
     document(db,'stage_result',run.id,{'execution_key':execution_key,'state':s.value,'result':result,'created_at':now()})
     transition(db,run,next_state,worker_role)

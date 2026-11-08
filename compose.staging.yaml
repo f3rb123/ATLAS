@@ -1,0 +1,9 @@
+# Local TLS validation only; uses a Caddy local CA, never a real VPS.
+services:
+  api:
+    environment:
+      ATLAS_ENV: production
+      ATLAS_EXTERNAL_URL: https://atlas.localhost:8443
+  proxy:
+    ports: !override ['127.0.0.1:8443:443']
+    volumes: ['./Caddyfile.staging:/etc/caddy/Caddyfile:ro', 'caddy_data:/data', 'caddy_config:/config']

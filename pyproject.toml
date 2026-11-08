@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 name = "atlas-workbench"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["fastapi", "uvicorn", "sqlalchemy", "psycopg[binary]", "alembic", "redis", "pydantic-settings", "httpx", "cryptography", "argon2-cffi", "webauthn", "pyotp", "typer", "pyyaml", "beautifulsoup4", "pypdf", "python-docx", "pgvector", "numpy", "python-multipart", "reportlab"]
+dependencies = ["fastapi", "uvicorn", "sqlalchemy", "psycopg[binary]", "alembic", "redis", "pydantic-settings", "httpx", "cryptography", "argon2-cffi", "webauthn", "pyotp", "typer", "pyyaml", "beautifulsoup4", "pypdf", "python-docx", "pgvector", "numpy", "python-multipart", "reportlab", "fastembed"]
 [project.scripts]
 atlas = "atlas.cli:app"
 [dependency-groups]

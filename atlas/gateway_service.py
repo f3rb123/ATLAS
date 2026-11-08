@@ -29,5 +29,5 @@ def generate(body:Generate,request:Request):
         if kill and kill.value()['enabled']:raise HTTPException(403)
         p,m=model_binding(db,run,body.alias)
         if body.request.model!=m.value()['model_id'] or body.request.max_tokens>m.value()['max_output_tokens']:raise HTTPException(403)
-        try:return generate_budgeted(db,p,m,body.request,run).model_dump()
+        try:return generate_budgeted(db,p,m,body.request,run,body.alias).model_dump()
         except Exception:db.commit();raise HTTPException(409,'Provider request blocked or failed') from None

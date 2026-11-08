@@ -9,12 +9,15 @@ from .records import Record,Source
 from .config import settings
 from .vault import redact
 
+class WithdrawnRecord(ValueError):
+    def __init__(self,record_id):self.record_id=record_id;super().__init__('Source withdrew this record')
+
 SOURCES={
  'ghsa':{'name':'GitHub Advisory Database','url':'https://github.com/github/advisory-database','terms':'https://raw.githubusercontent.com/github/advisory-database/main/LICENSE.md','license':'CC-BY-4.0','policy':'allowed','bulk':'https://codeload.github.com/github/advisory-database/tar.gz/refs/heads/main'},
  'cve':{'name':'CVE Program','url':'https://github.com/CVEProject/cvelistV5','terms':'https://www.cve.org/Legal/TermsOfUse','license':'LicenseRef-CVE-Terms','policy':'allowed','bulk':'https://codeload.github.com/CVEProject/cvelistV5/tar.gz/refs/heads/main'},
- 'nvd':{'name':'NVD','url':'https://services.nvd.nist.gov/rest/json/cves/2.0','terms':'https://nvd.nist.gov/general/faq','license':'CC0-1.0','policy':'allowed'},
- 'osv':{'name':'OSV','url':'https://api.osv.dev/v1/vulns','terms':'https://github.com/google/osv.dev/blob/master/LICENSE','license':'CC-BY-4.0','policy':'allowed'},
- 'kev':{'name':'CISA KEV','url':'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json','terms':'https://www.cisa.gov/about/website-policies','license':'LicenseRef-US-Government','policy':'allowed'},
+ 'nvd':{'name':'NVD','url':'https://services.nvd.nist.gov/rest/json/cves/2.0','terms':'https://www.nist.gov/copyrights-disclaimers','license':'LicenseRef-NIST-PublicInformation','policy':'allowed'},
+ 'osv':{'name':'OSV','url':'https://api.osv.dev/v1/vulns','terms':'https://osv.dev/docs/','license':'upstream-dependent','policy':'unknown_or_restricted'},
+ 'kev':{'name':'CISA KEV','url':'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json','terms':'https://www.cisa.gov/about/website-policies','license':'unknown','policy':'unknown_or_restricted'},
 }
 
 # Versioned deterministic local lexical embedding. No model download or billable API.
@@ -27,8 +30,20 @@ def embed(text):
     n=np.linalg.norm(v)
     return (v/n if n else v).tolist()
 
+def source_config(source):
+    cfg=dict(SOURCES[source])
+    with session() as db:
+        for d in db.query(Document).filter_by(kind='source_policy').order_by(Document.created):
+            v=d.value()
+            if v.get('native_source')==source:
+                cfg.update(license=v['license'],terms=v['terms_url'],policy='allowed' if v.get('enabled') and v.get('owner_reviewed') else 'unknown_or_restricted',operator_disabled=not v.get('enabled'))
+    return cfg
+
 def source_record(source,item,raw,url=None):
-    cfg=SOURCES[source];aliases=[];title='';summary='';kind='security_advisory';published=None;target={};classification={};research={}
+    cfg=source_config(source)
+    if source=='osv' and item.get('id','').startswith('GHSA-') and not cfg.get('operator_disabled'):
+        cfg.update(license=SOURCES['ghsa']['license'],terms=SOURCES['ghsa']['terms'],policy='allowed')
+    aliases=[];title='';summary='';kind='security_advisory';published=None;target={};classification={};research={}
     if source in ('ghsa','osv'):
         native=item['id'];aliases=list(set([native]+item.get('aliases',[])));title=item.get('summary') or native;summary=item.get('details','')
         published=item.get('published');kind='ghsa' if source=='ghsa' else 'osv'
@@ -38,7 +53,7 @@ def source_record(source,item,raw,url=None):
         classification['cwe']=item.get('database_specific',{}).get('cwe_ids',[])
         classification['severity_label']=item.get('database_specific',{}).get('severity')
         refs=[r['url'] for r in item.get('references',[]) if r.get('type')=='FIX'];research['patch_references']=refs
-        if item.get('withdrawn'):raise ValueError('Withdrawn advisory: takedown required')
+        if item.get('withdrawn'):raise WithdrawnRecord(native)
     elif source=='cve':
         meta=item['cveMetadata'];native=meta['cveId']
         if meta.get('state')!='PUBLISHED':raise ValueError('CVE not published')
@@ -70,23 +85,38 @@ def ingest(db,r,raw):
     # Raw artifact retained only under explicit permission, before publication.
     if r.source.full_text_policy not in ('allowed','derived_only'):raise ValueError('Full-text permission requires review')
     aliases=set(r.deduplication.source_aliases+[r.canonical_key])
-    found=db.query(Alias).filter(Alias.alias.in_(aliases)).first()
-    existing=db.get(Knowledge,found.record_id) if found else db.query(Knowledge).filter_by(content_hash=r.source.content_hash_sha256,owner=r.access_owner).first()
+    matches=db.query(Alias).filter(Alias.alias.in_(aliases)).all()
+    roots=sorted({a.record_id for a in matches})
+    existing=db.get(Knowledge,roots[0]) if roots else db.query(Knowledge).filter_by(content_hash=r.source.content_hash_sha256,owner=r.access_owner).first()
+    # Official alias bridges collapse identity groups, preserving every source version.
+    for id in roots[1:]:
+        old=db.get(Knowledge,id)
+        if old.owner!=r.access_owner:raise ValueError('Cross-owner alias collision')
+        document(db,'corpus_provenance',existing.id,{'record':json.loads(old.record),'duplicate_of':existing.id,'reason':'official_alias_bridge'})
+        db.query(Alias).filter_by(record_id=id).update({'record_id':existing.id})
+        db.query(Chunk).filter_by(record_id=id).delete();db.delete(old);db.flush()
     if existing:
         for a in aliases:
             if not db.get(Alias,a):db.add(Alias(alias=a,record_id=existing.id))
         # Preserve all source versions/provenance as linked artifacts, not independent records.
         link_id=digest(r.source.source_id+':'+r.source.content_hash_sha256)[:36]
         if not db.get(Document,link_id):document(db,'corpus_provenance',existing.id,{'source':r.source.model_dump(),'raw':store_raw(raw)},link_id)
+        old_record=Record.model_validate_json(existing.record)
+        if old_record.source.source_id==r.source.source_id and old_record.source.source_record_id==r.source.source_record_id and old_record.source.content_hash_sha256!=r.source.content_hash_sha256:
+            document(db,'corpus_provenance',existing.id,{'record':old_record.model_dump(by_alias=True),'reason':'source_revision'})
+            r.record_id=existing.id;r.canonical_key=existing.canonical_key;r.created_at=old_record.created_at;r.updated_at=now();r.content.raw_artifact_ref=store_raw(raw)
+            r.deduplication.source_aliases=sorted({a.alias for a in db.query(Alias).filter_by(record_id=existing.id)})
+            existing.record=canonical(r.model_dump(by_alias=True));existing.title=r.title;existing.content_hash=r.source.content_hash_sha256
+            reindex_record(db,existing);db.flush();return 'updated'
         db.flush();return 'duplicate'
     r.content.raw_artifact_ref=store_raw(raw)
     text=redact(r.title+'\n'+r.summary)
-    page_parts=r.content.chunks
+    page_parts=[c for c in r.content.chunks if 'text' in c]
     pieces=[];metadata=[]
     for part in (page_parts or [{'text':text,'page':None}]):
         t=redact(part['text'])
         for start in range(0,len(t),1400):
-            pieces.append(t[start:start+1600]);metadata.append({'index':len(pieces)-1,'page':part.get('page'),'section':r.title,'hash':digest(pieces[-1]),'embedding_version':EMBEDDING_VERSION})
+            pieces.append(t[start:start+1600]);metadata.append({'index':len(pieces)-1,'page':part.get('page'),'section':r.title,'hash':digest(pieces[-1]),'embedding_version':EMBEDDING_VERSION,'text':pieces[-1]})
     if len(pieces)>2000:raise ValueError('Document exceeds chunk quota')
     r.content.chunks=metadata
     record=r.model_dump(by_alias=True);Record.model_validate(record)
@@ -160,6 +190,7 @@ def import_file(db,path,license,source_url,record_type='research_report',owner='
     if Path(path).suffix.lower()=='.pdf':
         pages=parts;parts=[{'title':Path(path).name,'text':'\n'.join(x['text'] for x in pages),'raw':Path(path).read_bytes(),'pages':pages}]
     for part in parts:
+        if not part['text'].strip():raise ValueError('No extractable text; OCR is not enabled')
         r=Record(canonical_key=digest((source_url+part['title']+digest(part['raw'])).encode()),record_type=record_type,title=part['title'],summary=redact(part['text']),source=Source(source_id='owner',source_name='Owner import',source_url=source_url,license=license,full_text_policy='allowed',content_hash_sha256=digest(part['raw']),parser_name='owner-'+Path(path).suffix))
         if part.get('pages'):r.content.chunks=[{'page':p['page'],'text':p['text']} for p in part['pages']]
         r.access_owner=owner
@@ -173,7 +204,8 @@ class ReadStream:
 
 def sync_bulk(source='ghsa',limit=21000,job_id=None):
     if source not in ('ghsa','cve'):raise ValueError('No official bulk connector for source')
-    cfg=SOURCES[source]
+    cfg=source_config(source)
+    if cfg['policy']!='allowed':raise ValueError('Source terms/permission review required')
     with session() as db:
         job=db.get(Document,job_id) if job_id else document(db,'corpus_job','system',{'source':source,'cursor':0,'counts':{},'status':'running','started':now()})
         if not job or job.kind!='corpus_job' or job.value()['source']!=source:raise ValueError('Invalid resume job')
@@ -203,6 +235,11 @@ def sync_bulk(source='ghsa',limit=21000,job_id=None):
                 with session() as db:
                     try:
                         r=source_record(source,json.loads(raw),raw,cfg['url']+'/blob/main/'+member.name.split('/',1)[1]);counts[ingest(db,r,raw)]+=1
+                    except WithdrawnRecord as e:
+                        db.rollback();counts['withdrawn']+=1
+                        alias=db.get(Alias,e.record_id)
+                        if alias:remove_record(db,alias.record_id,'upstream_withdrawal')
+                        document(db,'corpus_exclusion','system',{'source':source,'source_record_id':e.record_id,'reason':'upstream_withdrawal','job_id':job_id})
                     except Exception as e:
                         db.rollback();counts['errors']+=1;document(db,'import_error','system',{'source':source,'path':member.name,'reason':type(e).__name__,'job_id':job_id})
                     job=db.get(Document,job_id);state.update(cursor=index,counts=dict(counts),updated=now(),status='running');job.data=canonical(state);db.commit()
@@ -242,6 +279,7 @@ def sync_api(source,limit=10,ids=None,job_id=None):
         if source=='osv' and not ids:ids=[r.alias for r in db.query(Alias).filter(Alias.alias.like('GHSA-%')).limit(limit)]
     counts=Counter(state.get('counts',{}))
     try:
+        if source!='osv' and source_config(source)['policy']!='allowed':raise ValueError('Source terms/permission review required')
         while state['cursor']<limit:
             cursor=state['cursor']
             if source=='nvd':url=SOURCES[source]['url']+f'?startIndex={cursor}&resultsPerPage={min(100,limit-cursor)}'
@@ -292,3 +330,31 @@ def near_duplicates(db,threshold=0.92):
             if score>=threshold:candidates.append({'left':previous,'right':k.id,'score':score,'status':'needs_review'})
         groups.setdefault(signature,[]).append((k.id,shingles))
     return candidates
+
+def reindex_record(db,k):
+    r=Record.model_validate_json(k.record)
+    pages=[c for c in r.content.chunks if 'text' in c]
+    if not pages:pages=[{'text':' '.join([r.title,r.canonical_key,*r.deduplication.source_aliases])+'\n'+r.summary,'page':None}]
+    db.query(Chunk).filter_by(record_id=k.id).delete();metadata=[]
+    for part in pages:
+        text=redact(part['text'])
+        for start in range(0,len(text),1400):
+            piece=text[start:start+1600];position=len(metadata)
+            metadata.append({'index':position,'text':piece,'page':part.get('page'),'section':r.title,'hash':digest(piece),'embedding_version':EMBEDDING_VERSION})
+            c=Chunk(record_id=k.id,position=position,text=piece,embedding=canonical(embed(piece)));db.add(c);db.flush()
+            if db.bind.dialect.name=='postgresql':
+                from sqlalchemy import text as sqltext
+                db.execute(sqltext('UPDATE knowledge_chunks SET embedding_vector=CAST(:v AS vector) WHERE id=:id'),{'v':c.embedding,'id':c.id})
+    r.content.chunks=metadata;r.updated_at=now();k.record=canonical(r.model_dump(by_alias=True));db.flush()
+
+def reindex_job(id):
+    with session() as db:job=db.get(Document,id);v=job.value();owner=job.owner
+    total=v.get('processed',0)
+    while total<v.get('limit',100000):
+        with session() as db:
+            records=db.query(Knowledge).filter(Knowledge.owner.in_(['public',owner]),Knowledge.id>v.get('cursor','')).order_by(Knowledge.id).limit(100).all()
+            if not records:break
+            for k in records:reindex_record(db,k);total+=1;v['cursor']=k.id
+            v.update(processed=total,lease_until=time.time()+600);job=db.get(Document,id);job.data=canonical(v);db.commit()
+    with session() as db:job=db.get(Document,id);v.update(status='completed',processed=total);job.data=canonical(v);db.commit()
+    return v

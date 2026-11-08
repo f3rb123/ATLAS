@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     research_token_file: str | None = None
     verify_token_file: str | None = None
     api_token_file: str | None = None
+    passkey_only_recovery: bool = False
     monthly_budget: float = 100
     provider_allowlist: list[str] = []
     provider_local_allowlist: list[str] = []

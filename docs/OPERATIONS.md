@@ -1,0 +1,11 @@
+# Operations
+
+PostgreSQL is authoritative; Redis loss does not erase state. Workers claim bounded leases, write stage results/journals before advancing and rehydrate from durable artifacts. A crash may retain a conservative model-call reservation when billing outcome is unknown; review that reservation rather than silently charging zero/retrying indefinitely. Corpus jobs preserve source cursors and immutable source snapshots for future bulk syncs; resume a persisted job after access/policy changes.
+
+Use `atlas doctor` with a scoped CLI token, API /health/live and /health/ready, worker heartbeats, usage records, provider test status and corpus job/error dashboards. Structured request logs include route templates, status, duration and correlation IDs, without bodies, prompts, tokens or secret values. Audit journals are append-only and hash chained.
+
+The Security emergency-stop action cancels active/queued runs and blocks new work. In-flight bounded I/O may take its configured timeout to unwind. Paused/cancelled status is rechecked after model I/O and before further dispatch. Re-enable only after reviewing scope and queued approvals. Source sync is separate from target assessment traffic.
+
+Upgrades: take and verify an encrypted backup; preserve .env.production and all generated secret files; build reviewed pinned images; run the one-shot initializer/migrations; restart; verify readiness, auth, provider and fixture tests. Roll back application images only when schema compatibility is documented. Destructive database downgrades are intentionally unavailable; restore a verified backup into a separate clean environment when necessary.
+
+Ubuntu hardening checklist: SSH keys only, named non-root sudo user, root/password SSH disabled after a tested second session, source-restricted SSH where possible, default-deny inbound firewall, only approved HTTPS/private access, no Postgres/Redis/Docker management ports, supported security updates, NTP, disk/RAM alerts, login/intrusion monitoring, TLS renewal checks and off-host restore tests. Apply real-host changes only with explicit deployment approval. Never run stress, destructive, credential-stuffing, persistence or broad extraction tests through ATLAS.

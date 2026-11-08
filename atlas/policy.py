@@ -36,7 +36,8 @@ def normalize(url):
     try:
         u=urlsplit(url)
         if u.scheme not in ('https','http') or not u.hostname or u.username or u.password: raise Denied('Unsupported URL')
-        h=host(u.hostname);p=u.port or (443 if u.scheme=='https' else 80)
+        h=host(u.hostname);p=u.port if u.port is not None else (443 if u.scheme=='https' else 80)
+        if not 1<=p<=65535:raise Denied('Invalid destination port')
     except ValueError as e: raise Denied(str(e))
     path=u.path or '/'
     decoded=unquote(path)
