@@ -41,5 +41,6 @@ class Record(Strict):
     evidence:Evidence=Field(default_factory=Evidence)
     content:Content=Field(default_factory=Content)
     deduplication:Deduplication=Field(default_factory=Deduplication)
+    access_owner:str='public'
     tags:list[str]=[]
     created_at:str=Field(default_factory=now);updated_at:str=Field(default_factory=now)

@@ -1,0 +1,65 @@
+{
+  "unique_normalized_records": 21001,
+  "categories": {
+    "structured_vulnerability_advisories": 21001,
+    "full_text_research_reports": 0,
+    "patch_and_commit_records": 0,
+    "training_and_reference_resources": 0
+  },
+  "by_source": {
+    "cve": 1,
+    "ghsa": 21000
+  },
+  "aliases": 39974,
+  "chunks": 24681,
+  "embedding": "signed-token-hash-v1-128",
+  "quarantined_items": 491,
+  "parser_errors": 0,
+  "jobs": [
+    {
+      "id": "cdfb3b9c-b868-4749-ba64-bb637ec220d5",
+      "counts": {
+        "errors": 491,
+        "ingested": 21000
+      },
+      "cursor": 21491,
+      "source": "ghsa",
+      "started": "2026-11-08T15:21:54.235209+00:00",
+      "status": "completed",
+      "updated": "2026-11-08T15:23:52.832027+00:00"
+    },
+    {
+      "id": "b0e57ce8-4777-43ec-80a2-8e69c46c3d56",
+      "counts": {},
+      "cursor": 0,
+      "error": "URLError",
+      "etag": null,
+      "source": "nvd",
+      "started": "2026-11-08T15:31:21.598283+00:00",
+      "status": "blocked"
+    },
+    {
+      "id": "087f30c2-952d-4a47-9e64-303e08649d75",
+      "counts": {},
+      "cursor": 0,
+      "error": "URLError",
+      "etag": null,
+      "source": "osv",
+      "started": "2026-11-08T15:31:21.640876+00:00",
+      "status": "blocked"
+    },
+    {
+      "id": "7ddea9a9-402a-41cc-8692-9b074f1d082f",
+      "counts": {},
+      "cursor": 0,
+      "error": "URLError",
+      "etag": null,
+      "source": "kev",
+      "started": "2026-11-08T15:31:21.651772+00:00",
+      "status": "blocked"
+    }
+  ],
+  "scale_target": 20000,
+  "scale_status": "passed",
+  "full_text_report_count": 0
+}

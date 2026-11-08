@@ -1,0 +1,6 @@
+services:
+  proxy:
+    ports: !override
+      - '${ATLAS_BIND_IP:-127.0.0.1}:${ATLAS_HTTPS_PORT:-443}:443'
+      - '${ATLAS_BIND_IP:-127.0.0.1}:80:80'
+    volumes: ['./Caddyfile.production:/etc/caddy/Caddyfile:ro', 'caddy_data:/data', 'caddy_config:/config']

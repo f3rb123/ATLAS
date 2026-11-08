@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+ARG NODE_IMAGE=node@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+FROM ${NODE_IMAGE} AS build
+WORKDIR /app
+COPY apps/web/package*.json ./
+RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
+    if [ -f /run/proxy-ca.pem ]; then export NODE_EXTRA_CA_CERTS=/run/proxy-ca.pem; fi; \
+    npm ci --strict-ssl=true
+COPY apps/web ./
+ENV NEXT_TELEMETRY_DISABLED=1 ATLAS_API_INTERNAL_URL=http://api:8000
+RUN npm run build
+FROM ${NODE_IMAGE}
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+USER node
+CMD ["node","server.js"]

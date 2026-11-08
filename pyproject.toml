@@ -5,13 +5,15 @@ build-backend = "hatchling.build"
 name = "atlas-workbench"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["fastapi", "uvicorn", "sqlalchemy", "psycopg[binary]", "alembic", "redis", "pydantic-settings", "httpx", "cryptography", "argon2-cffi", "webauthn", "pyotp", "typer", "pyyaml", "beautifulsoup4", "pypdf", "python-docx", "pgvector", "numpy", "python-multipart"]
+dependencies = ["fastapi", "uvicorn", "sqlalchemy", "psycopg[binary]", "alembic", "redis", "pydantic-settings", "httpx", "cryptography", "argon2-cffi", "webauthn", "pyotp", "typer", "pyyaml", "beautifulsoup4", "pypdf", "python-docx", "pgvector", "numpy", "python-multipart", "reportlab"]
 [project.scripts]
 atlas = "atlas.cli:app"
 [dependency-groups]
+build = ["hatchling==1.27.0"]
 dev = ["pytest", "pytest-asyncio", "hypothesis", "ruff", "jsonschema"]
 [tool.hatch.build.targets.wheel]
 packages = ["atlas"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = ["sandbox: requires Linux user namespaces; run in outer execution context"]

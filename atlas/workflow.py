@@ -77,7 +77,17 @@ def role(db,run,stage,context,alias='reasoning'):
     prompt=canonical({'stage':stage,'context':context,'response_schema':schema.model_json_schema()})
     if len(prompt)>64000:raise ProviderError('Context size limit exceeded')
     req=ModelRequest(model=m.value()['model_id'],messages=[{'role':'system','content':SYSTEM},{'role':'user','content':prompt}],max_tokens=min(m.value()['max_output_tokens'],4096))
-    result=generate_budgeted(db,p,m,req,run)
+    from .config import settings
+    if settings().gateway_url:
+        import httpx
+        from pathlib import Path
+        token=Path(settings().service_token_file).read_text().strip()
+        with httpx.Client(timeout=45,trust_env=False) as client:
+            response=client.post(settings().gateway_url+'/generate',headers={'Authorization':'Bearer '+token},json={'run_id':run.id,'alias':alias,'request':req.model_dump()})
+            if response.status_code!=200:raise ProviderError('Gateway denied or unavailable')
+            result=__import__('atlas.gateway',fromlist=['ModelResponse']).ModelResponse.model_validate(response.json())
+        db.refresh(run)
+    else:result=generate_budgeted(db,p,m,req,run)
     return schema.model_validate(result.structured_content)
 
 def blocked(db,run,reason):

@@ -9,6 +9,13 @@ def render(findings,format):
     for f in findings:lines+=['\n## '+f['title'],'Status: '+f['status'],'Policy: '+f['policy_hash'],'\nClaimed impact: '+f['hypothesis']['impact'],'\nVerification: '+f['verification']['reason'],'\nSecure counterfactual: '+f['verification']['counterfactual'],'Evidence: '+', '.join(f['evidence_ids']),'\nReproduction and preconditions:\n'+json.dumps(f['hypothesis'],indent=2)]
     text='\n\n'.join(lines)
     if format=='html':return '<!doctype html><html><meta charset="utf-8"><title>ATLAS report</title><body><pre>'+html.escape(text)+'</pre></body></html>'
+    if format=='pdf':
+        import io,base64
+        from reportlab.platypus import SimpleDocTemplate,Preformatted
+        from reportlab.lib.styles import getSampleStyleSheet
+        from xml.sax.saxutils import escape
+        output=io.BytesIO();SimpleDocTemplate(output).build([Preformatted(escape(text),getSampleStyleSheet()['Code'],maxLineLength=90)])
+        return base64.b64encode(output.getvalue()).decode()
     if format!='markdown':raise ValueError('Unsupported report format')
     return text
 

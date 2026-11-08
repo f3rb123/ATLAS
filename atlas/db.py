@@ -52,6 +52,7 @@ class Journal(Base):
 class Knowledge(Base):
     __tablename__='knowledge'
     id: Mapped[str]=mapped_column(String(36),primary_key=True)
+    owner: Mapped[str]=mapped_column(String(36),default='public',index=True)
     canonical_key: Mapped[str]=mapped_column(String(255),unique=True)
     category: Mapped[str]=mapped_column(String(60),index=True)
     source: Mapped[str]=mapped_column(String(50),index=True)

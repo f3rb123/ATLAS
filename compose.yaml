@@ -1,0 +1,192 @@
+name: atlas
+x-app: &app
+  image: atlas-api:local
+  build:
+    context: .
+    dockerfile: Dockerfile.api
+    secrets: [proxy_ca]
+  restart: unless-stopped
+  read_only: true
+  user: "10001:10001"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ['/tmp:size=128m,mode=1777']
+  mem_limit: 1g
+  cpus: 1.0
+  logging: &logging
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+  volumes: [artifacts:/data, dbkey:/dbkey:ro]
+  networks: [backend]
+  environment: &env
+    NO_PROXY: ${NO_PROXY:-},api,web,postgres,redis,gateway,relay,localhost,127.0.0.1
+    no_proxy: ${NO_PROXY:-},api,web,postgres,redis,gateway,relay,localhost,127.0.0.1
+    ATLAS_ENV: ${ATLAS_ENV:-development}
+    ATLAS_EXTERNAL_URL: ${ATLAS_EXTERNAL_URL:-http://localhost:8080}
+    ATLAS_DATABASE_URL: postgresql+psycopg://atlas_app:{password}@postgres:5432/atlas
+    ATLAS_DATABASE_URL_FILE_PASSWORD: /dbkey/postgres_password
+    ATLAS_DATA_DIR: /data
+    ATLAS_REDIS_URL: redis://redis:6379/0
+    ATLAS_REDIS_PASSWORD_FILE: /dbkey/redis_password
+    ATLAS_MASTER_KEY_FILE: /master/master_key
+    ATLAS_PROVIDER_ALLOWLIST: ${ATLAS_PROVIDER_ALLOWLIST:-[]}
+    ATLAS_PROVIDER_LOCAL_ALLOWLIST: ${ATLAS_PROVIDER_LOCAL_ALLOWLIST:-[]}
+  secrets: []
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+services:
+  init:
+    <<: *app
+    user: "0:0"
+    cap_drop: []
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    restart: 'no'
+    secrets: [postgres_password, app_postgres_password, redis_password, master_key, research_token, verify_token]
+    volumes: [artifacts:/data, dbkey:/dbkey, master:/master, research:/research, verify:/verify]
+    environment:
+      <<: *env
+      ATLAS_DATABASE_URL_FILE_PASSWORD: /run/secrets/postgres_password
+      ATLAS_DATABASE_URL: postgresql+psycopg://atlas:{password}@postgres:5432/atlas
+      ATLAS_REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    command: [python, -m, atlas.init_container]
+  api:
+    <<: *app
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, master:/master:ro]
+    networks: [backend, provider_egress]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://localhost:8000/health/live")']
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  gateway:
+    <<: *app
+    command: [uvicorn, 'atlas.gateway_service:app', --host, 0.0.0.0, --port, '8001', --no-access-log]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, master:/master:ro, research:/research:ro, verify:/verify:ro]
+    environment:
+      <<: *env
+      ATLAS_RESEARCH_TOKEN_FILE: /research/research_token
+      ATLAS_VERIFY_TOKEN_FILE: /verify/verify_token
+    networks: [backend, provider_egress]
+    depends_on:
+      init: {condition: service_completed_successfully}
+  relay:
+    <<: *app
+    command: [uvicorn, 'atlas.relay:app', --host, 0.0.0.0, --port, '8002', --no-access-log]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, research:/research:ro]
+    environment:
+      <<: *env
+      ATLAS_RESEARCH_TOKEN_FILE: /research/research_token
+    networks: [backend, target_egress]
+    depends_on:
+      init: {condition: service_completed_successfully}
+  worker-research:
+    <<: *app
+    command: [python, -m, atlas.worker, research]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, research:/research:ro]
+    environment:
+      <<: *env
+      ATLAS_GATEWAY_URL: http://gateway:8001
+      ATLAS_RELAY_URL: http://relay:8002
+      ATLAS_SERVICE_TOKEN_FILE: /research/research_token
+    depends_on:
+      init: {condition: service_completed_successfully}
+  worker-corpus:
+    <<: *app
+    command: [python, -m, atlas.corpus_worker]
+    networks: [backend, knowledge_egress]
+    depends_on:
+      init: {condition: service_completed_successfully}
+  worker-verify:
+    <<: *app
+    command: [python, -m, atlas.worker, verify]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, verify:/verify:ro]
+    environment:
+      <<: *env
+      ATLAS_GATEWAY_URL: http://gateway:8001
+      ATLAS_SERVICE_TOKEN_FILE: /verify/verify_token
+    depends_on:
+      init: {condition: service_completed_successfully}
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      secrets: [proxy_ca]
+    image: atlas-web:local
+    restart: unless-stopped
+    read_only: true
+    user: node
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ['/tmp:size=64m,mode=1777']
+    networks: [backend]
+    mem_limit: 512m
+    logging: *logging
+  postgres:
+    image: pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_DB: atlas
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [postgres:/var/lib/postgresql/data]
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U atlas -d atlas']
+      interval: 5s
+      retries: 20
+    logging: *logging
+    mem_limit: 1g
+  redis:
+    image: redis@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
+    entrypoint: [sh, -c]
+    command: ['cp /run/secrets/redis_config /tmp/redis.conf && chown redis:redis /tmp/redis.conf && chmod 400 /tmp/redis.conf && exec /usr/bin/setpriv --reuid redis --regid redis --clear-groups redis-server /tmp/redis.conf']
+    secrets: [redis_config, redis_password]
+    tmpfs: ['/data:size=64m','/tmp:size=16m,mode=1777']
+    restart: unless-stopped
+    read_only: true
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH=$$(cat /run/secrets/redis_password) redis-cli ping']
+      interval: 5s
+      retries: 10
+    logging: *logging
+    mem_limit: 128m
+  proxy:
+    image: caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    ports: ['${ATLAS_BIND_IP:-127.0.0.1}:8080:80']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro', 'caddy_data:/data', 'caddy_config:/config']
+    networks: [backend, frontend]
+    environment:
+      ATLAS_HOST: ${ATLAS_HOST:-localhost}
+      NO_PROXY: ${NO_PROXY:-},api,web,localhost,127.0.0.1
+      no_proxy: ${NO_PROXY:-},api,web,localhost,127.0.0.1
+    logging: *logging
+volumes:
+  postgres:
+  master:
+  research:
+  verify:
+  dbkey:
+  artifacts:
+  caddy_data:
+  caddy_config:
+networks:
+  backend: {internal: true}
+  frontend: {}
+  provider_egress: {}
+  target_egress: {}
+  knowledge_egress: {}
+secrets:
+  redis_config: {file: .runtime/secrets/redis.conf}
+  redis_password: {file: .runtime/secrets/redis_password}
+  app_postgres_password: {file: .runtime/secrets/app_postgres_password}
+  master_key: {file: .runtime/secrets/master_key}
+  research_token: {file: .runtime/secrets/research_token}
+  verify_token: {file: .runtime/secrets/verify_token}
+  postgres_password: {file: .runtime/secrets/postgres_password}
+  proxy_ca: {file: '${ATLAS_BUILD_CA_FILE:-/etc/ssl/certs/ca-certificates.crt}'}

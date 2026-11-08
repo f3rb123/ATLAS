@@ -327,7 +327,7 @@ class Search(Strict):query:str=Field(min_length=1,max_length=500);source:str|Non
 @app.post('/api/v1/knowledge/search')
 def knowledge_search(body:Search,who=Depends(enrolled),db=Depends(db_dep)):
     from .corpus import search
-    return search(db,body.query,body.source,body.limit)
+    return search(db,body.query,body.source,body.limit,who[0].id)
 @app.post('/api/v1/knowledge/ingest')
 async def knowledge_import(request:Request,file:UploadFile=File(...),license:str='unknown',source_url:str='owner:upload',who=Depends(enrolled),db=Depends(db_dep)):
     import tempfile
@@ -335,14 +335,14 @@ async def knowledge_import(request:Request,file:UploadFile=File(...),license:str
     data=await file.read(20*1024*1024+1)
     if len(data)>20*1024*1024:raise HTTPException(413)
     with tempfile.TemporaryDirectory() as td:
-        path=Path(td)/Path(file.filename or 'import.txt').name;path.write_bytes(data);result=import_file(db,path,license,source_url)
+        path=Path(td)/Path(file.filename or 'import.txt').name;path.write_bytes(data);result=import_file(db,path,license,source_url,owner=who[0].id)
     audit(db,who[0].id,'knowledge_import',{'counts':result});db.commit();return result
 class CorpusSync(Strict):source:Literal['ghsa','cve','nvd','osv','kev'];limit:int=Field(default=1000,ge=1,le=100000)
 @app.post('/api/v1/corpus/sync')
 def corpus_sync(body:CorpusSync,who=Depends(stepup),db=Depends(db_dep)):
     d=document(db,'corpus_request',who[0].id,{**body.model_dump(),'status':'queued'});db.commit();return expose(d)
 @app.post('/api/v1/runs/{id}/reports')
-def report(id:str,format:Literal['markdown','json','html','sarif']='markdown',who=Depends(enrolled),db=Depends(db_dep)):
+def report(id:str,format:Literal['markdown','json','html','sarif','pdf']='markdown',who=Depends(enrolled),db=Depends(db_dep)):
     from .reporting import generate_report
     run=own(db,id,'run',who[0].id);d=generate_report(db,run,format);audit(db,who[0].id,'report_export',{'id':d.id});db.commit();return expose(d)
 @app.get('/api/v1/budgets')
@@ -402,3 +402,24 @@ def skill_control(id:str,action:Literal['review','validate','enable','disable','
             if s.value()['skill_id']==v['skill_id']:enable(db,s,who[0].id,False)
         enable(db,sorted(others,key=lambda s:s.created)[-1],who[0].id,True)
     db.commit();return expose(d)
+
+@app.post('/api/v1/benchmarks/run')
+def benchmark_run(who=Depends(stepup),db=Depends(db_dep)):
+    from .benchmarks import run_local
+    d=run_local(db,who[0].id);db.commit();return expose(d)
+
+@app.post('/api/v1/corpus/validate')
+def corpus_validate(who=Depends(admin),db=Depends(db_dep)):
+    from .records import Record
+    passed=failed=0
+    for record in db.query(Knowledge).filter(Knowledge.owner.in_(['public',who[0].id])).yield_per(200):
+        try:Record.model_validate_json(record.record);passed+=1
+        except ValueError:failed+=1
+    return {'validated':passed,'failed':failed}
+@app.post('/api/v1/corpus/dedupe')
+def corpus_dedupe(who=Depends(stepup),db=Depends(db_dep)):
+    from .corpus import near_duplicates
+    return {'candidates':near_duplicates(db),'action':'review_only_no_destructive_merge'}
+@app.get('/api/v1/corpus/errors')
+def corpus_errors(offset:int=0,limit:int=50,who=Depends(admin),db=Depends(db_dep)):
+    return [expose(d) for d in db.query(Document).filter_by(kind='import_error').offset(max(0,offset)).limit(min(100,max(1,limit)))]

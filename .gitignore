@@ -9,3 +9,5 @@ __pycache__/
 *.egg-info/
 apps/web/node_modules/
 apps/web/.next/
+apps/web/test-results/
+apps/web/playwright-report/

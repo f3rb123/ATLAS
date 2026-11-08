@@ -86,14 +86,14 @@ class PinnedConnection(http.client.HTTPConnection):
         else:self.sock=socket.create_connection((self.ip,self.port),self.timeout)
         if self.tls:self.sock=ssl.create_default_context().wrap_socket(self.sock,server_hostname=self.host)
 
-def request(url,method='GET',headers=None,body=None,scope=None,max_bytes=1048576,timeout=15):
+def request(url,method='GET',headers=None,body=None,scope=None,max_bytes=1048576,timeout=15,return_redirect=False):
     n,h,p,ips=authorize(scope,url,method)
     c=PinnedConnection(h,ips[0],p,n.startswith('https:'),timeout)
     u=urlsplit(n);target=u.path+('?' +u.query if u.query else '')
     try:
         c.request(method,target,body=body,headers=headers or {})
         r=c.getresponse()
-        if 300<=r.status<400:raise Denied('Redirect disabled; destination must be independently approved')
+        if 300<=r.status<400 and not return_redirect:raise Denied('Redirect disabled; destination must be independently approved')
         if r.getheader('Content-Encoding','identity')!='identity':raise Denied('Compressed responses not accepted')
         content=r.read(max_bytes+1)
         if len(content)>max_bytes:raise Denied('Response size exceeded')

@@ -64,6 +64,7 @@ def rp():return urlsplit(settings().external_url).hostname
 def challenge(db,u,s,kind):
     creds=db.query(Document).filter_by(kind='passkey',owner=u.id).all()
     if kind=='registration':
+        if not creds and s.created<time.time()-300:raise ValueError('Recent sign-in required for initial enrollment')
         if creds and s.stepup<time.time()-300:raise ValueError('Passkey step-up required')
         opt=generate_registration_options(rp_id=rp(),rp_name='ATLAS',user_id=u.id.encode(),user_name=u.email,exclude_credentials=[PublicKeyCredentialDescriptor(id=base64url_to_bytes(d.value()['credential_id'])) for d in creds],authenticator_selection=AuthenticatorSelectionCriteria(user_verification=UserVerificationRequirement.REQUIRED,resident_key=ResidentKeyRequirement.PREFERRED))
     else:opt=generate_authentication_options(rp_id=rp(),allow_credentials=[PublicKeyCredentialDescriptor(id=base64url_to_bytes(d.value()['credential_id'])) for d in creds],user_verification=UserVerificationRequirement.REQUIRED)
@@ -96,7 +97,7 @@ def verify_passkey(db,u,s,credential,kind):
     return True
 
 def totp_setup(db,u,s):
-    if u.totp and s.stepup<time.time()-300:raise ValueError('Passkey step-up required')
+    if (u.totp or db.query(Document).filter_by(kind='passkey',owner=u.id).first()) and s.stepup<time.time()-300:raise ValueError('Passkey step-up required')
     seed=pyotp.random_base32();document(db,'totp_pending',s.id,{'secret':seal(seed,f'totp:{u.id}'),'expires':time.time()+300})
     return pyotp.TOTP(seed).provisioning_uri(u.email,issuer_name='ATLAS')
 

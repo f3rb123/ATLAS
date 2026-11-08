@@ -79,7 +79,13 @@ def upload_snapshot(data):
     except Exception:shutil.rmtree(root);raise
 
 def sandbox_limits():
-    resource.setrlimit(resource.RLIMIT_CPU,(20,20));resource.setrlimit(resource.RLIMIT_AS,(512*1024*1024,512*1024*1024));resource.setrlimit(resource.RLIMIT_FSIZE,(2*1024*1024,2*1024*1024));resource.setrlimit(resource.RLIMIT_NOFILE,(64,64));resource.setrlimit(resource.RLIMIT_NPROC,(32,32))
+    resource.setrlimit(resource.RLIMIT_CPU,(20,20));resource.setrlimit(resource.RLIMIT_AS,(512*1024*1024,512*1024*1024));resource.setrlimit(resource.RLIMIT_FSIZE,(2*1024*1024,2*1024*1024));resource.setrlimit(resource.RLIMIT_NOFILE,(64,64));current_uid=os.getuid();existing=0
+    for process in Path('/proc').iterdir():
+        try:
+            if process.name.isdigit() and process.stat().st_uid==current_uid:existing+=len(list((process/'task').iterdir()))
+        except FileNotFoundError:pass
+    # RLIMIT_NPROC counts all host processes of this UID, including the API/Node.
+    resource.setrlimit(resource.RLIMIT_NPROC,(existing+32,existing+32))
 
 def execute_offline(repo,args):
     if not shutil.which('bwrap'):raise Denied('Offline sandbox unavailable')

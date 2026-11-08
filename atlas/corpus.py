@@ -71,7 +71,7 @@ def ingest(db,r,raw):
     if r.source.full_text_policy not in ('allowed','derived_only'):raise ValueError('Full-text permission requires review')
     aliases=set(r.deduplication.source_aliases+[r.canonical_key])
     found=db.query(Alias).filter(Alias.alias.in_(aliases)).first()
-    existing=db.get(Knowledge,found.record_id) if found else db.query(Knowledge).filter_by(content_hash=r.source.content_hash_sha256).first()
+    existing=db.get(Knowledge,found.record_id) if found else db.query(Knowledge).filter_by(content_hash=r.source.content_hash_sha256,owner=r.access_owner).first()
     if existing:
         for a in aliases:
             if not db.get(Alias,a):db.add(Alias(alias=a,record_id=existing.id))
@@ -81,26 +81,39 @@ def ingest(db,r,raw):
         db.flush();return 'duplicate'
     r.content.raw_artifact_ref=store_raw(raw)
     text=redact(r.title+'\n'+r.summary)
-    pieces=[text[i:i+1600] for i in range(0,len(text),1400)][:100]
-    r.content.chunks=[{'index':i,'page':None,'section':r.title,'hash':digest(p),'embedding_version':EMBEDDING_VERSION} for i,p in enumerate(pieces)]
+    page_parts=r.content.chunks
+    pieces=[];metadata=[]
+    for part in (page_parts or [{'text':text,'page':None}]):
+        t=redact(part['text'])
+        for start in range(0,len(t),1400):
+            pieces.append(t[start:start+1600]);metadata.append({'index':len(pieces)-1,'page':part.get('page'),'section':r.title,'hash':digest(pieces[-1]),'embedding_version':EMBEDDING_VERSION})
+    if len(pieces)>2000:raise ValueError('Document exceeds chunk quota')
+    r.content.chunks=metadata
     record=r.model_dump(by_alias=True);Record.model_validate(record)
-    db.add(Knowledge(id=r.record_id,canonical_key=r.canonical_key,category=category(r),source=r.source.source_id,title=r.title,content_hash=r.source.content_hash_sha256,record=canonical(record)));db.flush()
+    db.add(Knowledge(id=r.record_id,owner=r.access_owner,canonical_key=r.canonical_key,category=category(r),source=r.source.source_id,title=r.title,content_hash=r.source.content_hash_sha256,record=canonical(record)));db.flush()
     for a in aliases:db.add(Alias(alias=a,record_id=r.record_id))
     for i,p in enumerate(pieces):db.add(Chunk(record_id=r.record_id,position=i,text=p,embedding=canonical(embed(p))))
-    db.flush();return 'ingested'
+    db.flush()
+    if db.bind.dialect.name=='postgresql':
+        from sqlalchemy import text
+        for c in db.query(Chunk).filter_by(record_id=r.record_id):db.execute(text('UPDATE knowledge_chunks SET embedding_vector=CAST(:v AS vector) WHERE id=:id'),{'v':c.embedding,'id':c.id})
+    return 'ingested'
 
 def stats(db):
     cats=dict(db.query(Knowledge.category,func.count()).group_by(Knowledge.category).all());sources=dict(db.query(Knowledge.source,func.count()).group_by(Knowledge.source).all())
     for c in ['full_text_research_reports','structured_vulnerability_advisories','patch_and_commit_records','training_and_reference_resources']:cats.setdefault(c,0)
-    return {'unique_normalized_records':sum(cats.values()),'categories':cats,'by_source':sources,'aliases':db.query(Alias).count(),'chunks':db.query(Chunk).count(),'embedding':EMBEDDING_VERSION,'parser_errors':db.query(Document).filter_by(kind='import_error').count(),'jobs':[{'id':j.id,**j.value()} for j in db.query(Document).filter_by(kind='corpus_job')],'scale_target':20000,'scale_status':'passed' if sum(cats.values())>=20000 else 'partial','full_text_report_count':cats['full_text_research_reports']}
+    return {'unique_normalized_records':sum(cats.values()),'categories':cats,'by_source':sources,'aliases':db.query(Alias).count(),'chunks':db.query(Chunk).count(),'embedding':EMBEDDING_VERSION,'quarantined_items':db.query(Document).filter_by(kind='import_error').count(),'parser_errors':db.query(Document).filter_by(kind='import_error').filter(~Document.data.like('%"reason":"ValueError"%')).count(),'jobs':[{'id':j.id,**j.value()} for j in db.query(Document).filter_by(kind='corpus_job')],'scale_target':20000,'scale_status':'passed' if sum(cats.values())>=20000 else 'partial','full_text_report_count':cats['full_text_research_reports']}
 
-def search(db,query,source=None,limit=5):
+def search(db,query,source=None,limit=5,owner='public'):
     limit=min(max(limit,1),20);tokens=list(set(re.findall(r'[a-z0-9_+-]+',query.lower())))[:20]
     if not tokens:return []
     # Candidate filter bounds scoring work; exact cosine over filtered lexical vectors.
     from sqlalchemy import or_
-    q=db.query(Chunk,Knowledge).join(Knowledge,Knowledge.id==Chunk.record_id).filter(or_(*[Chunk.text.ilike('%'+t.replace('%','')+'%') for t in tokens]))
+    q=db.query(Chunk,Knowledge).join(Knowledge,Knowledge.id==Chunk.record_id).filter(Knowledge.owner.in_(['public',owner])).filter(or_(*[Chunk.text.ilike('%'+t.replace('%','')+'%') for t in tokens]))
     if source:q=q.filter(Knowledge.source==source)
+    if db.bind.dialect.name=='postgresql':
+        from sqlalchemy import text
+        q=q.order_by(text('knowledge_chunks.embedding_vector <=> CAST(:query_embedding AS vector)')).params(query_embedding=canonical(embed(query)))
     v=np.array(embed(query));results=[]
     for c,k in q.limit(2000):
         score=float(np.dot(v,np.array(json.loads(c.embedding))));r=json.loads(k.record)
@@ -140,11 +153,17 @@ def import_parts(path,max_size=20*1024*1024):
         yield {'title':p.name,'text':text,'raw':data}
     else:raise ValueError('Unsupported input format')
 
-def import_file(db,path,license,source_url,record_type='research_report'):
+def import_file(db,path,license,source_url,record_type='research_report',owner='public'):
     if license=='unknown':raise ValueError('Confirm source permission before import')
     counts=Counter()
-    for part in import_parts(path):
+    parts=list(import_parts(path))
+    if Path(path).suffix.lower()=='.pdf':
+        pages=parts;parts=[{'title':Path(path).name,'text':'\n'.join(x['text'] for x in pages),'raw':Path(path).read_bytes(),'pages':pages}]
+    for part in parts:
         r=Record(canonical_key=digest((source_url+part['title']+digest(part['raw'])).encode()),record_type=record_type,title=part['title'],summary=redact(part['text']),source=Source(source_id='owner',source_name='Owner import',source_url=source_url,license=license,full_text_policy='allowed',content_hash_sha256=digest(part['raw']),parser_name='owner-'+Path(path).suffix))
+        if part.get('pages'):r.content.chunks=[{'page':p['page'],'text':p['text']} for p in part['pages']]
+        r.access_owner=owner
+        if owner!='public':r.canonical_key=owner+':'+r.canonical_key;r.deduplication.source_aliases=[r.canonical_key]
         counts[ingest(db,r,part['raw'])]+=1
     db.commit();return dict(counts)
 
@@ -158,8 +177,18 @@ def sync_bulk(source='ghsa',limit=21000,job_id=None):
     with session() as db:
         job=db.get(Document,job_id) if job_id else document(db,'corpus_job','system',{'source':source,'cursor':0,'counts':{},'status':'running','started':now()})
         if not job or job.kind!='corpus_job' or job.value()['source']!=source:raise ValueError('Invalid resume job')
-        state=job.value();counts=Counter(state['counts']);cursor=state['cursor'];job_id=job.id;state['status']='running';job.data=canonical(state);db.commit()
-    req=urllib.request.Request(cfg['bulk'],headers={'User-Agent':'ATLAS/0.1 lawful advisory import','Accept-Encoding':'identity'})
+        state=job.value();counts=Counter(state['counts']);cursor=state['cursor'];job_id=job.id
+        if counts['ingested']>=limit:return {'job_id':job_id,**state}
+        state['status']='running';job.data=canonical(state);db.commit()
+    if not state.get('snapshot_sha'):
+        import subprocess
+        remote=subprocess.run(['git','ls-remote',cfg['url']+'.git','HEAD'],capture_output=True,text=True,timeout=30,check=True).stdout.split()
+        if not remote or not re.fullmatch(r'[0-9a-f]{40}',remote[0]):raise ValueError('Unable to pin source snapshot')
+        state['snapshot_sha']=remote[0]
+        with session() as db:
+            job=db.get(Document,job_id);job.data=canonical(state);db.commit()
+    bulk_url=cfg['bulk'].replace('refs/heads/main',state['snapshot_sha'])
+    req=urllib.request.Request(bulk_url,headers={'User-Agent':'ATLAS/0.1 lawful advisory import','Accept-Encoding':'identity'})
     try:
         with urllib.request.urlopen(req,timeout=120) as response,tarfile.open(fileobj=ReadStream(response),mode='r|gz') as tar:
             index=0
@@ -178,7 +207,7 @@ def sync_bulk(source='ghsa',limit=21000,job_id=None):
                         db.rollback();counts['errors']+=1;document(db,'import_error','system',{'source':source,'path':member.name,'reason':type(e).__name__,'job_id':job_id})
                     job=db.get(Document,job_id);state.update(cursor=index,counts=dict(counts),updated=now(),status='running');job.data=canonical(state);db.commit()
                 if index%500==0:print(canonical({'job_id':job_id,**state}),flush=True)
-                if counts['ingested']>=limit:break
+                if counts['ingested']>=limit or index>=max(limit*2,limit+1000):break
         with session() as db:
             job=db.get(Document,job_id);state['status']='completed';job.data=canonical(state);db.commit()
         return {'job_id':job_id,**state}
@@ -251,3 +280,15 @@ def remove_record(db,record_id,reason):
         p=Path(raw).resolve();root=(Path(settings().data_dir)/'corpus_raw').resolve()
         if p.is_relative_to(root):p.unlink(missing_ok=True)
     db.commit()
+
+def near_duplicates(db,threshold=0.92):
+    groups={};candidates=[]
+    for k in db.query(Knowledge).yield_per(200):
+        r=json.loads(k.record);tokens=re.findall(r'\w+',r['summary'].lower())
+        if len(tokens)<20:continue
+        signature=digest(' '.join(tokens[:12]))[:16];shingles=set(tuple(tokens[i:i+3]) for i in range(len(tokens)-2))
+        for previous,other in groups.get(signature,[])[:20]:
+            score=len(shingles&other)/max(1,len(shingles|other))
+            if score>=threshold:candidates.append({'left':previous,'right':k.id,'score':score,'status':'needs_review'})
+        groups.setdefault(signature,[]).append((k.id,shingles))
+    return candidates

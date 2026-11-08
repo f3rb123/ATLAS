@@ -1,1 +1,645 @@
-{"$defs":{"Classification":{"additionalProperties":false,"properties":{"cve":{"default":[],"items":{"type":"string"},"title":"Cve","type":"array"},"cvss_score":{"anyOf":[{"maximum":10,"minimum":0,"type":"number"},{"type":"null"}],"default":null,"title":"Cvss Score"},"cvss_version":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Cvss Version"},"cwe":{"default":[],"items":{"type":"string"},"title":"Cwe","type":"array"},"ghsa":{"default":[],"items":{"type":"string"},"title":"Ghsa","type":"array"},"osv":{"default":[],"items":{"type":"string"},"title":"Osv","type":"array"},"owasp_categories":{"default":[],"items":{"type":"string"},"title":"Owasp Categories","type":"array"},"severity_label":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Severity Label"},"weakness_labels":{"default":[],"items":{"type":"string"},"title":"Weakness Labels","type":"array"}},"title":"Classification","type":"object"},"Content":{"additionalProperties":false,"properties":{"chunks":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Chunks","type":"array"},"language":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Language"},"normalized_text_ref":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Normalized Text Ref"},"raw_artifact_ref":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Raw Artifact Ref"},"redaction_status":{"default":"not_required","enum":["not_required","redacted","pending"],"title":"Redaction Status","type":"string"}},"title":"Content","type":"object"},"Deduplication":{"additionalProperties":false,"properties":{"duplicate_group_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Duplicate Group Id"},"duplicate_of":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Duplicate Of"},"source_aliases":{"default":[],"items":{"type":"string"},"title":"Source Aliases","type":"array"}},"title":"Deduplication","type":"object"},"Evidence":{"additionalProperties":false,"properties":{"independently_reproduced":{"default":false,"title":"Independently Reproduced","type":"boolean"},"reproduction_available":{"default":false,"title":"Reproduction Available","type":"boolean"},"source_claims":{"default":[],"items":{"type":"string"},"title":"Source Claims","type":"array"},"validation_status":{"default":"parsed","enum":["source_reported","parsed","reviewed","reproduced","refuted","unknown"],"title":"Validation Status","type":"string"}},"title":"Evidence","type":"object"},"Research":{"additionalProperties":false,"properties":{"affected_code_path":{"default":[],"items":{"type":"string"},"title":"Affected Code Path","type":"array"},"attacker_model":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Attacker Model"},"impact_claimed_by_source":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Impact Claimed By Source"},"patch_references":{"default":[],"items":{"type":"string"},"title":"Patch References","type":"array"},"preconditions":{"default":[],"items":{"type":"string"},"title":"Preconditions","type":"array"},"remediation":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Remediation"},"reproduction_summary":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Reproduction Summary"},"root_cause":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Root Cause"},"safe_test_pattern":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Safe Test Pattern"},"technical_mechanism":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Technical Mechanism"},"trust_boundary":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Trust Boundary"}},"title":"Research","type":"object"},"Source":{"additionalProperties":false,"properties":{"author":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Author"},"content_hash_sha256":{"pattern":"^[0-9a-f]{64}$","title":"Content Hash Sha256","type":"string"},"fetched_at":{"title":"Fetched At","type":"string"},"full_text_policy":{"default":"unknown_or_restricted","enum":["allowed","derived_only","metadata_only","unknown_or_restricted"],"title":"Full Text Policy","type":"string"},"license":{"default":"unknown","title":"License","type":"string"},"parser_name":{"title":"Parser Name","type":"string"},"parser_version":{"default":"1.0","title":"Parser Version","type":"string"},"published_at":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Published At"},"source_id":{"title":"Source Id","type":"string"},"source_name":{"title":"Source Name","type":"string"},"source_record_id":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Source Record Id"},"source_url":{"title":"Source Url","type":"string"},"terms_url":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Terms Url"}},"required":["source_id","source_name","source_url","content_hash_sha256","parser_name"],"title":"Source","type":"object"},"Target":{"additionalProperties":false,"properties":{"affected_versions":{"items":{},"title":"Affected Versions","type":"array"},"component":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Component"},"ecosystem":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Ecosystem"},"fixed_versions":{"items":{},"title":"Fixed Versions","type":"array"},"package":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Package"},"product":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Product"},"vendor":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Vendor"}},"title":"Target","type":"object"}},"additionalProperties":false,"properties":{"atlas_rr_version":{"const":"1.0","default":"1.0","title":"Atlas Rr Version","type":"string"},"canonical_key":{"title":"Canonical Key","type":"string"},"classification":{"$ref":"#/$defs/Classification"},"content":{"$ref":"#/$defs/Content"},"created_at":{"title":"Created At","type":"string"},"deduplication":{"$ref":"#/$defs/Deduplication"},"evidence":{"$ref":"#/$defs/Evidence"},"record_id":{"title":"Record Id","type":"string"},"record_type":{"enum":["research_report","bug_bounty_disclosure","security_advisory","cve","ghsa","osv","patch_analysis","training_reference"],"title":"Record Type","type":"string"},"research":{"$ref":"#/$defs/Research"},"schema":{"const":"atlas-research-record","default":"atlas-research-record","title":"Schema","type":"string"},"source":{"$ref":"#/$defs/Source"},"summary":{"title":"Summary","type":"string"},"tags":{"default":[],"items":{"type":"string"},"title":"Tags","type":"array"},"target":{"$ref":"#/$defs/Target"},"title":{"minLength":1,"title":"Title","type":"string"},"updated_at":{"title":"Updated At","type":"string"}},"required":["canonical_key","record_type","title","summary","source"],"title":"Record","type":"object"}
+{
+  "$defs": {
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "cwe": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Cwe",
+          "type": "array"
+        },
+        "cve": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Cve",
+          "type": "array"
+        },
+        "ghsa": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Ghsa",
+          "type": "array"
+        },
+        "osv": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Osv",
+          "type": "array"
+        },
+        "weakness_labels": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Weakness Labels",
+          "type": "array"
+        },
+        "owasp_categories": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Owasp Categories",
+          "type": "array"
+        },
+        "severity_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity Label"
+        },
+        "cvss_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss Version"
+        },
+        "cvss_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss Score"
+        }
+      },
+      "title": "Classification",
+      "type": "object"
+    },
+    "Content": {
+      "additionalProperties": false,
+      "properties": {
+        "raw_artifact_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Artifact Ref"
+        },
+        "normalized_text_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalized Text Ref"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        },
+        "redaction_status": {
+          "default": "not_required",
+          "enum": [
+            "not_required",
+            "redacted",
+            "pending"
+          ],
+          "title": "Redaction Status",
+          "type": "string"
+        },
+        "chunks": {
+          "default": [],
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Chunks",
+          "type": "array"
+        }
+      },
+      "title": "Content",
+      "type": "object"
+    },
+    "Deduplication": {
+      "additionalProperties": false,
+      "properties": {
+        "duplicate_group_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duplicate Group Id"
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duplicate Of"
+        },
+        "source_aliases": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Aliases",
+          "type": "array"
+        }
+      },
+      "title": "Deduplication",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "source_claims": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Claims",
+          "type": "array"
+        },
+        "reproduction_available": {
+          "default": false,
+          "title": "Reproduction Available",
+          "type": "boolean"
+        },
+        "independently_reproduced": {
+          "default": false,
+          "title": "Independently Reproduced",
+          "type": "boolean"
+        },
+        "validation_status": {
+          "default": "parsed",
+          "enum": [
+            "source_reported",
+            "parsed",
+            "reviewed",
+            "reproduced",
+            "refuted",
+            "unknown"
+          ],
+          "title": "Validation Status",
+          "type": "string"
+        }
+      },
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Research": {
+      "additionalProperties": false,
+      "properties": {
+        "attacker_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attacker Model"
+        },
+        "preconditions": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "trust_boundary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trust Boundary"
+        },
+        "root_cause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Root Cause"
+        },
+        "technical_mechanism": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Technical Mechanism"
+        },
+        "affected_code_path": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Code Path",
+          "type": "array"
+        },
+        "impact_claimed_by_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Impact Claimed By Source"
+        },
+        "reproduction_summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reproduction Summary"
+        },
+        "safe_test_pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Safe Test Pattern"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remediation"
+        },
+        "patch_references": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Patch References",
+          "type": "array"
+        }
+      },
+      "title": "Research",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_name": {
+          "title": "Source Name",
+          "type": "string"
+        },
+        "source_url": {
+          "title": "Source Url",
+          "type": "string"
+        },
+        "source_record_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Record Id"
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "fetched_at": {
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "terms_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Terms Url"
+        },
+        "license": {
+          "default": "unknown",
+          "title": "License",
+          "type": "string"
+        },
+        "full_text_policy": {
+          "default": "unknown_or_restricted",
+          "enum": [
+            "allowed",
+            "derived_only",
+            "metadata_only",
+            "unknown_or_restricted"
+          ],
+          "title": "Full Text Policy",
+          "type": "string"
+        },
+        "content_hash_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash Sha256",
+          "type": "string"
+        },
+        "parser_name": {
+          "title": "Parser Name",
+          "type": "string"
+        },
+        "parser_version": {
+          "default": "1.0",
+          "title": "Parser Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_name",
+        "source_url",
+        "content_hash_sha256",
+        "parser_name"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vendor"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component"
+        },
+        "ecosystem": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ecosystem"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package"
+        },
+        "affected_versions": {
+          "items": {},
+          "title": "Affected Versions",
+          "type": "array"
+        },
+        "fixed_versions": {
+          "items": {},
+          "title": "Fixed Versions",
+          "type": "array"
+        }
+      },
+      "title": "Target",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "atlas-research-record",
+      "default": "atlas-research-record",
+      "title": "Schema",
+      "type": "string"
+    },
+    "atlas_rr_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Atlas Rr Version",
+      "type": "string"
+    },
+    "record_id": {
+      "title": "Record Id",
+      "type": "string"
+    },
+    "canonical_key": {
+      "title": "Canonical Key",
+      "type": "string"
+    },
+    "record_type": {
+      "enum": [
+        "research_report",
+        "bug_bounty_disclosure",
+        "security_advisory",
+        "cve",
+        "ghsa",
+        "osv",
+        "patch_analysis",
+        "training_reference"
+      ],
+      "title": "Record Type",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "target": {
+      "$ref": "#/$defs/Target"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "research": {
+      "$ref": "#/$defs/Research"
+    },
+    "evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "content": {
+      "$ref": "#/$defs/Content"
+    },
+    "deduplication": {
+      "$ref": "#/$defs/Deduplication"
+    },
+    "access_owner": {
+      "default": "public",
+      "title": "Access Owner",
+      "type": "string"
+    },
+    "tags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "canonical_key",
+    "record_type",
+    "title",
+    "summary",
+    "source"
+  ],
+  "title": "Record",
+  "type": "object"
+}
