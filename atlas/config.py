@@ -20,12 +20,22 @@ class Settings(BaseSettings):
     verify_token_file: str | None = None
     api_token_file: str | None = None
     passkey_only_recovery: bool = False
+    embedding_model: str = 'sentence-transformers/all-MiniLM-L6-v2'
+    embedding_cache_dir: str | None = None
     monthly_budget: float = 100
+    provider_plugins: list[str] = []
     provider_allowlist: list[str] = []
     provider_local_allowlist: list[str] = []
     @model_validator(mode='after')
     def resolve_secret_selectors(self):
-        from urllib.parse import quote
+        from urllib.parse import quote,urlsplit,urlunsplit
+        origin=urlsplit(self.external_url)
+        if not origin.hostname or origin.username or origin.password or origin.query or origin.fragment or origin.path not in ('','/') or origin.scheme not in ('http','https'):raise ValueError('External URL must be an explicit origin without credentials/path/query')
+        hostname=origin.hostname.encode('idna').decode('ascii')
+        port=origin.port
+        netloc=('['+hostname+']') if ':' in hostname else hostname
+        if port and port!=(443 if origin.scheme=='https' else 80):netloc+=':'+str(port)
+        self.external_url=urlunsplit((origin.scheme,netloc,'','',''))
         if self.database_url_file_password and '{password}' in self.database_url:
             self.database_url=self.database_url.replace('{password}',quote(Path(self.database_url_file_password).read_text().strip(),safe=''))
         if self.redis_password_file and '@' not in self.redis_url:

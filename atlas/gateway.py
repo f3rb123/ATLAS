@@ -2,7 +2,7 @@
 import json,time,threading
 from typing import Literal,Protocol,AsyncIterator
 from urllib.parse import urlsplit,urlunsplit
-from pydantic import Field
+from pydantic import Field,field_validator
 from .policy import Strict,Scope,Rule,normalize,addresses,request,Denied
 from .config import settings
 from .db import Document,document,canonical,append,uid,digest,now
@@ -12,7 +12,12 @@ ADAPTERS=['openai_chat_completions','openai_responses','anthropic_messages','gem
 BLOCK_HEADERS={'host','content-length','connection','transfer-encoding','upgrade','proxy-authorization','proxy-connection','forwarded','x-forwarded-host','x-forwarded-for','cookie','set-cookie','te','trailer'}
 class ProviderInput(Strict):
     display_name:str=Field(min_length=1,max_length=100)
-    adapter_type:Literal['openai_chat_completions','openai_responses','anthropic_messages','gemini','ollama_openai_compatible','custom_openai_compatible','deepseek']='custom_openai_compatible'
+    adapter_type:str=Field(default='custom_openai_compatible',pattern=r'^[a-z][a-z0-9_]{0,79}$')
+    @field_validator('adapter_type')
+    @classmethod
+    def registered_protocol(cls,value):
+        if value not in ADAPTERS:raise ValueError('Protocol is not registered; install a reviewed adapter before configuring it')
+        return value
     base_url:str
     api_path:str|None=None
     auth_mode:Literal['bearer','x-api-key','anthropic','gemini','custom','none']='bearer'
@@ -74,6 +79,11 @@ def provider_scope(url):
 def safe_metadata(d):
     v=d.value();return {'id':d.id,'version':d.version,**{k:x for k,x in v.items() if k not in ('secret','secret_headers','headers')},'headers':{k:val for k,val in v.get('headers',{}).items() if k.lower() not in ('authorization','x-api-key')},'secret_configured':bool(v.get('secret'))}
 
+def secret_identity(owner,id,configuration,kind='provider'):
+    if configuration.get('aad_scheme')!='endpoint-bound-v2':return f'{kind}:{owner}:{id}:1'
+    approved={key:configuration.get(key) for key in ('base_url','adapter_type','api_path','auth_mode','auth_header_name','headers','organization_id')}
+    return f'{kind}:{owner}:{id}:2:'+digest(canonical(approved))
+
 def create_provider(db,owner,input,id=None):
     v=input.model_dump()
     if urlsplit(v['base_url']).query or urlsplit(v['base_url']).fragment:raise Denied('Provider base URL cannot include query credentials or fragments')
@@ -83,8 +93,9 @@ def create_provider(db,owner,input,id=None):
     if any(k.lower() in ('authorization','x-api-key','x-goog-api-key') for k in v['headers']):raise Denied('Credentials must use encrypted fields')
     if v['api_path'] and (not v['api_path'].startswith('/') or '://' in v['api_path'] or '..' in v['api_path'] or '?' in v['api_path']):raise Denied('Invalid path override')
     id=id or uid();key=v.pop('api_key');secret_headers=v.pop('secret_headers');v['fingerprint']=digest(key)[:12] if key else None
-    v['secret']=seal(key,f'provider:{owner}:{id}:1') if key else None
-    v['secret_headers']=seal(canonical(secret_headers),f'headers:{owner}:{id}:1')
+    v['aad_scheme']='endpoint-bound-v2'
+    v['secret']=seal(key,secret_identity(owner,id,v)) if key else None
+    v['secret_headers']=seal(canonical(secret_headers),secret_identity(owner,id,v,'headers'))
     v['health_status']='untested';v['created_at']=now()
     d=document(db,'provider',owner,v,id);append(db,owner,owner,'provider_created',{'id':id,'fingerprint':v['fingerprint']});return d
 
@@ -104,8 +115,8 @@ class Adapter:
         return base+suffix
     def headers(self):
         v=self.v;h={'Content-Type':'application/json','Accept-Encoding':'identity',**v.get('headers',{})}
-        key=open_secret(v['secret'],f'provider:{self.d.owner}:{self.d.id}:1') if v.get('secret') else ''
-        h.update(json.loads(open_secret(v['secret_headers'],f'headers:{self.d.owner}:{self.d.id}:1')))
+        key=open_secret(v['secret'],secret_identity(self.d.owner,self.d.id,v)) if v.get('secret') else ''
+        h.update(json.loads(open_secret(v['secret_headers'],secret_identity(self.d.owner,self.d.id,v,'headers'))))
         if v['auth_mode']=='bearer':h['Authorization']='Bearer '+key
         elif v['auth_mode'] in ('x-api-key','anthropic'):h['x-api-key']=key
         elif v['auth_mode']=='gemini':h['x-goog-api-key']=key
@@ -162,8 +173,8 @@ class Adapter:
     def scrub(self,text):
         from .vault import redact
         values=[]
-        if self.v.get('secret'):values.append(open_secret(self.v['secret'],f'provider:{self.d.owner}:{self.d.id}:1'))
-        if self.v.get('secret_headers'):values.extend(json.loads(open_secret(self.v['secret_headers'],f'headers:{self.d.owner}:{self.d.id}:1')).values())
+        if self.v.get('secret'):values.append(open_secret(self.v['secret'],secret_identity(self.d.owner,self.d.id,self.v)))
+        if self.v.get('secret_headers'):values.extend(json.loads(open_secret(self.v['secret_headers'],secret_identity(self.d.owner,self.d.id,self.v,'headers'))).values())
         for value in values:
             if value:text=text.replace(value,'[REDACTED]')
         return redact(text)
@@ -260,7 +271,7 @@ def generate_budgeted(db,provider,model,req,run,role='reasoning'):
         settle(db,reservation,0);db.commit();raise ProviderError('Run was stopped before dispatch')
     rv['model_calls']=rv.get('model_calls',0)+1;run.data=canonical(rv);db.commit()
     # Unknown transport outcomes retain their full reservation; never assume no bill.
-    try:response=Adapter(provider).generate(req)
+    try:response=construct_adapter(provider).generate(req)
     except Exception:raise
     cost=(response.input_tokens*m['input_price']+response.output_tokens*m['output_price'])/1000000
     settle(db,reservation,max(cost,estimate) if response.usage_estimated else cost)
@@ -268,3 +279,34 @@ def generate_budgeted(db,provider,model,req,run,role='reasoning'):
     db.refresh(run);rv=run.value();rv['budget_used']=rv.get('budget_used',0)+cost;rv.setdefault('role_spent',{})[role]=rv.get('role_spent',{}).get(role,0)+cost;run.data=canonical(rv);db.commit()
     if rv['status'] not in ('running','queued'):raise ProviderError('Run was paused or cancelled during provider request')
     return response
+
+# Immutable, credential-free configuration history for pinned runs.
+def snapshot_provider(db,d):
+    id=digest('provider-version:'+d.id+':'+str(d.version))[:36]
+    if not db.get(Document,id):document(db,'provider_version',d.owner,{'provider_id':d.id,'config_version':d.version,'configuration':safe_metadata(d)},id)
+def snapshot_model(db,d):
+    id=digest('model-version:'+d.id+':'+str(d.version))[:36]
+    if not db.get(Document,id):document(db,'model_version',d.owner,{'provider_model_id':d.id,'config_version':d.version,'configuration':d.value()},id)
+
+
+PLUGIN_FACTORIES={}
+def register_adapter(protocol_id,factory):
+    import re
+    if not re.fullmatch(r'[a-z][a-z0-9_]{0,79}',protocol_id) or protocol_id in ADAPTERS:raise ValueError('Invalid or duplicate adapter identifier')
+    if not callable(factory):raise TypeError('Adapter factory must be callable')
+    PLUGIN_FACTORIES[protocol_id]=factory;ADAPTERS.append(protocol_id)
+def construct_adapter(provider):
+    protocol=provider.value()['adapter_type']
+    if protocol in PLUGIN_FACTORIES:
+        adapter=PLUGIN_FACTORIES[protocol](provider)
+        if not all(callable(getattr(adapter,name,None)) for name in ('generate','stream','list_models','health_check','capabilities')):raise ProviderError('Adapter does not implement the provider contract')
+        return adapter
+    if protocol not in ADAPTERS:raise ProviderError('Provider protocol is unavailable')
+    return Adapter(provider)
+def load_plugins():
+    import importlib,re
+    for name in settings().provider_plugins:
+        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_.]{0,100}',name):raise ValueError('Invalid trusted provider module name')
+        module=importlib.import_module(name)
+        module.register_atlas_providers(register_adapter)
+load_plugins()

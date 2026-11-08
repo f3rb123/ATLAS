@@ -7,19 +7,21 @@ import pyotp
 from webauthn import generate_registration_options, verify_registration_response, generate_authentication_options, verify_authentication_response, options_to_json
 from webauthn.helpers.structs import PublicKeyCredentialDescriptor, AuthenticatorSelectionCriteria, UserVerificationRequirement, ResidentKeyRequirement
 from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
-from .db import User,Session,Document,document,digest,canonical,uid,append
+from .db import User,Session,Document,document,digest,canonical,uid,append,transaction_lock
+from sqlalchemy import update,delete
 from .config import settings
 from .vault import seal,open_secret
 
+COMMON_PASSWORDS={p.casefold() for p in (__import__('pathlib').Path(__file__).parent/'data'/'common_passwords.txt').read_text().splitlines() if p and not p.startswith('#')}
 ph=PasswordHasher(time_cost=3,memory_cost=65536,parallelism=2)
 DUMMY=ph.hash(secrets.token_urlsafe(32))
 COOKIE='__Host-atlas'
 
 def password_ok(p):
-    if len(p)<15 or len(p)>1024 or p.casefold().strip() in ('passwordpassword','this is a password','correct horse battery staple'):raise ValueError('Use a unique passphrase of 15–1024 characters')
+    if len(p)<15 or len(p)>1024 or p.casefold().strip() in COMMON_PASSWORDS or len(set(p.strip()))<3:raise ValueError('Use a unique passphrase of 15–1024 characters')
 
 def throttle(db,key,limit=8,seconds=300):
-    key=digest(key)[:36];d=db.get(Document,key)
+    key=digest(key)[:36];transaction_lock(db,'throttle:'+key);d=db.get(Document,key)
     t=time.time();v=d.value() if d else {'start':t,'count':0}
     if t-v['start']>seconds:v={'start':t,'count':0}
     if v['count']>=limit:raise ValueError('Too many attempts; retry later')
@@ -110,6 +112,8 @@ def totp_verify(db,u,s,code,enroll=False):
     if not blob:raise ValueError('Invalid factor')
     otp=pyotp.TOTP(open_secret(blob,f'totp:{u.id}'));counter=int(time.time())//30
     if counter<=u.totp_counter or not otp.verify(code,valid_window=0):raise ValueError('Invalid factor')
+    changed=db.execute(update(User).where(User.id==u.id,User.totp_counter<counter).values(totp_counter=counter)).rowcount
+    if changed!=1:raise ValueError('Invalid factor')
     u.totp_counter=counter
     if enroll:u.totp=blob;db.delete(d);u.mfa=1
     else:
@@ -128,5 +132,8 @@ def recovery_consume(db,u,s,code):
     for d in db.query(Document).filter_by(kind='recovery',owner=u.id).with_for_update():
         try:valid=ph.verify(d.value()['hash'],code)
         except VerificationError:valid=False
-        if valid:db.delete(d);s.mfa=1;append(db,u.id,u.id,'recovery_consumed',{});return
+        if valid:
+            consumed=db.execute(delete(Document).where(Document.id==d.id,Document.kind=='recovery',Document.owner==u.id)).rowcount
+            if consumed!=1:raise ValueError('Invalid recovery code')
+            s.mfa=1;append(db,u.id,u.id,'recovery_consumed',{});return
     raise ValueError('Invalid recovery code')

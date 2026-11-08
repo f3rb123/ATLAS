@@ -40,3 +40,21 @@ def test_writeup_source_requires_explicit_terms_review(db):
  d=register(db,'u',p)
  with pytest.raises(Denied):acquire(db,d)
  with pytest.raises(Denied):register(db,'u',p.model_copy(update={'enabled':True}))
+
+def test_broker_denial_is_durable_and_model_control_cannot_undo_pause(db):
+ from atlas.tools import broker
+ r=document(db,'run','u',{'campaign_id':'c','state':'FOCUSED_INVESTIGATION','status':'running','deadline':time.time()+60,'budget_limit':1})
+ db.commit()
+ with pytest.raises(Denied):broker(db,r,None,'arbitrary_shell',{'command':'anything'},'test')
+ db.rollback()
+ with session() as other:
+  event=other.query(Journal).filter_by(stream=r.id).one();assert json.loads(event.payload)['payload']['decision']=='deny'
+ result=broker(db,r,None,'pause_run',{'reason':'Need owner review'},'test')
+ assert r.value()['status']=='paused' and result['result']['status']=='paused'
+
+def test_corpus_statistics_do_not_leak_other_owners(db,tmp_path):
+ p=tmp_path/'private.md';p.write_text('Private research with unique owner data')
+ import_file(db,p,'owner-permission','owner:private',owner='alice')
+ assert stats(db,'alice')['unique_normalized_records']==1
+ assert stats(db,'bob')['unique_normalized_records']==0
+ assert stats(db)['unique_normalized_records']==0

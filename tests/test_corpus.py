@@ -45,3 +45,13 @@ def test_cross_source_alias_bridge_and_incremental_revision(db):
  raw=canonical(revised).encode();assert ingest(db,source_record('ghsa',revised,raw),raw)=='updated';db.commit()
  assert 'Updated source' in db.query(Knowledge).one().record
  assert db.query(Document).filter_by(kind='corpus_provenance').count()>=2
+
+def test_owner_native_advisories_not_mislabeled_as_reports_or_double_counted(db,tmp_path):
+ item=fixture();raw=canonical(item).encode();ingest(db,source_record('ghsa',item,raw),raw);db.commit()
+ p=tmp_path/'native.json';p.write_text(json.dumps(item,indent=2))
+ import_file(db,p,'owner-permission','owner:native',owner='alice')
+ assert db.query(Knowledge).count()==2
+ assert stats(db)['unique_normalized_records']==1
+ private=db.query(Knowledge).filter_by(owner='alice').one();record=Record.model_validate_json(private.record)
+ assert record.record_type=='ghsa' and record.deduplication.duplicate_of
+ assert stats(db)['full_text_report_count']==0

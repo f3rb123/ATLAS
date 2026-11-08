@@ -38,7 +38,7 @@ def normalize(url):
         if u.scheme not in ('https','http') or not u.hostname or u.username or u.password: raise Denied('Unsupported URL')
         h=host(u.hostname);p=u.port if u.port is not None else (443 if u.scheme=='https' else 80)
         if not 1<=p<=65535:raise Denied('Invalid destination port')
-    except ValueError as e: raise Denied(str(e))
+    except ValueError: raise Denied('Invalid URL host or port')
     path=u.path or '/'
     decoded=unquote(path)
     if decoded!=path or any(s in ('.','..') for s in path.split('/')) or '//' in path: raise Denied('Ambiguous encoded path')

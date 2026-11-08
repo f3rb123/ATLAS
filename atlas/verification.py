@@ -20,7 +20,12 @@ def verify_candidates(db,run,repo,done):
     control=broker(db,run,repo,'run_local_reproduction',{'template':'python_unittest','test_path':e['control_test_path']},'independent_verifier')
     if not successful_test(proof) or not successful_test(control):return {'status':'refuted','reason':'Independent reproduction failed'}
     # Fresh verifier context includes the claim, evidence and secure counterfactual only.
-    response=role(db,run,'INDEPENDENT_VERIFICATION',{'claim':h.value(),'proof':proof,'secure_control':control,'snapshot':repo.inventory()['snapshot_hash']},'verifier')
+    from .tools import ReadInput
+    files,_=repo.files();prefixes=[e['test_path'].rstrip('/')+'/',e['control_test_path'].rstrip('/')+'/']
+    selected=[f for f in files if any(f.startswith(p) for p in prefixes)][:6]
+    selected+= [c.split(':',1)[0] for c in h.value()['citations'] if c.split(':',1)[0] in files][:4]
+    source=[repo.read(ReadInput(path=f,end=200)) for f in dict.fromkeys(selected)]
+    response=role(db,run,'INDEPENDENT_VERIFICATION',{'reproduction_source':source,'claim':h.value(),'proof':proof,'secure_control':control,'snapshot':repo.inventory()['snapshot_hash']},'verifier')
     allowed={proof['artifact_id'],control['artifact_id']}
     if response.status=='confirmed' and (set(response.evidence_ids)!=allowed or not response.counterfactual):raise ValueError('Verifier must cite both independent proof and secure control')
     key=digest(canonical({'claim':h.value()['claim'],'snapshot':repo.inventory()['snapshot_hash']}))

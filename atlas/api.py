@@ -10,10 +10,11 @@ from pydantic import Field
 from sqlalchemy import text
 from .config import settings
 from .source_policy import SourcePolicy
+from .research import ThreatModel
 from .db import session,engine,User,Session,Document,Journal,Knowledge,Chunk,Alias,document,append,canonical,digest,uid,now
 from . import auth
 from .policy import Strict,Scope,Denied
-from .gateway import ProviderInput,ModelInput,create_provider,safe_metadata,Adapter,ADAPTERS,ProviderError,ModelRequest
+from .gateway import ProviderInput,ModelInput,create_provider,safe_metadata,Adapter,ADAPTERS,ProviderError,ModelRequest,snapshot_provider,snapshot_model,construct_adapter,secret_identity
 from .workflow import control
 from .vault import master,seal
 
@@ -21,6 +22,7 @@ from .vault import master,seal
 async def lifespan(app):
     from .logging import configure
     configure()
+    if settings().production and not settings().external_url.startswith('https://'):raise RuntimeError('Production requires an HTTPS external origin')
     master()
     with engine().connect() as c:c.execute(text('SELECT 1'))
     yield
@@ -169,6 +171,7 @@ def verify(kind:str,body:Credential,response:Response,who=Depends(identity),db=D
     return {**set_session(response,s,t,c),'status':'enrolled','next':'Authenticate with passkey to complete MFA'}
 @app.post('/api/v1/auth/totp/setup')
 def totp_setup(who=Depends(identity),db=Depends(db_dep)):
+    auth.throttle(db,'totp-setup:'+who[0].id,5)
     result=auth.totp_setup(db,db.get(User,who[0].id),db.get(Session,who[1].id));db.commit();return {'provisioning_uri':result}
 @app.post('/api/v1/auth/totp/{action}')
 def totp_verify(action:str,body:Code,response:Response,who=Depends(identity),db=Depends(db_dep)):
@@ -180,6 +183,7 @@ def totp_verify(action:str,body:Code,response:Response,who=Depends(identity),db=
     previous_mfa=bool(s.mfa);db.query(Session).filter_by(user_id=u.id).delete();s,t,c=auth.issue(db,u,previous_mfa);db.commit();return {**set_session(response,s,t,c),'status':'totp_enrolled'}
 @app.post('/api/v1/auth/recovery-codes/regenerate')
 def codes(who=Depends(security_stepup),db=Depends(db_dep)):
+    auth.throttle(db,'recovery-regenerate:'+who[0].id,3)
     result=auth.recovery_codes(db,db.get(User,who[0].id));db.commit();return {'codes':result,'notice':'Store securely; displayed only once'}
 @app.post('/api/v1/auth/recovery/consume')
 def recover(body:Code,response:Response,who=Depends(identity),db=Depends(db_dep)):
@@ -198,6 +202,7 @@ class TokenInput(Strict):
     expires_hours:int=Field(default=24,ge=1,le=168)
 @app.post('/api/v1/auth/cli-tokens')
 def cli_token(body:TokenInput,who=Depends(stepup),db=Depends(db_dep)):
+    auth.throttle(db,'token-create:'+who[0].id,5)
     sensitive=bool(set(body.scopes)&{'provider','corpus','skill','budget','model-config','benchmark','report'})
     s,t,c=auth.issue(db,who[0],True,canonical(body.scopes),300 if sensitive else body.expires_hours*3600)
     if sensitive:s.stepup=who[1].stepup
@@ -215,6 +220,7 @@ class CampaignInput(Strict):
 @app.post('/api/v1/campaigns')
 def campaign_create(body:CampaignInput,who=Depends(enrolled),db=Depends(db_dep)):
     if not body.authorization_attested:raise Denied('Explicit authorization attestation required')
+    if (body.scope.allow or body.scope.lab_networks or body.mode in ('passive','safe-active')) and who[1].stepup<time.time()-300:raise Denied('Recent WebAuthn step-up required for target scope authorization')
     v=body.model_dump();scope=v.pop('scope');c=document(db,'campaign',who[0].id,v)
     p=document(db,'policy',who[0].id,{'campaign_id':c.id,'scope':scope,'hash':digest(canonical(scope)),'approved_by':who[0].id})
     v['policy_id']=p.id;c.data=canonical(v);audit(db,who[0].id,'campaign_created',{'id':c.id,'policy_hash':p.value()['hash']});db.commit();return expose(c)
@@ -248,7 +254,9 @@ class RunInput(Strict):
     role_budgets:dict[str,float]={}
 @app.post('/api/v1/campaigns/{id}/runs')
 def run_start(id:str,body:RunInput,request:Request,who=Depends(enrolled),db=Depends(db_dep)):
-    c=own(db,id,'campaign',who[0].id);p=own(db,c.value()['policy_id'],'policy',who[0].id)
+    c=own(db,id,'campaign',who[0].id)
+    if c.value().get('status')=='archived':raise Denied('Campaign is archived')
+    p=own(db,c.value()['policy_id'],'policy',who[0].id)
     kill=db.get(Document,'kill-switch')
     if kill and kill.value()['enabled']:raise Denied('Emergency stop active')
     if body.repository_id:
@@ -296,10 +304,10 @@ async def events(id:str,request:Request,after:int=0,who=Depends(enrolled),db=Dep
 def adapters(who=Depends(enrolled)):return {'adapters':ADAPTERS,'adapter_version':'1.0'}
 @app.post('/api/v1/providers')
 def provider_add(body:ProviderInput,who=Depends(stepup),db=Depends(db_dep)):
-    d=create_provider(db,who[0].id,body);db.commit();return safe_metadata(d)
+    d=create_provider(db,who[0].id,body);snapshot_provider(db,d);db.commit();return safe_metadata(d)
 @app.post('/api/v1/providers/{id}/models')
 def model_add(id:str,body:ModelInput,who=Depends(stepup),db=Depends(db_dep)):
-    own(db,id,'provider',who[0].id);d=document(db,'provider_model',who[0].id,{'provider_id':id,**body.model_dump(),'verified_structured':False,'capability_status':'user_declared_unverified'});db.commit();return expose(d)
+    own(db,id,'provider',who[0].id);d=document(db,'provider_model',who[0].id,{'provider_id':id,**body.model_dump(),'verified_structured':False,'capability_status':'user_declared_unverified'});snapshot_model(db,d);db.commit();return expose(d)
 @app.get('/api/v1/providers/{id}/models')
 def models(id:str,who=Depends(enrolled),db=Depends(db_dep)):
     own(db,id,'provider',who[0].id);return [expose(d) for d in db.query(Document).filter_by(kind='provider_model',owner=who[0].id) if d.value()['provider_id']==id]
@@ -314,14 +322,14 @@ def provider_test(id:str,body:TestInput,who=Depends(stepup),db=Depends(db_dep)):
         from .gateway import reserve,settle
         mv=m.value();estimate=(128*mv['input_price']+32*mv['output_price'])/1000000
         reservation=reserve(db,who[0].id,'provider_test',estimate)
-        result=Adapter(d).generate(req);settle(db,reservation,max(estimate,(result.input_tokens*mv['input_price']+result.output_tokens*mv['output_price'])/1000000))
+        result=construct_adapter(d).generate(req);settle(db,reservation,max(estimate,(result.input_tokens*mv['input_price']+result.output_tokens*mv['output_price'])/1000000))
         if result.structured_content!={'ok':True}:raise ProviderError('Structured capability probe failed')
         v=m.value();v['verified_structured']=True;v['capability_status']='structured_output_verified';m.data=canonical(v);result={'status':'structured_output_verified'}
-    else:result=Adapter(d).health_check()
+    else:result=construct_adapter(d).health_check()
     v=d.value();v['health_status']='tested';v['last_tested']=now();d.data=canonical(v);audit(db,who[0].id,'provider_test',{'id':id,'status':'success'});db.commit();return result
 @app.post('/api/v1/providers/{id}/models/discover')
 def discover(id:str,who=Depends(stepup),db=Depends(db_dep)):
-    d=own(db,id,'provider',who[0].id);auth.throttle(db,'provider-discover:'+who[0].id,5);return Adapter(d).list_models()
+    d=own(db,id,'provider',who[0].id);auth.throttle(db,'provider-discover:'+who[0].id,5);return construct_adapter(d).list_models()
 class KeyInput(Strict):api_key:str=Field(min_length=1,max_length=8192,repr=False)
 def active_provider(db,owner,id):
     return any(v['provider_id']==id for r in db.query(Document).filter_by(kind='run',owner=owner) if r.value()['status'] not in ('completed','cancelled') for v in r.value().get('models',{}).values())
@@ -329,18 +337,20 @@ def active_provider(db,owner,id):
 def rotate(id:str,body:KeyInput,who=Depends(stepup),db=Depends(db_dep)):
     d=own(db,id,'provider',who[0].id,True)
     if active_provider(db,who[0].id,id):raise HTTPException(409,'Provider pinned by active run')
-    v=d.value();v['secret']=seal(body.api_key,f'provider:{d.owner}:{d.id}:1');v['fingerprint']=digest(body.api_key)[:12];v['health_status']='untested';d.data=canonical(v);d.version+=1;audit(db,who[0].id,'provider_key_rotated',{'id':id,'fingerprint':v['fingerprint']});db.commit();return safe_metadata(d)
+    snapshot_provider(db,d)
+    v=d.value();v['secret']=seal(body.api_key,secret_identity(d.owner,d.id,v));v['fingerprint']=digest(body.api_key)[:12];v['health_status']='untested';d.data=canonical(v);d.version+=1;snapshot_provider(db,d);audit(db,who[0].id,'provider_key_rotated',{'id':id,'fingerprint':v['fingerprint']});db.commit();return safe_metadata(d)
 @app.patch('/api/v1/providers/{id}')
 def provider_edit(id:str,body:ProviderInput,who=Depends(stepup),db=Depends(db_dep)):
     old=own(db,id,'provider',who[0].id,True)
     if active_provider(db,who[0].id,id):raise HTTPException(409,'Provider pinned by active run')
     # New immutable connection version preserves historical metadata.
-    d=create_provider(db,who[0].id,body);v=old.value();v['enabled']=False;old.data=canonical(v);old.version+=1;db.commit();return safe_metadata(d)
+    snapshot_provider(db,old);d=create_provider(db,who[0].id,body);snapshot_provider(db,d);v=old.value();v['enabled']=False;old.data=canonical(v);old.version+=1;db.commit();return safe_metadata(d)
 @app.delete('/api/v1/providers/{id}')
 def provider_delete(id:str,who=Depends(stepup),db=Depends(db_dep)):
     d=own(db,id,'provider',who[0].id,True)
     if active_provider(db,who[0].id,id):raise HTTPException(409,'Provider pinned by active run')
-    v=d.value();v['enabled']=False;v['deleted']=True;v['secret']=None;v['secret_headers']=seal('{}',f'headers:{d.owner}:{d.id}:1');d.data=canonical(v);d.version+=1;audit(db,who[0].id,'provider_deleted',{'id':id});db.commit();return {'status':'deleted','historical_metadata_retained':True}
+    snapshot_provider(db,d)
+    v=d.value();v['enabled']=False;v['deleted']=True;v['secret']=None;v['secret_headers']=seal('{}',secret_identity(d.owner,d.id,v,'headers'));d.data=canonical(v);d.version+=1;snapshot_provider(db,d);audit(db,who[0].id,'provider_deleted',{'id':id});db.commit();return {'status':'deleted','historical_metadata_retained':True}
 class AliasInput(Strict):
     alias:Literal['fast','reasoning','verifier','embedding','vision','coding']
     provider_id:str
@@ -356,25 +366,39 @@ def alias_set(body:AliasInput,who=Depends(stepup),db=Depends(db_dep)):
 @app.get('/api/v1/corpus/stats')
 def corpus_stats(who=Depends(enrolled),db=Depends(db_dep)):
     from .corpus import stats
-    return stats(db)
+    return stats(db,who[0].id)
 @app.get('/api/v1/corpus/sources')
 def corpus_sources(who=Depends(enrolled)):
     from .corpus import SOURCES
     return SOURCES
-class Search(Strict):query:str=Field(min_length=1,max_length=500);source:str|None=None;limit:int=Field(default=5,ge=1,le=20)
+class SearchFilters(Strict):
+    package:str|None=Field(default=None,max_length=200)
+    ecosystem:str|None=Field(default=None,max_length=80)
+    record_type:str|None=Field(default=None,max_length=80)
+    language:str|None=Field(default=None,max_length=80)
+    trust_boundary:str|None=Field(default=None,max_length=200)
+    cwe:str|None=Field(default=None,max_length=40)
+    cve:str|None=Field(default=None,max_length=40)
+    ghsa:str|None=Field(default=None,max_length=40)
+class Search(Strict):
+    query:str=Field(min_length=1,max_length=500)
+    source:str|None=None
+    limit:int=Field(default=5,ge=1,le=20)
+    filters:SearchFilters=Field(default_factory=SearchFilters)
 @app.post('/api/v1/knowledge/search')
 def knowledge_search(body:Search,who=Depends(enrolled),db=Depends(db_dep)):
     from .corpus import search
-    return search(db,body.query,body.source,body.limit,who[0].id)
+    return search(db,body.query,body.source,body.limit,who[0].id,body.filters.model_dump(exclude_none=True))
 @app.post('/api/v1/knowledge/ingest')
 async def knowledge_import(request:Request,file:UploadFile=File(...),license:str='unknown',source_url:str='owner:upload',who=Depends(enrolled),db=Depends(db_dep)):
-    import tempfile
-    from .corpus import import_file
     data=await file.read(20*1024*1024+1)
     if len(data)>20*1024*1024:raise HTTPException(413)
-    with tempfile.TemporaryDirectory() as td:
-        path=Path(td)/Path(file.filename or 'import.txt').name;path.write_bytes(data);result=import_file(db,path,license,source_url,owner=who[0].id)
-    audit(db,who[0].id,'knowledge_import',{'counts':result});db.commit();return result
+    if license.lower()=='unknown':raise Denied('Confirm the source license/permission before import')
+    filename=Path(file.filename or 'import.txt').name
+    if Path(filename).suffix.lower() not in ('.md','.txt','.html','.htm','.json','.jsonl','.csv','.pdf','.docx','.zip'):raise Denied('Unsupported document format')
+    id=uid();root=Path(settings().data_dir)/'imports'/id;root.mkdir(mode=0o700,parents=True);path=root/filename;path.write_bytes(data);path.chmod(0o600)
+    d=document(db,'file_import_request',who[0].id,{'status':'queued','path':str(path),'filename':filename,'license':license,'source_url':source_url,'record_type':'research_report','lease_until':0,'attempts':0},id)
+    audit(db,who[0].id,'knowledge_import_queued',{'job_id':id,'sha256':digest(data),'bytes':len(data)});db.commit();return {'job_id':d.id,'status':'queued','counts':{},'notice':'Import is processed by the corpus worker; inspect persisted job status for actual counts'}
 class CorpusSync(Strict):source:Literal['ghsa','cve','nvd','osv','kev'];limit:int=Field(default=1000,ge=1,le=100000)
 @app.post('/api/v1/corpus/sync')
 def corpus_sync(body:CorpusSync,who=Depends(stepup),db=Depends(db_dep)):
@@ -483,9 +507,10 @@ def repository_read(id:str,body:SourceRead,who=Depends(enrolled),db=Depends(db_d
     from .tools import Repository,ReadInput
     d=own(db,id,'repository',who[0].id);return Repository(d.value()['path']).read(ReadInput(**body.model_dump()))
 @app.get('/api/v1/runs/{id}/objects/{kind}')
-def run_objects(id:str,kind:Literal['hypotheses','stages','tools'],who=Depends(enrolled),db=Depends(db_dep)):
+def run_objects(id:str,kind:Literal['hypotheses','stages','tools','slices'],who=Depends(enrolled),db=Depends(db_dep)):
     own(db,id,'run',who[0].id)
     if kind=='stages':return [expose(d) for d in db.query(Document).filter_by(kind='stage_result',owner=id)]
+    if kind=='slices':return [expose(d) for d in db.query(Document).filter_by(kind='research_slice',owner=who[0].id) if d.value()['run_id']==id]
     if kind=='hypotheses':return [expose(d) for d in db.query(Document).filter_by(kind='hypothesis',owner=who[0].id) if d.value()['run_id']==id]
     return [json.loads(e.payload) for e in db.query(Journal).filter_by(stream=id).order_by(Journal.sequence) if json.loads(e.payload)['type']=='policy_decision']
 
@@ -525,7 +550,7 @@ def corpus_embed(who=Depends(stepup),db=Depends(db_dep)):
     d=document(db,'index_request',who[0].id,{'status':'queued','cursor':'','processed':0,'limit':100000});db.commit();return expose(d)
 @app.get('/api/v1/corpus/jobs')
 def corpus_jobs(offset:int=0,limit:int=50,who=Depends(admin),db=Depends(db_dep)):
-    return [expose(d) for d in db.query(Document).filter(Document.kind.in_(['corpus_job','corpus_request','index_request']),Document.owner.in_(['system',who[0].id])).order_by(Document.created.desc()).offset(max(0,offset)).limit(min(100,max(1,limit)))]
+    return [expose(d) for d in db.query(Document).filter(Document.kind.in_(['corpus_job','corpus_request','index_request','file_import_request','source_acquisition_request']),Document.owner.in_(['system',who[0].id])).order_by(Document.created.desc()).offset(max(0,offset)).limit(min(100,max(1,limit)))]
 @app.get('/api/v1/corpus/export')
 def corpus_export(who=Depends(stepup)):
     owner=who[0].id
@@ -573,3 +598,101 @@ def remove_passkey(id:str,response:Response,who=Depends(security_stepup),db=Depe
 @app.post('/api/v1/auth/sessions/revoke-all')
 def revoke_all_sessions(response:Response,who=Depends(security_stepup),db=Depends(db_dep)):
     db.query(Session).filter_by(user_id=who[0].id).delete();audit(db,who[0].id,'all_sessions_revoked',{});db.commit();response.delete_cookie(cookie_name(),path='/');return {'status':'revoked'}
+
+class CloneRepository(Strict):url:str=Field(max_length=4096);ref:str='HEAD'
+@app.post('/api/v1/campaigns/{id}/repositories/clone')
+def clone_repo(id:str,body:CloneRepository,who=Depends(enrolled),db=Depends(db_dep)):
+    own(db,id,'campaign',who[0].id)
+    from .repositories import clone_snapshot
+    result=clone_snapshot(body.url,body.ref);d=document(db,'repository',who[0].id,{'campaign_id':id,**result});audit(db,who[0].id,'repository_acquired',{'id':d.id,'commit':result['commit_hash']});db.commit();return {'id':d.id,'origin':result['origin'],'commit_hash':result['commit_hash'],'inventory':result['inventory']}
+
+class CampaignEdit(Strict):
+    name:str|None=Field(default=None,max_length=200)
+    description:str|None=Field(default=None,max_length=6000)
+    status:Literal['active','archived']|None=None
+@app.patch('/api/v1/campaigns/{id}')
+def edit_campaign(id:str,body:CampaignEdit,who=Depends(enrolled),db=Depends(db_dep)):
+    d=own(db,id,'campaign',who[0].id,True);v=d.value();v.update(body.model_dump(exclude_none=True));d.data=canonical(v);d.version+=1;audit(db,who[0].id,'campaign_edited',{'id':id,'version':d.version});db.commit();return expose(d)
+class HypothesisEdit(Strict):
+    status:Literal['refuted','inconclusive','duplicate','promoted_to_candidate']
+    notes:str=Field(min_length=1,max_length=4000)
+@app.patch('/api/v1/hypotheses/{id}')
+def edit_hypothesis(id:str,body:HypothesisEdit,who=Depends(enrolled),db=Depends(db_dep)):
+    d=own(db,id,'hypothesis',who[0].id,True);v=d.value();v.update(body.model_dump());d.data=canonical(v);audit(db,who[0].id,'hypothesis_reviewed',{'id':id,'status':body.status});db.commit();return expose(d)
+@app.put('/api/v1/runs/{id}/threat-model')
+def edit_threat_model(id:str,body:ThreatModel,who=Depends(enrolled),db=Depends(db_dep)):
+    run=own(db,id,'run',who[0].id,True)
+    old=[d for d in db.query(Document).filter_by(kind='threat_model',owner=who[0].id) if d.value()['run_id']==id]
+    d=document(db,'threat_model',who[0].id,{'run_id':id,'version':len(old)+1,'model':body.model_dump(),'hash':digest(canonical(body.model_dump()))})
+    append(db,id,who[0].id,'threat_model_versioned',{'id':d.id,'version':len(old)+1},run.value()['campaign_id']);db.commit();return expose(d)
+@app.get('/api/v1/runs/{id}/threat-model')
+def get_threat_model(id:str,who=Depends(enrolled),db=Depends(db_dep)):
+    own(db,id,'run',who[0].id)
+    versions=[d for d in db.query(Document).filter_by(kind='threat_model',owner=who[0].id).order_by(Document.created) if d.value()['run_id']==id]
+    return [expose(d) for d in versions]
+@app.get('/api/v1/auth/audit')
+def security_audit(who=Depends(enrolled),db=Depends(db_dep)):
+    return [{'sequence':e.sequence,'hash':e.hash,**json.loads(e.payload)} for e in db.query(Journal).filter_by(stream=who[0].id).order_by(Journal.sequence.desc()).limit(100)]
+
+class ApprovalDecision(Strict):decision:Literal['approve','reject']
+@app.post('/api/v1/approvals/{id}/decision')
+def approval_decision(id:str,body:ApprovalDecision,who=Depends(stepup),db=Depends(db_dep)):
+    d=own(db,id,'approval',who[0].id,True);v=d.value();run=own(db,v['run_id'],'run',who[0].id,True);rv=run.value()
+    if v['status']!='pending' or v['expires']<time.time() or v['policy_hash']!=rv['policy_hash']:raise Denied('Approval expired or no longer matches frozen policy')
+    if rv['status'] in ('completed','cancelled'):raise Denied('Run is terminal')
+    if body.decision=='approve':
+        action=v['action']
+        if action['type']=='budget':
+            amount=action.get('requested_usd')
+            if not isinstance(amount,(int,float)) or not 0<amount<=settings().monthly_budget:raise Denied('Invalid requested budget')
+            rv['budget_limit']=amount
+        elif action['type']=='offline_execution':rv['offline_execution_approved']=True
+        else:raise Denied('Approval cannot grant unknown capabilities')
+        run.data=canonical(rv);control(db,run,'resume',who[0].id)
+    v.update(status='approved' if body.decision=='approve' else 'rejected',approved_by=who[0].id,decided_at=now());d.data=canonical(v);append(db,run.id,who[0].id,'approval_decided',{'approval_id':d.id,'decision':body.decision,'action':v['action']},rv['campaign_id']);db.commit();return expose(d)
+
+class ProviderEnable(Strict):enabled:bool
+@app.post('/api/v1/providers/{id}/enablement')
+def provider_enable(id:str,body:ProviderEnable,who=Depends(stepup),db=Depends(db_dep)):
+    d=own(db,id,'provider',who[0].id,True)
+    if active_provider(db,who[0].id,id):raise HTTPException(409,'Stop or migrate active runs before changing the pinned connection')
+    v=d.value()
+    if v.get('deleted'):raise Denied('Deleted credentials cannot be restored; create a new connection')
+    snapshot_provider(db,d);v['enabled']=body.enabled;d.data=canonical(v);d.version+=1;snapshot_provider(db,d);audit(db,who[0].id,'provider_enablement_changed',{'id':id,'enabled':body.enabled});db.commit();return safe_metadata(d)
+@app.get('/api/v1/providers/{id}/versions')
+def provider_versions(id:str,who=Depends(enrolled),db=Depends(db_dep)):
+    own(db,id,'provider',who[0].id);return [expose(d) for d in db.query(Document).filter_by(kind='provider_version',owner=who[0].id) if d.value()['provider_id']==id]
+@app.patch('/api/v1/providers/{id}/models/{model_id}')
+def model_edit(id:str,model_id:str,body:ModelInput,who=Depends(stepup),db=Depends(db_dep)):
+    own(db,id,'provider',who[0].id);d=own(db,model_id,'provider_model',who[0].id,True)
+    if d.value()['provider_id']!=id:raise Denied('Model/provider mismatch')
+    if active_provider(db,who[0].id,id):raise HTTPException(409,'Model pinned by an active run')
+    snapshot_model(db,d);d.data=canonical({'provider_id':id,**body.model_dump(),'verified_structured':False,'capability_status':'user_declared_unverified'});d.version+=1;snapshot_model(db,d);db.commit();return expose(d)
+
+@app.get('/api/v1/knowledge/{id}')
+def knowledge_record(id:str,who=Depends(enrolled),db=Depends(db_dep)):
+    k=db.get(Knowledge,id)
+    if not k or k.owner not in ('public',who[0].id):raise HTTPException(404)
+    return json.loads(k.record)
+@app.get('/api/v1/knowledge/{id}/sources')
+def knowledge_lineage(id:str,who=Depends(enrolled),db=Depends(db_dep)):
+    k=db.get(Knowledge,id)
+    if not k or k.owner not in ('public',who[0].id):raise HTTPException(404)
+    return [expose(d) for d in db.query(Document).filter_by(kind='corpus_provenance',owner=id)]
+class Curation(Strict):
+    status:Literal['proposed','reviewed','validated','deprecated']
+    reason:str=Field(min_length=1,max_length=2000)
+@app.patch('/api/v1/knowledge/{id}')
+def curate_record(id:str,body:Curation,who=Depends(stepup),db=Depends(db_dep)):
+    k=db.get(Knowledge,id)
+    if not k or k.owner not in ('public',who[0].id):raise HTTPException(404)
+    r=json.loads(k.record);r.update(curation_status=body.status,updated_at=now());k.record=canonical(r);audit(db,who[0].id,'knowledge_curated',{'id':id,'status':body.status,'reason':body.reason});db.commit();return r
+@app.delete('/api/v1/knowledge/{id}')
+def delete_record(id:str,reason:str,who=Depends(stepup),db=Depends(db_dep)):
+    from .corpus import remove_record
+    k=db.get(Knowledge,id)
+    if not k or k.owner not in ('public',who[0].id):raise HTTPException(404)
+    audit(db,who[0].id,'knowledge_deletion_requested',{'id':id,'reason':reason[:2000]});remove_record(db,id,reason[:2000]);return {'status':'removed','record_id':id}
+
+# Specific API contracts must take precedence over generic collection readers.
+app.router.routes.sort(key=lambda r: int(getattr(r,"path","") in ("/api/v1/{collection}","/api/v1/{collection}/{id}")))

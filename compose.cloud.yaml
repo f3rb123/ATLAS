@@ -1,0 +1,17 @@
+# Managed-cloud test override only. Public session CA is mounted at runtime, never baked into images.
+services:
+  api:
+    volumes: ['/etc/ssl/certs/ca-certificates.crt:/run/cloud/ca-bundle.pem:ro']
+    environment: &cloudtrust
+      SSL_CERT_FILE: /run/cloud/ca-bundle.pem
+      REQUESTS_CA_BUNDLE: /run/cloud/ca-bundle.pem
+      GIT_SSL_CAINFO: /run/cloud/ca-bundle.pem
+  gateway:
+    volumes: ['/etc/ssl/certs/ca-certificates.crt:/run/cloud/ca-bundle.pem:ro']
+    environment: *cloudtrust
+  relay:
+    volumes: ['/etc/ssl/certs/ca-certificates.crt:/run/cloud/ca-bundle.pem:ro']
+    environment: *cloudtrust
+  worker-corpus:
+    volumes: ['/etc/ssl/certs/ca-certificates.crt:/run/cloud/ca-bundle.pem:ro']
+    environment: *cloudtrust

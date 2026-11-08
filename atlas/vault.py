@@ -25,7 +25,9 @@ def rewrap(blob,identity,old,new):
     d=json.loads(blob);aad=identity.encode();dek=AESGCM(old).decrypt(un64(d['wrapped_nonce']),un64(d['wrapped_dek']),aad);n=os.urandom(12)
     d.update(wrapped_nonce=b64(n),wrapped_dek=b64(AESGCM(new).encrypt(n,dek,aad)),key_version=digest(new)[:12]);return json.dumps(d)
 def redact(text):
-    text=re.sub(r'(?i)(bearer\s+|(?:api[_-]?key|token|password|secret)\s*[=:]\s*)[^\s,;"\']+',r'\1[REDACTED]',text)
+    text=re.sub(r'(https?://)[^/\s@]+@',r'\1[REDACTED]@',text)
+    text=re.sub(r'(?i)([?&](?:api[_-]?key|token|password|secret)=)[^&\s]+',r'\1[REDACTED]',text)
+    text=re.sub(r'(?i)(bearer\s+|[\"\']?(?:api[_-]?key|token|password|secret)[\"\']?\s*[=:]\s*[\"\']?)[^\s,;"\']+',r'\1[REDACTED]',text)
     return re.sub(r'\b(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]+','[REDACTED]',text)
 
 def rotate_database_keys(db,new_key,old_key=None):
@@ -33,9 +35,10 @@ def rotate_database_keys(db,new_key,old_key=None):
     if len(new_key)!=32:raise ValueError('New KEK must be 32 bytes')
     from .db import User,Document,canonical,append
     old_key=old_key or master();count=0
+    from .gateway import secret_identity
     for d in db.query(Document).filter_by(kind='provider').with_for_update():
         v=d.value()
-        for field,identity in [('secret',f'provider:{d.owner}:{d.id}:1'),('secret_headers',f'headers:{d.owner}:{d.id}:1')]:
+        for field,identity in [('secret',secret_identity(d.owner,d.id,v)),('secret_headers',secret_identity(d.owner,d.id,v,'headers'))]:
             if v.get(field):v[field]=rewrap(v[field],identity,old_key,new_key);count+=1
         d.data=canonical(v)
     for u in db.query(User).with_for_update():

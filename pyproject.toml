@@ -16,4 +16,4 @@ packages = ["atlas"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["sandbox: requires Linux user namespaces; run in outer execution context"]
+markers = ["sandbox: requires Linux user namespaces; run in outer execution context", "semantic: requires the real pinned ONNX weights"]

@@ -64,3 +64,29 @@ def test_validation_errors_do_not_echo_passwords_or_keys(db):
  with TestClient(app) as c:
   r=c.post('/api/v1/auth/login',json={'email':'x'*300,'password':'fixture-secret-do-not-echo'})
   assert r.status_code==422 and 'fixture-secret-do-not-echo' not in r.text
+
+def test_production_cookie_and_enrollment_gate(db,monkeypatch):
+ from atlas.config import settings
+ monkeypatch.setenv('ATLAS_ENV','production');monkeypatch.setenv('ATLAS_EXTERNAL_URL','https://atlas.example.invalid');settings.cache_clear()
+ token=bootstrap_token(db)
+ with TestClient(app,base_url='https://atlas.example.invalid') as c:
+  assert c.get('/health/ready').status_code==503
+  r=c.post('/api/v1/auth/bootstrap',json={'token':token,'email':'owner@example.invalid','password':'A generated fixture passphrase 82490'})
+  assert r.status_code==200
+  cookie=r.headers['set-cookie'];assert '__Host-atlas=' in cookie and 'Secure' in cookie and 'HttpOnly' in cookie and 'SameSite=strict' in cookie and 'Domain=' not in cookie
+  assert c.get('/api/v1/campaigns').status_code==403
+  assert c.get('/api/v1/users/me',headers={'Host':'attacker.invalid'}).status_code==400
+ settings.cache_clear()
+
+def test_long_unicode_passphrases_and_common_blocklist():
+ import pytest
+ assert password_ok('  αληθινή μακριά φράση 7342  ') is None
+ for p in ['short','passwordpassword','aaaaaaaaaaaaaaa','12345678901234567890']:
+  with pytest.raises(ValueError):password_ok(p)
+
+def test_specific_auth_and_capability_routes_not_shadowed(db):
+ c,u,s=authenticated(db)
+ assert c.get('/api/v1/auth/passkeys').status_code==200
+ assert c.get('/api/v1/auth/audit').status_code==200
+ assert c.get('/api/v1/capabilities').status_code==200
+ assert c.get('/api/v1/corpus/sources/reviewed').status_code==200

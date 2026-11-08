@@ -70,6 +70,7 @@ class Chunk(Base):
     position: Mapped[int]=mapped_column(Integer)
     text: Mapped[str]=mapped_column(Text)
     embedding: Mapped[str]=mapped_column(Text)
+    embedding_model: Mapped[str]=mapped_column(String(192),default='signed-token-hash-v1-128',index=True)
 
 _engine=None
 _factory=None
@@ -91,14 +92,26 @@ def session():
 def document(db,kind,owner,data,id=None):
     d=Document(id=id or uid(),kind=kind,owner=owner,data=canonical(data));db.add(d);db.flush();return d
 
+def transaction_lock(db,key):
+    if db.bind.dialect.name=='postgresql':
+        lock=int.from_bytes(hashlib.sha256(key.encode()).digest()[:8],signed=True)
+        db.execute(text('SELECT pg_advisory_xact_lock(:lock)'),{'lock':lock})
+    elif db.bind.dialect.name=='sqlite':
+        conn=db.connection()
+        if not conn.connection.driver_connection.in_transaction:conn.exec_driver_sql('BEGIN IMMEDIATE')
+
 def append(db,stream,actor,event_type,payload,campaign_id=None):
     # Caller holds the stream document row lock; SQLite serializes writes in tests.
-    if db.bind.dialect.name=='postgresql':
-        lock=int.from_bytes(hashlib.sha256(stream.encode()).digest()[:8],signed=True)
-        db.execute(text('SELECT pg_advisory_xact_lock(:lock)'),{'lock':lock})
+    transaction_lock(db,'journal:'+stream)
     tail=db.query(Journal).filter_by(stream=stream).order_by(Journal.sequence.desc()).first()
     seq=tail.sequence+1 if tail else 1;prev=tail.hash if tail else '0'*64
-    value=canonical({'actor':actor,'type':event_type,'payload':payload,'timestamp':now(),'correlation_id':uid(),'campaign_id':campaign_id,'run_id':stream})
+    from .vault import redact
+    def safe(value):
+        if isinstance(value,str):return redact(value)
+        if isinstance(value,dict):return {k:safe(v) for k,v in value.items()}
+        if isinstance(value,list):return [safe(v) for v in value]
+        return value
+    value=canonical({'actor':actor,'type':event_type,'payload':safe(payload),'timestamp':now(),'correlation_id':uid(),'campaign_id':campaign_id,'run_id':stream})
     j=Journal(stream=stream,sequence=seq,payload=value,previous=prev,hash=digest(prev+str(seq)+value));db.add(j);db.flush();return j
 
 @event.listens_for(Journal,'before_update')

@@ -43,3 +43,11 @@ class Isolation(unittest.TestCase):
   with self.assertRaises(OSError):s.connect(('8.8.8.8',53))
 ''')
  result=execute_offline(Repository(tmp_path),ExecutionInput(template='python_unittest'));assert successful_test(result),result
+
+def test_real_snapshot_diff_and_python_call_graph(tmp_path):
+ from atlas.tools import snapshot_diff
+ a=tmp_path/'a';b=tmp_path/'b';a.mkdir();b.mkdir()
+ (a/'app.py').write_text('def owned(actor,owner):\n return True\n')
+ (b/'app.py').write_text('def owned(actor,owner):\n return actor==owner\ndef caller():\n return owned("a","b")\n')
+ diff=snapshot_diff(Repository(a),Repository(b));assert '- return True' in diff['changes'][0]['diff'];assert '+ return actor==owner' in diff['changes'][0]['diff']
+ assert Repository(b).call_graph('owned')['edges'][0]['caller']=='caller'

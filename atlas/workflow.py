@@ -6,6 +6,7 @@ from .policy import Strict,Denied
 from .db import Document,document,append,canonical,digest,uid,now
 from .gateway import ModelRequest,generate_budgeted,ProviderError
 from .tools import Repository,broker
+from .research import ThreatModel,ResearchSlice
 
 class State(StrEnum):
     CREATED='CREATED'
@@ -25,7 +26,14 @@ class State(StrEnum):
     REPORT_GENERATION='REPORT_GENERATION'
     COMPLETED='COMPLETED'
 ORDER=list(State)
+class ToolRequest(Strict):
+    name:str=Field(max_length=80,pattern=r'^[a-z_]+$')
+    input:dict={}
+
 class RoleOutput(Strict):
+    threat_model:ThreatModel|None=None
+    surfaces:list[ResearchSlice]=Field(default=[],max_length=30)
+    slices:list[ResearchSlice]=Field(default=[],max_length=10)
     summary:str=Field(max_length=12000)
     observations:list[str]=Field(default=[],max_length=30)
     assumptions:list[str]=Field(default=[],max_length=30)
@@ -33,7 +41,7 @@ class RoleOutput(Strict):
     invariants:list[str]=Field(default=[],max_length=30)
     citations:list[str]=Field(default=[],max_length=50)
     hypotheses:list[dict]=Field(default=[],max_length=10)
-    tool_requests:list[dict]=Field(default=[],max_length=8)
+    tool_requests:list[ToolRequest]=Field(default=[],max_length=8)
     experiment:dict|None=None
 class VerificationOutput(Strict):
     status:str=Field(pattern='^(confirmed|likely|inconclusive|refuted|duplicate|blocked_by_policy)$')
@@ -70,6 +78,7 @@ def model_binding(db,run,alias):
     p=db.get(Document,pin['provider_id']);m=db.get(Document,pin['model_id'])
     if not p or not m or not p.value()['enabled'] or p.version!=pin['provider_version'] or m.version!=pin['model_version']:raise ProviderError('Pinned provider/model version unavailable')
     if not m.value().get('verified_structured'):raise ProviderError('Structured output capability unverified')
+    if p.value().get('health_status')!='tested':raise ProviderError('Test the configured provider/key before resuming research')
     return p,m
 
 def role(db,run,stage,context,alias='reasoning'):
@@ -79,9 +88,12 @@ def role(db,run,stage,context,alias='reasoning'):
         d=db.get(Document,pin['id'])
         if not d or d.value()['content_hash']!=pin['hash'] or not d.value().get('enabled'):raise Denied('Pinned skill unavailable or disabled')
         context['untrusted_validated_skills'].append({'hash':pin['hash'],'content':d.value()['content']})
+    campaign=db.get(Document,run.value()['campaign_id'])
+    system=SYSTEM
+    if campaign and campaign.value()['mode'] in ('passive','safe-active','lab'):system=SYSTEM.replace('No live traffic is allowed by this source-only task.','Only broker-approved GET/HEAD collection is available in this campaign; never expand scope or propose state-changing target actions.')
     prompt=canonical({'stage':stage,'context':context,'response_schema':schema.model_json_schema()})
     if len(prompt)>64000:raise ProviderError('Context size limit exceeded')
-    req=ModelRequest(model=m.value()['model_id'],messages=[{'role':'system','content':SYSTEM},{'role':'user','content':prompt}],max_tokens=min(m.value()['max_output_tokens'],4096))
+    req=ModelRequest(model=m.value()['model_id'],messages=[{'role':'system','content':system},{'role':'user','content':prompt}],max_tokens=min(m.value()['max_output_tokens'],4096))
     from .config import settings
     if settings().gateway_url:
         import httpx
@@ -130,15 +142,27 @@ def execute_stage(db,run,worker_role):
             inventory=repo.inventory();context['inventory']=inventory
             # Bounded context source snippets for the current stage; no arbitrary filesystem.
             context['source']=[repo.read(__import__('atlas.tools',fromlist=['ReadInput']).ReadInput(path=f,end=80)) for f in inventory['files'][:6]]
+        models=[d.value() for d in db.query(Document).filter_by(kind='threat_model',owner=run.owner) if d.value()['run_id']==run.id]
+        context['current_threat_model']=models[-1]['model'] if models else None
+        if db.query(__import__('atlas.db',fromlist=['Knowledge']).Knowledge).first():
+            from .corpus import search
+            query=(context.get('prior_stage_summaries') or [{'summary':'security authorization boundary'}])[-1].get('summary','security authorization boundary')[:300]
+            try:context['untrusted_attributed_memory']=search(db,query,limit=3,owner=run.owner)
+            except ValueError:context['memory_status']='Embedding index/model unavailable; reason only over explicit source context, not fabricated memory'
         output=role(db,run,s.value,context);result=output.model_dump()
+        if s==State.THREAT_MODEL:
+            if not output.threat_model:raise ValueError('A structured threat model is required before investigation')
+            document(db,'threat_model',run.owner,{'run_id':run.id,'version':len(models)+1,'model':output.threat_model.model_dump(),'hash':digest(canonical(output.threat_model.model_dump()))})
+        if s==State.RESEARCH_SLICE_SELECTION:
+            for slice in output.slices:document(db,'research_slice',run.owner,{'run_id':run.id,**slice.model_dump(),'status':'selected'})
         for h in output.hypotheses:
             hypothesis=Hypothesis.model_validate(h)
             existing=next((d for d in db.query(Document).filter_by(kind='hypothesis',owner=run.owner) if d.value()['run_id']==run.id and d.value()['claim']==hypothesis.claim),None)
             created=existing or document(db,'hypothesis',run.owner,{'run_id':run.id,**hypothesis.model_dump(),'status':'candidate'})
             h['id']=created.id
         for t in output.tool_requests:
-            if not repo and t['name'] not in ('http_request','fetch_allowed_url','inspect_redirect_chain'):raise Denied('Repository tool requested without repository')
-            broker(db,run,repo,t['name'],t.get('input',{}),worker_role)
+            if not repo and t.name not in ('http_request','fetch_allowed_url','inspect_redirect_chain'):raise Denied('Repository tool requested without repository')
+            broker(db,run,repo,t.name,t.input,worker_role)
         if s==State.EXPERIMENT_PROPOSAL and output.experiment:
             e=output.experiment
             if set(e)-{'template','test_path','control_test_path','hypothesis_id'}:raise Denied('Unsupported experiment fields')

@@ -51,3 +51,27 @@ def test_run_role_campaign_pending_caps(db):
  with pytest.raises(ProviderError,match='Run budget'):reserve(db,'u',r.id,.5,'verifier')
  other=document(db,'run','u',{'campaign_id':c.id,'budget_limit':2,'budget_used':0});db.commit()
  with pytest.raises(ProviderError,match='Campaign budget'):reserve(db,'u',other.id,1.5,'reasoning')
+
+@pytest.mark.parametrize('protocol',['openai_chat_completions','openai_responses','anthropic_messages','gemini','deepseek','ollama_openai_compatible'])
+def test_protocol_serialization_tools_and_real_stream_option(protocol):
+ d=Document(id=uid(),owner='u',kind='provider',data=canonical({'adapter_type':protocol,'base_url':'https://example.invalid/v1'}))
+ request=ModelRequest(model='fixture',messages=[{'role':'system','content':'Stay in scope'},{'role':'user','content':'Analyze a synthetic fixture'}],tools=[{'type':'function','function':{'name':'read_file_range','description':'Read authorized source','parameters':{'type':'object','properties':{}}}}])
+ payload=Adapter(d).serialize(request,True)
+ assert payload.get('tools') and (payload.get('stream') is True or protocol=='gemini')
+
+def test_registered_trusted_adapter_sdk(db):
+ import atlas.gateway as g
+ class Custom(g.Adapter):pass
+ g.register_adapter('fixture_protocol',Custom)
+ try:
+  v=ProviderInput(display_name='Fixture protocol',adapter_type='fixture_protocol',base_url='https://example.invalid/v1')
+  d=Document(id=uid(),owner='u',kind='provider',data=canonical({'adapter_type':v.adapter_type,'base_url':v.base_url}))
+  assert isinstance(g.construct_adapter(d),Custom)
+ finally:g.ADAPTERS.remove('fixture_protocol');g.PLUGIN_FACTORIES.pop('fixture_protocol')
+
+def test_database_endpoint_tampering_cannot_redirect_credentials(db,provider_server):
+ from cryptography.exceptions import InvalidTag
+ d=create_provider(db,'owner',ProviderInput(display_name='Bound endpoint',base_url=provider_server,api_key='fixture-not-real-key'))
+ db.commit();assert Adapter(d).headers()['Authorization']=='Bearer fixture-not-real-key'
+ v=d.value();v['base_url']=provider_server+'/unapproved-path';d.data=canonical(v)
+ with pytest.raises(InvalidTag):Adapter(d).headers()

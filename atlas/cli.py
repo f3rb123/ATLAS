@@ -163,7 +163,13 @@ def load_records():
    raw_path=Path(settings().data_dir)/'corpus_raw'/r.source.content_hash_sha256[:2]/r.source.content_hash_sha256
    raw=raw_path.read_bytes()
    if __import__('hashlib').sha256(raw).hexdigest()!=r.source.content_hash_sha256:raise ValueError('Raw artifact checksum mismatch')
-   ingest(s,r,raw);n+=1
+   result=ingest(s,r,raw)
+   if result=='duplicate':
+    from .db import Knowledge,canonical
+    existing=s.get(Knowledge,r.record_id)
+    if existing and existing.content_hash==r.source.content_hash_sha256:
+     r.content.raw_artifact_ref=str(raw_path);existing.record=canonical(r.model_dump(by_alias=True))
+   n+=1
    if n%200==0:s.commit()
   s.commit()
  out({'processed':n})
@@ -196,4 +202,55 @@ def rotate_kek(new_key_file:Path):
  if new_key_file.stat().st_mode&0o077:raise typer.BadParameter('New key must be mode 0600/0400')
  with session() as db:n=rotate_database_keys(db,new_key_file.read_bytes());db.commit()
  typer.echo(f'Rewrapped {n} envelopes. Install the new KEK before restarting; keep the old KEK for old backups.')
+
+
+@groups['host'].command('embeddings-prepare')
+def embeddings_prepare():
+ from .embeddings import prepare
+ out(prepare())
+@groups['host'].command('corpus-reembed')
+def embeddings_rebuild(resume_id:str|None=None):
+ from .db import session,document
+ from .corpus import reindex_job
+ with session() as db:
+  d=db.get(__import__('atlas.db',fromlist=['Document']).Document,resume_id) if resume_id else document(db,'index_request','system',{'status':'running','cursor':'','processed':0,'limit':100000})
+  if not d:raise typer.BadParameter('Unknown index job')
+  id=d.id;db.commit()
+ out({'job_id':id,**reindex_job(id)})
+
+
+@groups['host'].command('corpus-export-vectors')
+def export_vectors(path:Path):
+ from .db import session,Chunk,Knowledge,canonical
+ from .embeddings import embedding_version
+ with session() as db,path.open('x') as f:
+  for c in db.query(Chunk).join(Knowledge,Knowledge.id==Chunk.record_id).filter(Knowledge.owner=='public',Chunk.embedding_model==embedding_version()).order_by(Chunk.record_id,Chunk.position).yield_per(200):
+   f.write(canonical({'id':c.id,'record_id':c.record_id,'position':c.position,'text':c.text,'embedding':json.loads(c.embedding),'embedding_model':c.embedding_model})+'\n')
+@groups['host'].command('corpus-load-vectors')
+def load_vectors():
+ from .db import session,Chunk,Knowledge,canonical
+ from .embeddings import embedding_version,dimension
+ from .policy import Strict
+ from itertools import groupby
+ import numpy as np
+ class VectorRow(Strict):
+  id:str;record_id:str;position:int;text:str;embedding:list[float];embedding_model:str
+ count=0
+ def rows():
+  for line in sys.stdin:yield VectorRow.model_validate_json(line)
+ with session() as db:
+  for record_id,group in groupby(rows(),lambda r:r.record_id):
+   values=list(group);k=db.get(Knowledge,record_id)
+   if not k or k.owner!='public':raise ValueError('Unknown/nonpublic vector parent')
+   if len(values)>2000:raise ValueError('Chunk quota exceeded')
+   for v in values:
+    if v.embedding_model!=embedding_version() or len(v.embedding)!=dimension() or not np.isfinite(v.embedding).all():raise ValueError('Vector model/dimension/integrity mismatch')
+   db.query(Chunk).filter_by(record_id=record_id).delete(synchronize_session=False)
+   for v in values:db.add(Chunk(id=v.id,record_id=v.record_id,position=v.position,text=v.text,embedding=canonical(v.embedding),embedding_model=v.embedding_model))
+   db.flush()
+   if db.bind.dialect.name=='postgresql':
+    from sqlalchemy import text
+    db.execute(text('UPDATE knowledge_chunks SET embedding_vector=CAST(:v AS vector) WHERE id=:id'),[{'v':canonical(v.embedding),'id':v.id} for v in values])
+   db.commit();count+=len(values)
+ out({'vectors_loaded':count,'model':embedding_version()})
 if __name__=='__main__':app()

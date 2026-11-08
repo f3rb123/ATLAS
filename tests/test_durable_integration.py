@@ -13,7 +13,7 @@ def prepare(db):
 def test_full_durable_workflow_no_fabricated_findings(db,monkeypatch):
  run=prepare(db)
  # Test-only provider fixture; production requires a configured real model adapter.
- monkeypatch.setattr(workflow,'role',lambda *a,**k:RoleOutput(summary='No evidence of a vulnerability in empty knowledge context.'))
+ monkeypatch.setattr(workflow,'role',lambda *a,**k:RoleOutput(summary='No evidence of a vulnerability in empty knowledge context.',threat_model=ThreatModel(attacker_model='Synthetic untrusted caller',unknowns=['No target context supplied'])))
  for _ in range(16):
   role_name='verify' if run.value()['state']=='INDEPENDENT_VERIFICATION' else 'research'
   execute_stage(db,run,role_name);db.commit();db.expire_all();run=db.get(Document,run.id)
