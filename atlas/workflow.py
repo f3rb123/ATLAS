@@ -385,7 +385,7 @@ def execute_stage(db, run, worker_role):
                     run.owner,
                     {"run_id": run.id, **slice.model_dump(), "status": "selected"},
                 )
-        for h in output.hypotheses:
+        for hypothesis_index, h in enumerate(output.hypotheses):
             hypothesis = Hypothesis.model_validate(h)
             existing = next(
                 (
@@ -404,7 +404,7 @@ def execute_stage(db, run, worker_role):
                 run.owner,
                 {"run_id": run.id, **hypothesis.model_dump(), "status": "candidate"},
             )
-            h["id"] = created.id
+            result["hypotheses"][hypothesis_index]["id"] = created.id
         for t in output.tool_requests:
             if not repo and t.name not in (
                 "http_request",

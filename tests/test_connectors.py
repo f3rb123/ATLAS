@@ -123,3 +123,53 @@ def test_source_retry_honors_backoff_and_retains_wire_artifact(db, monkeypatch):
         raw == b'{ "fixture": true }'
         and digest(raw) == capture["acquisition_hash_sha256"]
     )
+
+
+def test_conditional_fetch_and_excessive_retry_after_fail_closed(db, monkeypatch):
+    def unchanged(*a, **k):
+        raise urllib.error.HTTPError(
+            "https://api.github.com/fixture", 304, "unchanged", {}, None
+        )
+
+    monkeypatch.setattr(corpus.urllib.request, "urlopen", unchanged)
+    assert corpus.fetch_json(
+        "ghsa", "https://api.github.com/fixture", etag="known-etag"
+    ) == (None, "known-etag")
+
+    def backoff(*a, **k):
+        raise urllib.error.HTTPError(
+            "https://api.github.com/fixture",
+            429,
+            "slow down",
+            {"Retry-After": "3600"},
+            None,
+        )
+
+    monkeypatch.setattr(corpus.urllib.request, "urlopen", backoff)
+    with pytest.raises(ValueError, match="extended"):
+        corpus.fetch_json("ghsa", "https://api.github.com/fixture")
+
+
+def test_takedown_removes_derived_index_aliases_and_original(db):
+    item = {
+        "id": "GHSA-aaaa-bbbb-cccc",
+        "summary": "Synthetic takedown fixture",
+        "details": "A controlled advisory",
+    }
+    raw = canonical(item).encode()
+    record = corpus.source_record("ghsa", item, raw)
+    corpus.ingest(db, record, raw)
+    db.commit()
+    k = db.query(Knowledge).one()
+    path = __import__("pathlib").Path(
+        __import__("json").loads(k.record)["content"]["raw_artifact_ref"]
+    )
+    corpus.remove_record(db, k.id, "fixture upstream withdrawal")
+    db.commit()
+    assert (
+        db.query(Knowledge).count()
+        == db.query(Chunk).count()
+        == db.query(Alias).count()
+        == 0
+    )
+    assert not path.exists()

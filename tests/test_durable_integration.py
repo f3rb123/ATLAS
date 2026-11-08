@@ -104,3 +104,35 @@ def test_pause_cancel_deadline_and_model_json(db, monkeypatch):
     run.data = canonical(v)
     execute_stage(db, run, "research")
     assert run.value()["status"] == "blocked"
+
+
+def test_persisted_hypothesis_id_reaches_next_research_context(db, monkeypatch):
+    run = prepare(db)
+    v = run.value()
+    v.update(state="HYPOTHESIS_GENERATION", status="running")
+    run.data = canonical(v)
+    db.commit()
+    claim = {
+        "claim": "Synthetic ownership hypothesis",
+        "preconditions": ["Controlled fixture"],
+        "expected_vulnerable": "Other owner allowed",
+        "expected_secure": "Other owner denied",
+        "impact": "Fixture isolation",
+        "citations": ["fixture.py:1"],
+    }
+    contexts = []
+
+    def respond(db, run, stage, context, *args):
+        contexts.append(context)
+        return RoleOutput(
+            summary="Synthetic model proposal",
+            hypotheses=[claim] if stage == "HYPOTHESIS_GENERATION" else [],
+        )
+
+    monkeypatch.setattr(workflow, "role", respond)
+    execute_stage(db, run, "research")
+    db.commit()
+    execute_stage(db, run, "research")
+    db.commit()
+    h = db.query(Document).filter_by(kind="hypothesis").one()
+    assert contexts[-1]["prior_stage_summaries"][-1]["hypotheses"][0]["id"] == h.id

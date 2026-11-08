@@ -4,6 +4,7 @@ import http.client, ipaddress, socket, ssl, os, re
 from urllib.parse import urlsplit, urlunsplit, unquote
 from urllib.request import getproxies, proxy_bypass
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
 
 
 class Denied(ValueError):
@@ -16,20 +17,20 @@ class Strict(BaseModel):
 
 class Rule(Strict):
     host: str
-    ports: list[int] = [443]
+    ports: list[Annotated[int, Field(ge=1, le=65535, strict=True)]] = [443]
     schemes: list[str] = ["https"]
     paths: list[str] = ["/"]
     methods: list[str] = ["GET", "HEAD"]
 
 
 class Scope(Strict):
-    allow: list[Rule] = []
-    deny: list[Rule] = []
-    lab_networks: list[str] = []
-    expires: float | None = None
-    max_requests: int = 100
-    max_response_bytes: int = 1024 * 1024
-    max_seconds: int = 15
+    allow: list[Rule] = Field(default=[], max_length=100)
+    deny: list[Rule] = Field(default=[], max_length=100)
+    lab_networks: list[str] = Field(default=[], max_length=20)
+    expires: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    max_requests: int = Field(default=100, ge=1, le=100000)
+    max_response_bytes: int = Field(default=1024 * 1024, ge=1, le=10 * 1024 * 1024)
+    max_seconds: int = Field(default=15, ge=1, le=30)
 
 
 def host(h):

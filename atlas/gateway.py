@@ -200,7 +200,10 @@ def create_provider(db, owner, input, id=None):
     if v["auth_header_name"]:
         validate_headers({v["auth_header_name"]: "x"})
     if any(
-        k.lower() in ("authorization", "x-api-key", "x-goog-api-key")
+        __import__("re").search(
+            r"(?i)(?:^|-)(?:authorization|auth|token|key|secret|password|credential|cookie)(?:$|-)",
+            k,
+        )
         for k in v["headers"]
     ):
         raise Denied("Credentials must use encrypted fields")
@@ -214,6 +217,14 @@ def create_provider(db, owner, input, id=None):
     id = id or uid()
     key = v.pop("api_key")
     secret_headers = v.pop("secret_headers")
+    nonsecret_metadata = canonical(v)
+    if any(
+        value and len(value) >= 4 and value in nonsecret_metadata
+        for value in [key, *secret_headers.values()]
+    ):
+        raise Denied(
+            "A credential also appears in non-secret metadata; use encrypted fields only"
+        )
     v["fingerprint"] = digest(key)[:12] if key else None
     v["aad_scheme"] = "endpoint-bound-v2"
     v["secret"] = seal(key, secret_identity(owner, id, v)) if key else None
@@ -676,7 +687,7 @@ class Adapter:
             raise ProviderError(
                 "Model discovery unavailable; manual entry is supported"
             )
-        p = json.loads(body)
+        p = json.loads(self.scrub(body.decode()))
         return p.get("data", p.get("models", []))
 
     def health_check(self):

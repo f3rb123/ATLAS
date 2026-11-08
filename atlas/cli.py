@@ -142,7 +142,7 @@ def events(id: str):
         + id
         + "/events",
         headers={"Authorization": "Bearer " + token},
-        timeout=None,
+        timeout=httpx.Timeout(70, connect=10),
     ) as r:
         if r.status_code != 200:
             raise typer.Exit(1)

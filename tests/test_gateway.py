@@ -246,3 +246,39 @@ def test_database_endpoint_tampering_cannot_redirect_credentials(db, provider_se
     d.data = canonical(v)
     with pytest.raises(InvalidTag):
         Adapter(d).headers()
+
+
+def test_nonsecret_provider_metadata_rejects_credential_copies(db, provider_server):
+    for extra in [
+        {"display_name": "fixture-key-not-real"},
+        {"headers": {"X-Partner-Token": "fixture-key-not-real"}},
+        {"headers": {"X-Context": "fixture-key-not-real"}},
+    ]:
+        values = {
+            "display_name": "Safe display",
+            "base_url": provider_server,
+            "api_key": "fixture-key-not-real",
+            **extra,
+        }
+        with pytest.raises(Denied):
+            create_provider(db, "u", ProviderInput(**values))
+
+
+def test_discovery_response_is_scrubbed(db, provider_server, monkeypatch):
+    import atlas.gateway as gateway
+
+    provider = create_provider(
+        db,
+        "u",
+        ProviderInput(
+            display_name="Discovery",
+            base_url=provider_server,
+            api_key="fixture-key-not-real",
+        ),
+    )
+    monkeypatch.setattr(
+        gateway,
+        "request",
+        lambda *a, **k: (200, {}, b'{"data":[{"id":"fixture-key-not-real"}]}'),
+    )
+    assert "fixture-key-not-real" not in canonical(Adapter(provider).list_models())

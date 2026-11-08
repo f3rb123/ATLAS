@@ -2924,6 +2924,53 @@
         }
       }
     },
+    "/api/v1/budgets/reservations/{id}/reconcile": {
+      "post": {
+        "summary": "Reconcile Reservation",
+        "operationId": "reconcile_reservation_api_v1_budgets_reservations__id__reconcile_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationReconciliation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/{collection}": {
       "get": {
         "summary": "List Objects",
@@ -3705,6 +3752,29 @@
         ],
         "title": "ProviderInput"
       },
+      "ReservationReconciliation": {
+        "properties": {
+          "actual_cost": {
+            "type": "number",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Actual Cost"
+          },
+          "billing_reference": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Billing Reference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "actual_cost",
+          "billing_reference"
+        ],
+        "title": "ReservationReconciliation"
+      },
       "ResumeCorpus": {
         "properties": {
           "job_id": {
@@ -3734,7 +3804,9 @@
           },
           "ports": {
             "items": {
-              "type": "integer"
+              "type": "integer",
+              "maximum": 65535.0,
+              "minimum": 1.0
             },
             "type": "array",
             "title": "Ports",
@@ -3868,6 +3940,7 @@
               "$ref": "#/components/schemas/Rule"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Allow",
             "default": []
           },
@@ -3876,6 +3949,7 @@
               "$ref": "#/components/schemas/Rule"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Deny",
             "default": []
           },
@@ -3884,13 +3958,15 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 20,
             "title": "Lab Networks",
             "default": []
           },
           "expires": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "null"
@@ -3900,16 +3976,22 @@
           },
           "max_requests": {
             "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 1.0,
             "title": "Max Requests",
             "default": 100
           },
           "max_response_bytes": {
             "type": "integer",
+            "maximum": 10485760.0,
+            "minimum": 1.0,
             "title": "Max Response Bytes",
             "default": 1048576
           },
           "max_seconds": {
             "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
             "title": "Max Seconds",
             "default": 15
           }
