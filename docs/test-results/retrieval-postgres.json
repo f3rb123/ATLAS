@@ -1,0 +1,234 @@
+{
+  "dataset": "atlas-retrieval-smoke-1",
+  "scope": "Five labelled checks against this public seed; not a broad relevance benchmark",
+  "precision_at_1": 0.6,
+  "hit_at_5": 1.0,
+  "mean_reciprocal_rank": 0.7666666666666667,
+  "checks": [
+    {
+      "query": "sprout Arbitrary Code Execution vulnerability",
+      "kind": "title-relevance",
+      "precision_at_1": 1.0,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "elapsed_seconds": 2.423,
+      "results": [
+        {
+          "id": "4ba9c979-e8f8-490d-a628-75f038571d5d",
+          "title": "sprout Arbitrary Code Execution vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-229r-pqp6-8w6g/GHSA-229r-pqp6-8w6g.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "bd82501a422de75abfdbf1fa52797cf56c6d6a1c7b9326637431fa3b4c6d2e32"
+        },
+        {
+          "id": "0478f3c2-9bfc-4762-9675-09da942836b8",
+          "title": "Sandbox Breakout / Arbitrary Code Execution in safer-eval",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2020/09/GHSA-876r-hj45-fw7g/GHSA-876r-hj45-fw7g.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "62b8b758d60f498cee5b7b2702b15f4b74502bcc6137dcf13b74590cbfae554b"
+        },
+        {
+          "id": "522d43ad-a305-4a69-940b-0fc0df99f2e0",
+          "title": "Sandbox Breakout / Arbitrary Code Execution in safer-eval",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2019/12/GHSA-v63x-xc9j-hhvq/GHSA-v63x-xc9j-hhvq.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "b6a268f7f12f46e017bf0d9accd04689de73c8e297a8a1eec36082c7495fa3e1"
+        },
+        {
+          "id": "86a6de13-87a7-47f9-968d-fab2dc93f65d",
+          "title": "@vendure/admin-ui-plugin authenticated Cross-site Scripting vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/07/GHSA-gm68-572p-q28r/GHSA-gm68-572p-q28r.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "090dcb621694c5b144f0f4979d1800a0ba9426ae141e3cb016a6e5d0dbf5832e"
+        },
+        {
+          "id": "37fafe94-e2f6-458d-a8f5-7208ccfeef3b",
+          "title": "safe-eval vulnerable to Sandbox Bypass due to improper input sanitization",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/04/GHSA-79xf-67r4-q2jj/GHSA-79xf-67r4-q2jj.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "3da2f1516b89f78745041e6a41b0872daa910fc80afde3c20d35bf0c780b5d78"
+        }
+      ]
+    },
+    {
+      "query": "actionpack Cross-Site Request Forgery vulnerability",
+      "kind": "title-relevance",
+      "precision_at_1": 1.0,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "elapsed_seconds": 1.195,
+      "results": [
+        {
+          "id": "c0694cf4-8545-458b-bd16-85b9ce202c75",
+          "title": "actionpack Cross-Site Request Forgery vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-24fg-p96v-hxh8/GHSA-24fg-p96v-hxh8.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "e70d8c49c32ec9d8ce4e03e1f15b73920775570df00b3ce7250f4167028310fe"
+        },
+        {
+          "id": "7a861f3f-bb19-40b3-881c-003445580f0a",
+          "title": "actionpack vulnerable to Cross-site Scripting",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-699m-mcjm-9cw8/GHSA-699m-mcjm-9cw8.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "c20380b86ddf8d7652928f2f1a15231187d5d3a92bb9e81290313126f5ed72bb"
+        },
+        {
+          "id": "9ee98e3a-b433-438c-8bf3-488d58bbf950",
+          "title": "Actionpack has possible cross-site scripting vulnerability via User Supplied Values to redirect_to",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/06/GHSA-4g8v-vg43-wpgf/GHSA-4g8v-vg43-wpgf.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "08b69061a4a4ab942466718207bf585704d5e9019c7326c60e9f40ef1ee94a34"
+        },
+        {
+          "id": "98d64019-0332-41f3-86f3-c7d4e713d774",
+          "title": "actionpack Cross-site Scripting vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-v5jg-558j-q67c/GHSA-v5jg-558j-q67c.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "5b6bd722b462048849a857263d89db5452ddd76dd4aa640786acaa8d5bf385f4"
+        },
+        {
+          "id": "3a992023-6207-4ae7-9438-85b4292ead19",
+          "title": "actionpack Cross-site Scripting vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-7g65-ghrg-hpf5/GHSA-7g65-ghrg-hpf5.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "f97f4334abfc25463f4f831ea1f990e832a512d60e1318976dca48eaf75ebf2f"
+        }
+      ]
+    },
+    {
+      "query": "actionpack vulnerable to Path Traversal",
+      "kind": "title-relevance",
+      "precision_at_1": 0.0,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.5,
+      "elapsed_seconds": 1.344,
+      "results": [
+        {
+          "id": "7e994801-c8cd-429a-b78a-13666eb9ce6d",
+          "title": "actionpack Path Traversal vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-6x85-j5j2-27jx/GHSA-6x85-j5j2-27jx.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "23fc82a84bd2c81ec8945a68d6511cc92505217680da64564c79a9407025aadb"
+        },
+        {
+          "id": "3e25c1e4-23e6-49f8-8a77-3f39a3882671",
+          "title": "actionpack vulnerable to Path Traversal",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-29gr-w57f-rpfw/GHSA-29gr-w57f-rpfw.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "e6c098a4dd2f2a2a5571be9150b4f13a7ad738b5db8992f62e78b78ffccc6b95"
+        },
+        {
+          "id": "9f2ef67c-33ee-489f-8427-55288252799b",
+          "title": "Directory traversal vulnerability in actionpack",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-h56m-vwxc-3qpw/GHSA-h56m-vwxc-3qpw.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "cc1d87af87487e28dc95d99ad511a3f2908919ecbbf5498a5868e7b09cb738a9"
+        },
+        {
+          "id": "43a2bea5-2c54-468d-8ff2-e4d3280634d1",
+          "title": "actionpack is vulnerable to denial of service because of a wildcard controller route",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-9h6g-gp95-x3q5/GHSA-9h6g-gp95-x3q5.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "5ca1c87acd65441f79dcb725d49d4ca99a057117a6592a9e72e8d967d6a1be32"
+        },
+        {
+          "id": "08c2d3a0-dd3f-4d59-9da1-2855b883ccf4",
+          "title": "actionpack Improper Input Validation vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-r7q2-5gqg-6c7q/GHSA-r7q2-5gqg-6c7q.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "ec323074d47693007a0813cfee69515a27d2181506fabac6ac763beb74e20b25"
+        }
+      ]
+    },
+    {
+      "query": "CVE-2013-6421",
+      "kind": "exact-identity",
+      "precision_at_1": 1.0,
+      "hit_at_5": true,
+      "reciprocal_rank": 1.0,
+      "elapsed_seconds": 1.935,
+      "results": [
+        {
+          "id": "4ba9c979-e8f8-490d-a628-75f038571d5d",
+          "title": "sprout Arbitrary Code Execution vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2017/10/GHSA-229r-pqp6-8w6g/GHSA-229r-pqp6-8w6g.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "bd82501a422de75abfdbf1fa52797cf56c6d6a1c7b9326637431fa3b4c6d2e32"
+        },
+        {
+          "id": "83df904c-5379-43d5-b160-f4ce8b09f2cd",
+          "title": "SwiftNIO vulnerable to HTTP request smuggling using malformed Transfer-Encoding header",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/05/GHSA-mgc4-wqv7-4pxm/GHSA-mgc4-wqv7-4pxm.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "567b674c932210fecd2f1a27881ff756e6a729bc9820aad60d7672215949837d"
+        },
+        {
+          "id": "3f7f8eeb-8ee2-40ed-abb3-a969f7d034fb",
+          "title": "DBAL 3 SQL Injection Security Vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/11/GHSA-r7cj-8hjg-x622/GHSA-r7cj-8hjg-x622.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "605d852d44cd0411a95004669a7e8c0d29d94fb3a721d48e52835af4cd88e8c1"
+        },
+        {
+          "id": "b2cb044b-d46b-47a8-9947-19197263db51",
+          "title": ".NET Denial of Service Vulnerability",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/08/GHSA-vmch-3w2x-vhgq/GHSA-vmch-3w2x-vhgq.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "fe4fb94ca297505018042d8f92bf0fde09fc0667f782df52bb4e94127da44d93"
+        },
+        {
+          "id": "a6934e3b-b864-4faa-9660-f40fe4ba2644",
+          "title": "Apache Airflow vulnerable to Exposure of Sensitive Information",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2023/10/GHSA-9qqg-mh7c-chfq/GHSA-9qqg-mh7c-chfq.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "4fcada15c874a9aed52f8dc025eb385f66b1e33469fa03e20756b2fdb3e03d40"
+        }
+      ]
+    },
+    {
+      "query": "tenant authorization trust boundary",
+      "kind": "concept-relevance",
+      "precision_at_1": 0.0,
+      "hit_at_5": true,
+      "reciprocal_rank": 0.3333333333333333,
+      "elapsed_seconds": 2.523,
+      "results": [
+        {
+          "id": "630f4e3a-b557-429f-a247-b993bed4adea",
+          "title": "Improper Authorization and Origin Validation Error in OneFuzz",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2021/08/GHSA-q5vh-6whw-x745/GHSA-q5vh-6whw-x745.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "7e835c564ebc51d0ad2d822079730c68b8da203210fa50a0d5008524ea126388"
+        },
+        {
+          "id": "2299ef87-20ba-46b9-9ca4-ba3046db5f16",
+          "title": "Tenant and Verifier might not use the same registrar data",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/05/GHSA-jf66-3q76-h5p5/GHSA-jf66-3q76-h5p5.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "1ebe2cacf714eb2ae55fb2a781688c0798031608618f3a7bcc6ea4436bf20bb6"
+        },
+        {
+          "id": "4e899861-b566-439a-a211-4bd2ac8afd9d",
+          "title": "Authorization_Cheat_Sheet.md",
+          "source_url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Authorization_Cheat_Sheet.md",
+          "license": "CC-BY-SA-4.0",
+          "chunk_sha256": "bfdd8b5a6ec06590be5b1ab74fe418360d31c668158419b19dedfc68661f586b"
+        },
+        {
+          "id": "9b073d96-772d-46fd-87a7-6481813e3242",
+          "title": "Open Redirect",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/03/GHSA-4r8q-gv9j-3xx6/GHSA-4r8q-gv9j-3xx6.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "c2e2137b32e8a06bbedcd40db2bad584bd029ed938a5621a93b251d8e03eeb73"
+        },
+        {
+          "id": "f44791ad-92bd-40b2-9cab-bdade3cf3edd",
+          "title": "OpenStack Keystone Token authorization for a user in a disabled tenant is allowed",
+          "source_url": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2022/05/GHSA-x8h4-xf47-pqc3/GHSA-x8h4-xf47-pqc3.json",
+          "license": "CC-BY-4.0",
+          "chunk_sha256": "ed2f2a7d06961886dd10da320ea2e559dca32e5387a713e99dd1838b37ccd12e"
+        }
+      ]
+    }
+  ]
+}

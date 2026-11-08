@@ -1,4 +1,37 @@
 """Honest maturity labels: a taxonomy is not a claim of automated detection."""
-CATEGORIES=['Authentication and sessions','Authorization / tenant isolation','Business logic','Injection / dataflow','XSS / client trust','SSRF','File and archive boundaries','Deserialization / parsers','Cryptography / JWT','Browser policy / CSRF / CORS','API schemas / resource controls','Infrastructure / cloud','CI/CD / supply chain','Dependency advisories','Source / secure design','Mobile / client']
-CAPABILITIES=[{'category':c,'maturity':'Research','limitations':'Model reasoning over supplied context; no automatic active-testing claim.'} for c in CATEGORIES]
-TOOLS=[{'capability':'Repository indexing and typed reads','maturity':'Static'},{'capability':'Scoped HTTP GET/HEAD evidence','maturity':'Passive'},{'capability':'Offline Python unittest replay','maturity':'Verified','limitations':'Requires user namespaces and explicit execution approval; findings still require independent proof and secure control.'}]
+
+CATEGORIES = [
+    "Authentication and sessions",
+    "Authorization / tenant isolation",
+    "Business logic",
+    "Injection / dataflow",
+    "XSS / client trust",
+    "SSRF",
+    "File and archive boundaries",
+    "Deserialization / parsers",
+    "Cryptography / JWT",
+    "Browser policy / CSRF / CORS",
+    "API schemas / resource controls",
+    "Infrastructure / cloud",
+    "CI/CD / supply chain",
+    "Dependency advisories",
+    "Source / secure design",
+    "Mobile / client",
+]
+CAPABILITIES = [
+    {
+        "category": c,
+        "maturity": "Research",
+        "limitations": "Model reasoning over supplied context; no automatic active-testing claim.",
+    }
+    for c in CATEGORIES
+]
+TOOLS = [
+    {"capability": "Repository indexing and typed reads", "maturity": "Static"},
+    {"capability": "Scoped HTTP GET/HEAD evidence", "maturity": "Passive"},
+    {
+        "capability": "Offline Python unittest replay",
+        "maturity": "Verified",
+        "limitations": "Requires user namespaces and explicit execution approval; findings still require independent proof and secure control.",
+    },
+]

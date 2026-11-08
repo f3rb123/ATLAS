@@ -1,0 +1,21 @@
+ version_num 
+-------------
+ 0004
+(1 row)
+
+ count 
+-------
+ 22028
+(1 row)
+
+ count 
+-------
+ 21012
+(1 row)
+
+ count 
+-------
+ 34229
+(1 row)
+
+Authenticated archives verified and PostgreSQL restore passed. KEK not included.

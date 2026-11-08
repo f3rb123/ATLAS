@@ -1,11 +1,16 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
+import AxeBuilder from '@axe-core/playwright';
 import {execFileSync} from 'node:child_process';
 const boot=JSON.parse(fs.readFileSync('../../.runtime/e2e-bootstrap.json','utf8'));
 test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search',async({page,context})=>{
  test.setTimeout(120000);
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
- await page.goto('/');await expect(page.getByRole('heading',{name:'Welcome to ATLAS'})).toBeVisible();
+ await page.goto('/');
+ const welcomeAccessibility=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+ fs.writeFileSync('../../docs/test-results/accessibility-welcome.json',JSON.stringify(welcomeAccessibility.violations,null,2));
+ expect(welcomeAccessibility.violations.filter(v=>['serious','critical'].includes(v.impact||''))).toEqual([]);
+ await expect(page.getByRole('heading',{name:'Welcome to ATLAS'})).toBeVisible();
  const setup=page.locator('section').filter({has:page.getByRole('heading',{name:'First owner setup'})});
  await setup.getByLabel('One-time bootstrap token').fill(boot.token);await setup.getByLabel('Owner email').fill(boot.email);await setup.getByLabel('Unique passphrase').fill(boot.password);await setup.getByRole('button',{name:'Create owner'}).click();
  await expect(page.getByRole('heading',{name:'Passkeys & step-up'})).toBeVisible();await page.getByRole('button',{name:'Enroll passkey'}).click();
@@ -30,9 +35,12 @@ test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search
  await expect.poll(async()=>{const r=await page.request.get('/api/v1/runs/'+run.id);return(await r.json()).status},{timeout:65000}).toBe('completed');
  await page.screenshot({path:'../../docs/test-results/workspace-run.png',fullPage:true});const download=page.waitForEvent('download');await page.getByRole('button',{name:'Generate report',exact:true}).click();expect((await download).suggestedFilename()).toContain('atlas-');
  await page.getByRole('button',{name:'Research Memory',exact:true}).click();await page.getByLabel('Boundary, framework, package, CWE or CVE').fill('tenant authorization');await page.getByRole('button',{name:'Search',exact:true}).click();await expect(page.getByRole('status').locator('pre')).toContainText('source_url');
+ const memoryAccessibility=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+ fs.writeFileSync('../../docs/test-results/accessibility-memory.json',JSON.stringify(memoryAccessibility.violations,null,2));
+ expect(memoryAccessibility.violations.filter(v=>['serious','critical'].includes(v.impact||''))).toEqual([]);
  await page.screenshot({path:'../../docs/test-results/workspace-memory.png',fullPage:true});
- await page.getByRole('button',{name:'Security',exact:true}).click();await expect(page.getByRole('heading',{name:'Sessions and CLI tokens'})).toBeVisible();
+ await page.getByRole('button',{name:'Security',exact:true}).click();await expect(page.getByRole('heading',{name:'Sessions and CLI tokens',exact:true})).toBeVisible();
  const tokens=page.locator('section').filter({has:page.getByRole('heading',{name:'Scoped CLI token'})}).last();const issued=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/auth/cli-tokens'));await tokens.getByRole('button',{name:'Create token'}).click();const token=await(await issued).json();expect(token.token).toBeTruthy();
- const cli=execFileSync('../../.venv/bin/atlas',['corpus','stats'],{env:{...process.env,ATLAS_CLI_TOKEN:token.token,ATLAS_API_URL:'http://localhost:8000'},encoding:'utf8'});expect(JSON.parse(cli).unique_normalized_records).toBeGreaterThanOrEqual(20000);
+ const cli=execFileSync('../../.venv/bin/atlas',['corpus','stats'],{env:{...process.env,ATLAS_CLI_TOKEN:token.token,ATLAS_API_URL:'http://localhost:8000'},encoding:'utf8'});expect(JSON.parse(cli).unique_normalized_records).toBeGreaterThanOrEqual(Number(process.env.ATLAS_E2E_MIN_RECORDS||20000));
  await page.getByRole('button',{name:'Sign out'}).click();await expect(page.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
 });

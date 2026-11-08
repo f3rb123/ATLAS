@@ -10,6 +10,7 @@ This repository was built from an empty checkout. Read [the specification](docs/
 UV_CACHE_DIR=/workspace/.cache/uv uv sync --frozen
 uv run atlas host init-key
 uv run atlas host migrate
+uv run atlas host embeddings-prepare
 uv run uvicorn atlas.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
@@ -30,7 +31,7 @@ SQLite is an isolated development/test option. Production uses PostgreSQL with m
 
 ## Corpus
 
-The acquired public corpus contains **21,002 unique normalized records**: 21,001 structured advisory/CVE records and one OWASP reference. Full-text bounty-report count is **0**. These counts are from persisted records, not chunks or aliases. See [the acquisition report](docs/CORPUS_INGESTION_REPORT.md) and [inventory](knowledge/corpus_inventory.json). NVD/OSV/CISA connections require the network-policy changes described in the report; source terms must permit storage.
+The acquired public corpus contains **21,012 unique normalized records**: 21,011 structured advisory/CVE records and one OWASP reference. Full-text bounty-report count is **0**. These counts are from persisted records, not chunks or aliases. See [the acquisition report](docs/CORPUS_INGESTION_REPORT.md) and [inventory](knowledge/corpus_inventory.json). The complete public corpus has34,229genuine MiniLM384 semantic chunks. NVD/OSV and the official CISA mirror were acquired successfully; source terms govern subsequent imports.
 
 ```sh
 uv run atlas host corpus-sync --source ghsa --limit 21000
@@ -42,8 +43,7 @@ The API-backed `atlas corpus` commands support source/job management, import, va
 ## Validation and deployment
 
 ```sh
-uv run pytest -q -m 'not sandbox'
-uv run pytest -q -m sandbox
+uv run pytest -q
 npm --prefix apps/web run build
 ```
 

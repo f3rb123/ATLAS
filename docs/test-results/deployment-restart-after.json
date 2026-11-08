@@ -1,0 +1,1 @@
+{"state": "COMPLETED", "status": "completed", "budget_used": 0.00078, "blocked_reason": null, "completed_stages": 15, "unique_execution_keys": 15, "journal_verified": 15, "fixture_provider_calls": {"probe": 1, "THREAT_MODEL": 1, "SURFACE_MAP": 1, "RESEARCH_SLICE_SELECTION": 1, "HYPOTHESIS_GENERATION": 1, "FOCUSED_INVESTIGATION": 1, "EXPERIMENT_PROPOSAL": 1}}

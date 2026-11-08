@@ -1,0 +1,121 @@
+{
+  "records_validated": 21012,
+  "raw_files_validated": 21012,
+  "missing_raw": [],
+  "bad_hashes": [],
+  "active_chunks": 34229,
+  "indexed_records": 21012,
+  "invalid_vectors": 0,
+  "statistics": {
+    "unique_normalized_records": 21012,
+    "categories": {
+      "structured_vulnerability_advisories": 21011,
+      "training_and_reference_resources": 1,
+      "full_text_research_reports": 0,
+      "patch_and_commit_records": 0
+    },
+    "by_source": {
+      "cve": 1,
+      "ghsa": 21000,
+      "kev": 5,
+      "nvd": 5,
+      "owner": 1
+    },
+    "aliases": 39985,
+    "chunks": 34229,
+    "active_embedding_chunks": 34229,
+    "embedding": "sentence-transformers/all-MiniLM-L6-v2@d13954661f83248295ba75c1ed411eef3b7b936e",
+    "quarantined_items": 491,
+    "reviewed_withdrawn_exclusions": 491,
+    "unclassified_import_errors": 0,
+    "parser_errors": 0,
+    "jobs": [
+      {
+        "id": "cdfb3b9c-b868-4749-ba64-bb637ec220d5",
+        "counts": {
+          "errors": 491,
+          "ingested": 21000
+        },
+        "cursor": 21491,
+        "source": "ghsa",
+        "started": "2026-11-08T15:21:54.235209+00:00",
+        "status": "completed",
+        "updated": "2026-11-08T15:23:52.832027+00:00"
+      },
+      {
+        "id": "b0e57ce8-4777-43ec-80a2-8e69c46c3d56",
+        "counts": {},
+        "cursor": 0,
+        "error": "URLError",
+        "etag": null,
+        "source": "nvd",
+        "started": "2026-11-08T15:31:21.598283+00:00",
+        "status": "blocked"
+      },
+      {
+        "id": "087f30c2-952d-4a47-9e64-303e08649d75",
+        "counts": {},
+        "cursor": 0,
+        "error": "URLError",
+        "etag": null,
+        "source": "osv",
+        "started": "2026-11-08T15:31:21.640876+00:00",
+        "status": "blocked"
+      },
+      {
+        "id": "7ddea9a9-402a-41cc-8692-9b074f1d082f",
+        "counts": {},
+        "cursor": 0,
+        "error": "URLError",
+        "etag": null,
+        "source": "kev",
+        "started": "2026-11-08T15:31:21.651772+00:00",
+        "status": "blocked"
+      },
+      {
+        "id": "1624ec36-957b-4faa-a0eb-7127d6e0c44f",
+        "counts": {
+          "ingested": 5
+        },
+        "cursor": 5,
+        "etag": null,
+        "source": "nvd",
+        "started": "2026-11-08T16:48:02.780493+00:00",
+        "status": "completed",
+        "updated": "2026-11-08T16:48:03.776063+00:00"
+      },
+      {
+        "id": "c2f5bfda-8d2a-49fb-a05a-0263dccdd91a",
+        "counts": {
+          "duplicate": 5
+        },
+        "cursor": 5,
+        "etag": null,
+        "source": "osv",
+        "started": "2026-11-08T16:48:09.786295+00:00",
+        "status": "completed",
+        "updated": "2026-11-08T16:48:15.744841+00:00"
+      },
+      {
+        "id": "b5834d1b-6626-47f9-94db-e78db6988fba",
+        "acquisition_url": "https://raw.githubusercontent.com/cisagov/kev-data/e5b3a9b25050a8da26c96266c5bfe438ee0bdebc/known_exploited_vulnerabilities.json",
+        "counts": {
+          "ingested": 5
+        },
+        "cursor": 5,
+        "etag": "\"bdedd884c88ceb739ea3f98c3e5ca5117834fba2bf37df30e2de83890d5f50cc\"",
+        "mirror_reason": "HTTPError",
+        "primary_status": "unavailable",
+        "snapshot_sha": "e5b3a9b25050a8da26c96266c5bfe438ee0bdebc",
+        "source": "kev",
+        "source_native_items_in_response": 1769,
+        "started": "2026-11-08T17:21:22.391063+00:00",
+        "status": "completed",
+        "updated": "2026-11-08T17:21:26.871588+00:00"
+      }
+    ],
+    "scale_target": 20000,
+    "scale_status": "passed",
+    "full_text_report_count": 0
+  }
+}

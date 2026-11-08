@@ -1,0 +1,31 @@
+{
+  "version": "atlas-retrieval-smoke-1",
+  "scope": "Five labelled checks against this public seed; not a broad relevance benchmark",
+  "queries": [
+    {
+      "query": "sprout Arbitrary Code Execution vulnerability",
+      "expected_identifier": "GHSA-229r-pqp6-8w6g",
+      "kind": "title-relevance"
+    },
+    {
+      "query": "actionpack Cross-Site Request Forgery vulnerability",
+      "expected_identifier": "GHSA-24fg-p96v-hxh8",
+      "kind": "title-relevance"
+    },
+    {
+      "query": "actionpack vulnerable to Path Traversal",
+      "expected_identifier": "GHSA-29gr-w57f-rpfw",
+      "kind": "title-relevance"
+    },
+    {
+      "query": "CVE-2013-6421",
+      "expected_identifier": "CVE-2013-6421",
+      "kind": "exact-identity"
+    },
+    {
+      "query": "tenant authorization trust boundary",
+      "expected_canonical_key": "f9230d237b6cee977cd2fc394c3278139b0e83ec973e7d016d04c471012d1c72",
+      "kind": "concept-relevance"
+    }
+  ]
+}

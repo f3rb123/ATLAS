@@ -374,6 +374,66 @@
           "title": "Source Url",
           "type": "string"
         },
+        "acquisition_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acquisition Url"
+        },
+        "acquisition_artifact_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acquisition Artifact Ref"
+        },
+        "acquisition_hash_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acquisition Hash Sha256"
+        },
+        "acquisition_fetched_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acquisition Fetched At"
+        },
+        "json_pointer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Pointer"
+        },
         "source_record_id": {
           "anyOf": [
             {
@@ -409,6 +469,28 @@
           ],
           "default": null,
           "title": "Published At"
+        },
+        "published_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published Date"
+        },
+        "date_precision": {
+          "default": "unknown",
+          "enum": [
+            "timestamp",
+            "date",
+            "unknown"
+          ],
+          "title": "Date Precision",
+          "type": "string"
         },
         "fetched_at": {
           "title": "Fetched At",
@@ -614,6 +696,17 @@
     "access_owner": {
       "default": "public",
       "title": "Access Owner",
+      "type": "string"
+    },
+    "curation_status": {
+      "default": "proposed",
+      "enum": [
+        "proposed",
+        "reviewed",
+        "validated",
+        "deprecated"
+      ],
+      "title": "Curation Status",
       "type": "string"
     },
     "tags": {

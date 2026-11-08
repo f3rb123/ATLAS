@@ -11,6 +11,6 @@ python -m atlas.backup decrypt --password-file .runtime/secrets/backup_password 
 docker compose exec -T postgres createdb -U atlas atlas_restore_check
 trap 'docker compose exec -T postgres dropdb -U atlas --if-exists atlas_restore_check; rm -rf "$scratch_dir"' EXIT
 docker compose exec -T postgres pg_restore -U atlas -d atlas_restore_check --exit-on-error < "$scratch_dir/database.dump"
-docker compose exec -T postgres psql -U atlas -d atlas_restore_check -c 'SELECT version_num FROM alembic_version; SELECT count(*) FROM documents;'
+docker compose exec -T postgres psql -U atlas -d atlas_restore_check -c 'SELECT version_num FROM alembic_version; SELECT count(*) FROM documents; SELECT count(*) FROM knowledge; SELECT count(*) FROM knowledge_chunks;'
 tar -tf "$scratch_dir/artifacts.tar" >/dev/null
 printf '%s\n' 'Authenticated archives verified and PostgreSQL restore passed. KEK not included.'
