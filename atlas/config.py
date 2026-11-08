@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_cache_dir: str | None = None
     monthly_budget: float = 100
+    max_concurrent_http: int = Field(default=8, ge=1, le=32)
+    max_request_bytes: int = Field(
+        default=21 * 1024 * 1024, ge=1024, le=21 * 1024 * 1024
+    )
     max_queued_runs: int = Field(default=100, ge=1, le=1000)
     max_campaign_runs: int = Field(default=3, ge=1, le=100)
     provider_plugins: list[str] = []

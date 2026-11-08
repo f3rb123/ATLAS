@@ -232,3 +232,22 @@ def test_unknown_billing_reconciliation_requires_stepup_and_stopped_owner_run(db
         ).status_code
         == 404
     )
+
+
+def test_chunked_request_limit_counts_bytes_without_content_length(db):
+    from atlas.config import settings
+
+    settings().max_request_bytes = 1024
+    with TestClient(app) as c:
+
+        def chunks():
+            yield b" " * 800
+            yield b" " * 800
+
+        response = c.post(
+            "/api/v1/auth/login",
+            content=chunks(),
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 413, response.text
+        assert "limit" in response.text

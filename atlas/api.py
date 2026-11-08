@@ -54,6 +54,7 @@ async def lifespan(app):
     from .logging import configure
 
     configure()
+    app.state.request_gate = asyncio.Semaphore(settings().max_concurrent_http)
     if settings().production and not settings().external_url.startswith("https://"):
         raise RuntimeError("Production requires an HTTPS external origin")
     master()
@@ -70,6 +71,11 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+
+from .http_limits import BodyLimitMiddleware
+
+app.add_middleware(BodyLimitMiddleware)
 
 
 def cookie_name():
@@ -224,7 +230,12 @@ async def security(request, call_next):
         .netloc
     ):
         return JSONResponse({"error": "Unknown host"}, 400)
-    response = await call_next(request)
+    gate = getattr(app.state, "request_gate", None)
+    if gate is None:
+        response = await call_next(request)
+    else:
+        async with gate:
+            response = await call_next(request)
     for k, v in {
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
