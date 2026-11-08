@@ -206,4 +206,6 @@ def generate_budgeted(db,provider,model,req,run):
     cost=(response.input_tokens*m['input_price']+response.output_tokens*m['output_price'])/1000000
     settle(db,reservation,max(cost,estimate) if response.usage_estimated else cost)
     document(db,'usage',run.owner,{'run_id':run.id,'provider_id':provider.id,'model':req.model,'input_tokens':response.input_tokens,'output_tokens':response.output_tokens,'cost':cost,'estimated':response.usage_estimated})
-    rv['budget_used']=rv.get('budget_used',0)+cost;run.data=canonical(rv);db.commit();return response
+    db.refresh(run);rv=run.value();rv['budget_used']=rv.get('budget_used',0)+cost;run.data=canonical(rv);db.commit()
+    if rv['status'] not in ('running','queued'):raise ProviderError('Run was paused or cancelled during provider request')
+    return response

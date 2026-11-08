@@ -186,3 +186,68 @@ def sync_bulk(source='ghsa',limit=21000,job_id=None):
         with session() as db:
             job=db.get(Document,job_id);state.update(status='blocked',error=type(e).__name__);job.data=canonical(state);db.commit()
         raise
+
+# API connectors retain source cursors and conditional-fetch metadata independently.
+def fetch_json(source,url,etag=None):
+    import urllib.error
+    headers={'User-Agent':'ATLAS/0.1 (+local-owner-controlled-advisory-ingest)','Accept':'application/json'}
+    if etag:headers['If-None-Match']=etag
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=30) as r:
+                data=r.read(16*1024*1024+1)
+                if len(data)>16*1024*1024:raise ValueError('Source response exceeds quota')
+                return json.loads(data),r.headers.get('ETag')
+        except urllib.error.HTTPError as e:
+            if e.code==304:return None,etag
+            if e.code not in (429,500,502,503,504) or attempt==2:raise
+            delay=min(int(e.headers.get('Retry-After','6')),60);time.sleep(delay*(attempt+1))
+    raise ValueError('Fetch exhausted')
+
+def sync_api(source,limit=10,ids=None,job_id=None):
+    if source not in ('nvd','osv','kev'):raise ValueError('Unsupported API source')
+    with session() as db:
+        job=db.get(Document,job_id) if job_id else document(db,'corpus_job','system',{'source':source,'cursor':0,'counts':{},'status':'running','started':now(),'etag':None})
+        if not job or job.value()['source']!=source:raise ValueError('Resume source mismatch')
+        state=job.value();job_id=job.id;db.commit()
+        if source=='osv' and not ids:ids=[r.alias for r in db.query(Alias).filter(Alias.alias.like('GHSA-%')).limit(limit)]
+    counts=Counter(state.get('counts',{}))
+    try:
+        while state['cursor']<limit:
+            cursor=state['cursor']
+            if source=='nvd':url=SOURCES[source]['url']+f'?startIndex={cursor}&resultsPerPage={min(100,limit-cursor)}'
+            elif source=='osv':
+                if cursor>=len(ids):break
+                url=SOURCES[source]['url']+'/'+ids[cursor]
+            else:url=SOURCES[source]['url']
+            payload,etag=fetch_json(source,url,state.get('etag') if source=='kev' else None)
+            if payload is None:break
+            items=payload.get('vulnerabilities',[]) if source in ('nvd','kev') else [payload]
+            if not items:break
+            for item in items[:limit-state['cursor']]:
+                raw=canonical(item).encode()
+                with session() as db:
+                    try:counts[ingest(db,source_record(source,item,raw,url),raw)]+=1
+                    except Exception as e:
+                        db.rollback();counts['errors']+=1;document(db,'import_error','system',{'source':source,'reason':type(e).__name__,'job_id':job_id})
+                    state.update(cursor=state['cursor']+1,counts=dict(counts),updated=now(),status='running',etag=etag)
+                    job=db.get(Document,job_id);job.data=canonical(state);db.commit()
+            if source=='kev':break
+            time.sleep(6 if source=='nvd' else 1)
+        state['status']='completed'
+    except Exception as e:state.update(status='blocked',error=type(e).__name__)
+    with session() as db:
+        job=db.get(Document,job_id);job.data=canonical(state);db.commit()
+    return {'job_id':job_id,**state}
+
+def remove_record(db,record_id,reason):
+    k=db.get(Knowledge,record_id)
+    if not k:raise ValueError('Record not found')
+    raw=json.loads(k.record)['content']['raw_artifact_ref']
+    db.query(Chunk).filter_by(record_id=record_id).delete();db.query(Alias).filter_by(record_id=record_id).delete()
+    # Keep only minimal tombstone; remove full text and secondary indexes.
+    document(db,'corpus_tombstone','system',{'record_id':record_id,'hash':k.content_hash,'reason':reason,'deleted_at':now()});db.delete(k)
+    if raw:
+        p=Path(raw).resolve();root=(Path(settings().data_dir)/'corpus_raw').resolve()
+        if p.is_relative_to(root):p.unlink(missing_ok=True)
+    db.commit()
