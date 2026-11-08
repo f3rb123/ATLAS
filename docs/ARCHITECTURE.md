@@ -1,0 +1,3 @@
+# Architecture
+Modular Python FastAPI application, PostgreSQL/pgvector authoritative persistence, Redis coordination, durable research and verifier workers, Next.js web and API-backed CLI. All target egress goes through a distinct policy relay; model credentials stay in the gateway. Offline repository analysis and lab verification never execute arbitrary host shell.
+ADR 001: use a compact `atlas/` Python package with module boundaries rather than namespace packages under every service; entrypoints select worker roles. SQLite is supported only for isolated tests/development, PostgreSQL remains the deployment database.

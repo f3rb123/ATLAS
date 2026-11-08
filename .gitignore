@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.env
+.env.production
+.runtime/
+*.egg-info/
+apps/web/node_modules/
+apps/web/.next/
