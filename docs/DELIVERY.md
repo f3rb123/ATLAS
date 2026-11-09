@@ -1,31 +1,23 @@
-# ATLAS V3 handoff
+# ATLAS V3 local deployment delivery
 
-The implemented workbench is a controlled-deployment candidate. The real public corpus, semantic index, local integration tests and deployment assets are present. No provider credential was supplied to the application, and no real target was scanned.
+This release package is for manual installation by the owner. Nothing has been deployed to a VPS or published to GitHub. The source ZIP and offline Git bundle contain no application database, corpus database volume, user/session data, provider credentials, master key, private certificate, SSH key, bootstrap token, recovery code or campaign finding.
 
-Start with the [README](../README.md), [deployment guide](DEPLOYMENT.md), [API/CLI](API.md), [security review](SECURITY_REVIEW.md), [corpus report](CORPUS_INGESTION_REPORT.md), [requirement ledger](IMPLEMENTATION_GAP_ANALYSIS.md) and [validation report](test-results/VALIDATION.md).
+## Package contents and provenance
 
-## Publication and deployment status
+The deployment ZIP is a source-only archive of the final committed tree: backend, frontend, migrations, Compose/Docker configuration, gateway/provider integrations, owner authentication and encrypted secret handling, orchestration/verifier/sandbox, ingestion/conversion tools, tests, deployment scripts and documentation. `.env.example` and `.env.production.example` are placeholders. The separate Git bundle preserves all available refs/history and the existing `v3.0.0-rc1-local` tag. The working release package is based on the verified `12e4bbc` checkpoint plus the narrow kill-switch shadowing fix and regression test; the tag itself is preserved at its existing commit and was not moved.
 
-The appropriate GitHub repository is the existing private repository owned by f3rb123. Source publication is paused at the user's request while VPS access is attempted first. No remote branch or release was pushed from this checkpoint.
+The ZIP, bundle, `SHA256SUMS` and `RELEASE-MANIFEST.md` are generated under ignored `.runtime/delivery/` and linked as downloadable artifacts in the handoff. SHA256SUMS covers the ZIP and bundle. The manifest includes their hashes, exact commit, retained tag, validation evidence, package inventory, corpus counts and limitations.
 
-The operator deployment guide and VPN-only Compose/Caddy configuration are ready. The requested VPS did not accept TCP SSH on port 22, so no credentials were sent and no remote service, database or file was changed. The user must restore an authenticated SSH path and verify the host key before remote setup can continue.
+## Corpus gate
 
-The current corpus transfer archive is a sanitized candidate, not a release asset. It retains 21,012 canonical record identities and 34,229 vectors; 220 text fields were sanitized, 130 affected vectors were recomputed with the pinned model, and 150 raw artifact files were withheld in the delivery copy. The acquisition database and original source artifacts on the build host remain unchanged. A fresh Gitleaks scan of the expanded candidate still reports 2,151 findings. The canonical-key field and pinned model revision explain many detector hits, but residual content findings have not yet been cleared. Do not upload or transfer this candidate until the remaining findings are classified and the full intended-public payload passes review.
+The validated local corpus inventory is 21,012 unique public record identities and 34,229 finite MiniLM 384-dimensional vectors. The sanitized candidate inventory is 21,012 records, 34,229 vectors, 994 governance documents and 21,636 archive members; 220 text fields were sanitized, 130 vectors re-embedded, and 150 raw artifacts withheld. No application database or Docker volume is distributable.
 
-Local candidate path: .runtime/delivery/atlas-v3-public-corpus-sanitized.tar.gz
+The expanded Gitleaks scan produced 2,151 detections. The safe finding-by-finding classification is recorded in [corpus-secret-audit.json](test-results/corpus-secret-audit.json), without reproducing any matched values. It classifies 2,125 as detector false positives: 2,067 canonical-key property names, two schema version values, 53 pinned model-revision occurrences, and three verified public model SHA256 values. **Twenty-six content candidates remain unresolved:** 13 in record content/summary fields, nine in vector text fields and four in three raw artifacts. They include generic credential-pattern, Sourcegraph-token-pattern and private-key-pattern detections. Because these values have not been resolved as harmless, the public-corpus tarball is deliberately omitted. Do not transfer the ignored local candidate archive. The source ingestion and validation pipeline remains included.
 
-## First owner and models
+## Install
 
-The disposable build owner was removed from the main development database while preserving public corpus and immutable audit. The local PostgreSQL stack is left without an owner account. Generate a new single-use bootstrap token on the intended host, redeem it locally, enroll passkeys, TOTP and offline recovery codes, then configure and probe an owner-supplied model connection. Production research remains blocked until enrollment completes. There is no default username/password or public signup.
+Follow [DEPLOYMENT.md](DEPLOYMENT.md) for a clean Ubuntu installation. In brief: verify the downloaded SHA256 values on Windows, transfer the ZIP and bundle with WinSCP over SFTP through the private VPN, verify checksums again on Ubuntu, extract into a new directory, configure `.env.production`, create the host-only master key with `scripts/prepare-secrets.py`, start the VPN-bound Compose stack, enroll the first owner interactively, configure two passkeys/TOTP/recovery, then register a provider through Settings. Do not enable public ingress before those checks pass. Corpus import is unavailable from this delivery until the candidate scan blocker is cleared and a new archive is separately reviewed.
 
-For the development UI on localhost:3000, use ATLAS_EXTERNAL_URL=http://localhost:3000 for API/workers, the same database/data directory and the existing separately stored master key. Do not overwrite that key when restarting. Production uses the scoped Docker-secret volumes and VPN/TLS setup described in DEPLOYMENT.md. Bootstrap and recovery material is displayed only interactively; do not paste it into logs or prompts.
+## Validation and limitations
 
-## Corpus transfer procedure
-
-After the corpus scan blocker is resolved and a reviewed private release asset is published, verify its published SHA256 before extraction. Follow DEPLOYMENT.md to import the JSONL records, vectors, raw artifacts and model cache into an initialized target stack. The import is additive and idempotent; do not reset a database or remove volumes to resolve import errors. The packager checks the source inventory, pinned model checksums, archive paths and member types, then records delivery redactions and withheld raw artifacts in CORPUS_REDACTIONS.json.
-
-The public governance JSONL is historical acquisition metadata; it is not permission to overwrite authentication/settings. An encrypted full database/artifact backup is a different operator-controlled recovery product and requires a separately protected backup password and KEK.
-
-## External inputs and disabled features
-
-The exact historical 64/67-resource manifest, rights for unknown full-text writeups, paid-provider live-service behavior, the owner's real-domain certificate and VPS/SSH/firewall posture need owner inputs/authorization. Advanced mobile/cloud/fuzzing/state-changing adapters and unvalidated skills/capabilities remain disabled. The five-query retrieval and local invariant/model fixtures do not establish universal vulnerability discovery or production throughput.
+The current backend regression suite is rerun as part of this packaging task; see [test-results/VALIDATION.md](test-results/VALIDATION.md) and `RELEASE-MANIFEST.md` for final results. Existing evidence covers the real local database/corpus, browser/WebAuthn, sandbox, Docker TLS, backup/restore and provider-contract workflows. A full-project Ruff run has pre-existing style findings; Bandit has reviewed medium pattern findings. No external target, GitHub publication or owner VPS operation occurred. Provider credentials, host master key, TLS enrollment, first-owner bootstrap and VPN/firewall configuration must be supplied or performed by the operator on the VPS.

@@ -4,7 +4,7 @@ Build date:2026-11-09 UTC. Environment: managed Linux cloud workspace; Python3.1
 
 | Check | Exact command / evidence | Result |
 |---|---|---|
-| Complete backend | `UV_CACHE_DIR=/workspace/.cache/uv uv run pytest -q --junitxml=docs/test-results/pytest.xml` in outer execution |86passed,1dependency deprecation warning,23.26s |
+| Complete backend | `UV_CACHE_DIR=/workspace/.cache/uv uv run pytest -q --junitxml=/tmp/atlas-pytest-final.xml` |88passed,1Starlette/httpx deprecation warning,25.43s; includes queued-run kill-switch regression |
 | Web build | `npm run build --prefix apps/web` | Next.js production compilation and TypeScript passed |
 | Real browser | `npm run test --prefix apps/web` against isolated e2e.db, local test provider and separate real workers |1expanded test passed31.4s; real CDP WebAuthn, empty/error states, provider/model/probe/aliases, repository, pause/refresh-resume/approval, durable completion/report, real public-memory search and API-backed CLI |
 | Accessibility | axe-core via Playwright on welcome and research-memory screens |0violations in both checked screens; see accessibility-*.json |
@@ -18,10 +18,12 @@ Build date:2026-11-09 UTC. Environment: managed Linux cloud workspace; Python3.1
 | Worker restart | Local PostgreSQL fixture run stopped/restarted at RESEARCH_SLICE_SELECTION |15unique completed stages,15verified journal events, no repeated model-stage calls; before/after JSON evidence |
 | Backup/restore | `scripts/backup.sh .runtime/backups/final-semantic` then `scripts/restore-check.sh .runtime/backups/final-semantic` | Authenticated encrypted archives and isolated PostgreSQL restore passed;0004migration/21012records/34229chunks |
 | Dependency audits | `pip-audit --disable-pip --no-deps -r requirements.lock`; `npm audit --omit=dev` |0known runtime/production dependency vulnerabilities at scan time |
+| Python lint | `ruff check --select F821,F822,F823`; full `ruff check --output-format concise` |Undefined-name checks pass. Full lint has 412 existing findings (143 auto-fixable); not represented as clean |
+| Source/configuration | `python -m compileall -q atlas scripts`; `bash -n scripts/*.sh`; Docker Compose config for production/private, staging, test and cloud using `.env.production.example` |All syntax and Compose checks pass; the placeholder VPN bind is used for config validation |
 | SAST | `bandit -r atlas -ll` |0high findings;4reviewed medium pattern matches for guarded official HTTPS transports/private sandbox tmpfs paths; disposition in SECURITY_REVIEW.md |
 | Secret scan | Checksum-verified Gitleaks8.24.3 over a git archive of tracked files and the complete Git history |Tracked source:7 public model/content hashes reviewed and verified; complete history:0 findings. Corpus candidate scan remains unresolved and unpublished |
-| Source integrity | Container installed Python source SHA256 compared against checkout | Machine report records exact module count and mismatches; final image must match before handoff |
-| Corpus delivery | Reproducible allowlisted packager; archive path, member type, model SHA256 and credential-path checks |Sanitized candidate has21,012records/34,229vectors/994governance documents;21,636members,242,327,786bytes;130 vectors re-embedded;150 raw artifacts withheld;0 symlinks. Expanded Gitleaks scan still reports2151 findings, so no corpus asset was published |
+| Source integrity | Earlier local Docker image/module hash report | Applies to the prior committed image only. The final package contains a narrow workflow fix; this source-only deployment package rebuilds on the target host |
+| Corpus delivery | Reproducible allowlisted packager; archive path, member type, model SHA256 and credential-path checks |Sanitized candidate has21,012records/34,229vectors/994governance documents;21,636members,242,327,786bytes;130 vectors re-embedded;150 raw artifacts withheld;0 symlinks. Of 2,151 Gitleaks findings, 2,125 are classified false positives and 26 remain unresolved content candidates; no corpus asset is delivered |
 | VPS reachability | SSH connection to the user-specified host on port22; authentication disabled for this probe |Connection refused before authentication; no password was sent and no VPS changes were made |
 
 The controlled HTTP/DNS harness has no uncontrolled public target. Mock providers are test-only; the product requires real configured providers for research. No real VPS/domain/ACME or owner-paid service is represented as tested. The complete browser test uses an isolated public-corpus snapshot; scale assertions are independently verified against the current main SQLite and PostgreSQL corpora. CI uses a separately labelled single-record synthetic training fixture and does not claim20K acquisition.

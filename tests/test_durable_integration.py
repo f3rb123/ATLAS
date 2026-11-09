@@ -106,6 +106,16 @@ def test_pause_cancel_deadline_and_model_json(db, monkeypatch):
     assert run.value()["status"] == "blocked"
 
 
+def test_kill_switch_cancels_queued_run_before_stage_execution(db):
+    run = prepare(db)
+    document(db, "kill_switch", "system", {"enabled": True}, "kill-switch")
+    db.commit()
+
+    execute_stage(db, run, "research")
+
+    assert run.value()["status"] == "cancelled"
+
+
 def test_persisted_hypothesis_id_reaches_next_research_context(db, monkeypatch):
     run = prepare(db)
     v = run.value()

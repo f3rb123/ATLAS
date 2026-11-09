@@ -452,7 +452,7 @@ def execute_stage(db, run, worker_role):
                 {"template": "python_unittest", "test_path": e["test_path"]},
                 worker_role,
             )
-            control = broker(
+            control_result = broker(
                 db,
                 run,
                 repo,
@@ -460,7 +460,7 @@ def execute_stage(db, run, worker_role):
                 {"template": "python_unittest", "test_path": e["control_test_path"]},
                 worker_role,
             )
-            result = {"proof": proof, "control": control, "experiment": e}
+            result = {"proof": proof, "control": control_result, "experiment": e}
         else:
             result = {"no_experiment": True}
     elif s == State.EVIDENCE_CAPTURE:
