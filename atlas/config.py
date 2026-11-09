@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     verify_token_file: str | None = None
     api_token_file: str | None = None
     passkey_only_recovery: bool = False
+    require_mfa: bool = False
+    worker_concurrency: int = Field(default=8, ge=1, le=16)
+    gateway_timeout_seconds: int = Field(default=45, ge=30, le=180)
+    max_provider_concurrency: int = Field(default=8, ge=1, le=32)
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_cache_dir: str | None = None
     monthly_budget: float = 100

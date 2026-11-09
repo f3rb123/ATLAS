@@ -120,6 +120,7 @@ def identity(request: Request, db=Depends(db_dep)):
                 "corpus": "corpus",
                 "registries": "knowledge",
                 "knowledge": "knowledge",
+                "knowledge-feedback": "knowledge",
                 "findings": "finding",
                 "reports": "report",
                 "repositories": "repo",
@@ -143,11 +144,14 @@ def identity(request: Request, db=Depends(db_dep)):
 
 def enrolled(request: Request, who=Depends(identity), db=Depends(db_dep)):
     u, s = who
+    passkey = db.query(Document).filter_by(kind="passkey", owner=u.id).first()
+    if not settings().require_mfa and not u.mfa and not passkey:
+        return who
     if not s.mfa:
         raise HTTPException(403, "Complete MFA authentication/enrollment")
-    if not db.query(Document).filter_by(kind="passkey", owner=u.id).first():
+    if settings().require_mfa and not passkey:
         raise HTTPException(403, "Passkey enrollment required")
-    if settings().production and not settings().passkey_only_recovery:
+    if settings().require_mfa and settings().production and not settings().passkey_only_recovery:
         if (
             not u.totp
             or not db.query(Document).filter_by(kind="recovery", owner=u.id).first()
@@ -165,7 +169,7 @@ def admin(who=Depends(enrolled)):
 
 
 def stepup(who=Depends(admin)):
-    if who[1].stepup < time.time() - 300:
+    if (settings().require_mfa or who[1].mfa) and who[1].stepup < time.time() - 300:
         raise HTTPException(403, "Recent WebAuthn step-up required")
     return who
 
@@ -313,9 +317,11 @@ def ready(db=Depends(db_dep)):
         db.execute(text("SELECT 1"))
         if settings().production:
             u = db.query(User).filter_by(role="owner_admin").first()
+            if not u:
+                raise HTTPException(503, "Owner setup required")
             if (
-                not u
-                or not db.query(Document).filter_by(kind="passkey", owner=u.id).first()
+                settings().require_mfa and (
+                not db.query(Document).filter_by(kind="passkey", owner=u.id).first()
                 or (
                     not settings().passkey_only_recovery
                     and (
@@ -324,7 +330,7 @@ def ready(db=Depends(db_dep)):
                         .filter_by(kind="recovery", owner=u.id)
                         .first()
                     )
-                )
+                ))
             ):
                 raise HTTPException(503, "Owner security enrollment required")
         return {"status": "ready"}
@@ -392,11 +398,15 @@ def me(who=Depends(identity), db=Depends(db_dep)):
     s = db.get(Session, s.id)
     s.csrf_hash = digest(csrf)
     db.commit()
+    passkeys = db.query(Document).filter_by(kind="passkey", owner=u.id).count()
+    required = settings().require_mfa or bool(u.mfa) or bool(passkeys)
     return {
         "id": u.id,
         "email": u.email,
         "role": u.role,
         "mfa": bool(s.mfa),
+        "mfa_required": required,
+        "operator_access": not required or bool(s.mfa),
         "stepup_recent": s.stepup > time.time() - 300,
         "passkey_count": db.query(Document)
         .filter_by(kind="passkey", owner=u.id)
@@ -412,6 +422,20 @@ def logout(response: Response, who=Depends(identity), db=Depends(db_dep)):
     db.commit()
     response.delete_cookie(cookie_name(), path="/")
     return {"status": "logged_out"}
+
+
+class PasswordChange(Strict):
+    current_password: str = Field(min_length=1, max_length=1024, repr=False)
+    new_password: str = Field(min_length=15, max_length=1024, repr=False)
+
+
+@app.post("/api/v1/auth/password")
+def password_change(body: PasswordChange, response: Response, who=Depends(enrolled), db=Depends(db_dep)):
+    auth.throttle(db, "password-change:" + who[0].id, 8)
+    result = auth.change_password(db, db.get(User, who[0].id), body.current_password,
+                                  body.new_password, mfa=bool(who[1].mfa))
+    db.commit()
+    return set_session(response, *result)
 
 
 @app.post("/api/v1/auth/webauthn/{kind}/options")
@@ -710,6 +734,10 @@ async def repository_upload(
 
 
 class RunInput(Strict):
+    execution_mode: Literal["swarm", "legacy"] = "swarm"
+    agent_count: int = Field(default=8, ge=1, le=16)
+    instructions: str = Field(default="", max_length=4000)
+    model_mode: Literal["single", "capability"] = "single"
     repository_id: str | None = None
     budget_limit: float = Field(default=1, gt=0, le=100)
     max_seconds: int = Field(default=1800, ge=30, le=86400)
@@ -726,6 +754,9 @@ def run_start(
     id: str, body: RunInput, request: Request, who=Depends(enrolled), db=Depends(db_dep)
 ):
     c = own(db, id, "campaign", who[0].id)
+    from .skills import install_references
+
+    install_references(db, who[0].id)
     if c.value().get("status") == "archived":
         raise Denied("Campaign is archived")
     p = own(db, c.value()["policy_id"], "policy", who[0].id)
@@ -762,6 +793,9 @@ def run_start(
             "provider_version": provider.version,
             "model_version": model.version,
         }
+    if body.model_mode == "single" and "reasoning" in models:
+        for alias in ("coding", "fast", "verifier"):
+            models[alias] = {**models["reasoning"], "alias": alias}
     if any(alias not in models for alias in body.specialist_roles):
         raise Denied(
             "Configure and test every authorized specialist alias before starting"
@@ -771,13 +805,13 @@ def run_start(
         "campaign_id": id,
         "policy_id": p.id,
         "policy_hash": p.value()["hash"],
-        "state": "CREATED",
+        "state": "SWARM_RUNNING" if body.execution_mode == "swarm" else "CREATED",
         "status": "queued",
         "budget_used": 0,
         "models": models,
         "deadline": time.time() + body.max_seconds,
         "started_at": now(),
-        "workflow_version": "1.0",
+        "workflow_version": "2.0-swarm" if body.execution_mode == "swarm" else "1.0",
     }
     pinned_skills = [
         d
@@ -794,6 +828,10 @@ def run_start(
         for d in pinned_skills
     ]
     d = document(db, "run", who[0].id, v, key if key else None)
+    if body.execution_mode == "swarm":
+        from .swarm import initialize
+
+        initialize(db, d)
     for skill in v["skills"]:
         append(
             db,
@@ -1291,6 +1329,8 @@ KINDS = {
     "providers": "provider",
     "model-configs": "alias",
     "skills": "skill",
+    "skill-references": "skill_reference",
+    "knowledge-feedback": "knowledge_feedback",
     "benchmarks": "benchmark",
     "approvals": "approval",
     "usage": "usage",
@@ -1338,6 +1378,27 @@ def get_object(collection: str, id: str, who=Depends(enrolled), db=Depends(db_de
 # Explicit registry routes are inserted before the generic collection routes below.
 class SkillImport(Strict):
     package: str = Field(max_length=200000)
+
+
+class FeedbackReview(Strict):
+    decision: Literal["accepted", "rejected"]
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+@app.patch("/api/v1/knowledge-feedback/{id}/review")
+def review_feedback(id: str, body: FeedbackReview, who=Depends(admin), db=Depends(db_dep)):
+    from .vault import redact
+
+    d = own(db, id, "knowledge_feedback", who[0].id, True)
+    value = d.value()
+    if value["status"] != "pending_review":
+        raise Denied("Feedback was already reviewed")
+    value.update(status=body.decision, reviewed_by=who[0].id, reviewed_at=now(), review_reason=redact(body.reason))
+    d.data = canonical(value)
+    audit(db, who[0].id, "knowledge_feedback_reviewed", {"id": id, "decision": body.decision})
+    db.commit()
+    # Reviewing usefulness is not proof of a vulnerability or a corpus rewrite.
+    return {**expose(d), "trusted_source_modified": False}
 
 
 @app.post("/api/v1/skills/import")
@@ -1528,6 +1589,31 @@ def run_objects(
         for e in db.query(Journal).filter_by(stream=id).order_by(Journal.sequence)
         if json.loads(e.payload)["type"] == "policy_decision"
     ]
+
+
+@app.get("/api/v1/runs/{id}/swarm")
+def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
+    from .db import SwarmTask
+
+    run = own(db, id, "run", who[0].id)
+    task_rows = db.query(SwarmTask).filter_by(run_id=id, owner=who[0].id).order_by(SwarmTask.created_at).all()
+    events = [json.loads(e.payload) for e in db.query(Journal).filter_by(stream=id).order_by(Journal.sequence.desc()).limit(300)]
+    usage = [u.value() for u in db.query(Document).filter_by(kind="usage", owner=who[0].id) if u.value().get("run_id") == id]
+    return {
+        "run_id": id, "execution_mode": run.value().get("execution_mode", "legacy"),
+        "agent_count": run.value().get("agent_count", 1),
+        "tasks": [{"id": t.id, "role": t.role, "worker_kind": t.worker_kind,
+                   "status": t.status, "attempts": t.attempts, "priority": t.priority,
+                   "reason": json.loads(t.payload).get("reason"),
+                   "parent_event": json.loads(t.payload).get("event_id"),
+                   "result": {k: v for k, v in json.loads(t.result).items() if k in ("summary", "status", "reason", "error_type", "finding_id")},
+                   "updated_at": t.updated_at} for t in task_rows],
+        "events": [e for e in reversed(events) if e["type"].startswith(("swarm_", "knowledge_", "skill_"))],
+        "usage": {"input_tokens": sum(u["input_tokens"] for u in usage),
+                  "output_tokens": sum(u["output_tokens"] for u in usage),
+                  "cost": sum(u["cost"] for u in usage), "requests": len(usage),
+                  "includes_estimates": any(u.get("estimated") for u in usage)},
+    }
 
 
 @app.post("/api/v1/skills/starter")
@@ -1817,7 +1903,7 @@ class CampaignEdit(Strict):
 def edit_campaign(
     id: str, body: CampaignEdit, who=Depends(enrolled), db=Depends(db_dep)
 ):
-    if body.budget_limit is not None and who[1].stepup < time.time() - 300:
+    if body.budget_limit is not None and (settings().require_mfa or who[1].mfa) and who[1].stepup < time.time() - 300:
         raise Denied("Recent passkey step-up required to change campaign budget")
     d = own(db, id, "campaign", who[0].id, True)
     v = d.value()

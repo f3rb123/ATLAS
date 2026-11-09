@@ -108,6 +108,14 @@ class ProviderError(ValueError):
     pass
 
 
+class RunInterrupted(ProviderError):
+    """Dispatch stopped or a known, accounted response arrived during pause/cancel."""
+
+
+class CapacityWait(ProviderError):
+    """Safe to retry: no model request or billable dispatch has occurred."""
+
+
 def validate_headers(h):
     import re
 
@@ -694,7 +702,7 @@ class Adapter:
         return {"status": "reachable", "models": self.list_models()}
 
 
-def reserve(db, owner, run_id, ceiling, role=None):
+def reserve(db, owner, run_id, ceiling, role=None, provider_id=None):
     # Serialize initial creation as well as existing-row reservations.
     from .db import transaction_lock
 
@@ -709,10 +717,14 @@ def reserve(db, owner, run_id, ceiling, role=None):
             "budget-global",
         )
     v = d.value()
+    if provider_id and sum(r.get("provider_id") == provider_id for r in v["reserved"].values()) >= settings().max_provider_concurrency:
+        raise CapacityWait("Provider concurrency reserved by in-flight requests")
     month = now()[:7]
     spent = v["spent"].get(month, 0)
     pending = sum(x["amount"] for x in v["reserved"].values())
     if spent + pending + ceiling > v["cap"]:
+        if pending and spent + ceiling <= v["cap"]:
+            raise CapacityWait("Monthly budget capacity reserved by in-flight requests")
         raise ProviderError("Monthly budget exhausted")
     run = db.get(Document, run_id)
     if run and run.kind == "run":
@@ -721,6 +733,8 @@ def reserve(db, owner, run_id, ceiling, role=None):
             x["amount"] for x in v["reserved"].values() if x["run_id"] == run_id
         )
         if rv.get("budget_used", 0) + pending_run + ceiling > rv["budget_limit"]:
+            if pending_run and rv.get("budget_used", 0) + ceiling <= rv["budget_limit"]:
+                raise CapacityWait("Run budget capacity reserved by in-flight requests")
             raise ProviderError("Run budget exhausted")
         if role:
             pending_role = sum(
@@ -731,6 +745,8 @@ def reserve(db, owner, run_id, ceiling, role=None):
             if rv.get("role_spent", {}).get(role, 0) + pending_role + ceiling > rv.get(
                 "role_budgets", {}
             ).get(role, rv["budget_limit"]):
+                if pending_role and rv.get("role_spent", {}).get(role, 0) + ceiling <= rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
+                    raise CapacityWait("Role budget capacity reserved by in-flight requests")
                 raise ProviderError("Role budget exhausted")
         campaign = db.get(Document, rv.get("campaign_id", ""))
         if campaign:
@@ -752,6 +768,8 @@ def reserve(db, owner, run_id, ceiling, role=None):
             if used + pending_campaign + ceiling > campaign.value().get(
                 "budget_limit", 10
             ):
+                if pending_campaign and used + ceiling <= campaign.value().get("budget_limit", 10):
+                    raise CapacityWait("Campaign budget capacity reserved by in-flight requests")
                 raise ProviderError("Campaign budget exhausted")
     id = uid()
     v["reserved"][id] = {
@@ -760,6 +778,8 @@ def reserve(db, owner, run_id, ceiling, role=None):
         "month": month,
         "run_id": run_id,
         "role": role,
+        "provider_id": provider_id,
+        "task_id": getattr(run, "_swarm_claim", (None, None))[0] if run else None,
     }
     d.data = canonical(v)
     db.commit()
@@ -767,6 +787,9 @@ def reserve(db, owner, run_id, ceiling, role=None):
 
 
 def settle(db, reservation, cost):
+    from .db import transaction_lock
+
+    transaction_lock(db, "budget-global")
     d = db.query(Document).filter_by(id="budget-global").with_for_update().one()
     v = d.value()
     r = v["reserved"].pop(reservation)
@@ -798,7 +821,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     role_spent = rv.get("role_spent", {}).get(role, 0)
     if role_spent + estimate > rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
         raise ProviderError("Role budget exhausted")
-    reservation = reserve(db, run.owner, run.id, estimate, role)
+    reservation = reserve(db, run.owner, run.id, estimate, role, provider_id=provider.id)
     campaign = db.get(Document, rv["campaign_id"]) if rv.get("campaign_id") else None
     if campaign:
         campaign_id = rv["campaign_id"]
@@ -810,13 +833,20 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             settle(db, reservation, 0)
             db.commit()
             raise ProviderError("Campaign budget exhausted")
-    db.refresh(run)
+    from .db import transaction_lock
+
+    transaction_lock(db, "budget-global")
+    db.refresh(run, with_for_update=True)
     rv = run.value()
     kill = db.get(Document, "kill-switch")
     if rv["status"] not in ("queued", "running") or (kill and kill.value()["enabled"]):
         settle(db, reservation, 0)
         db.commit()
-        raise ProviderError("Run was stopped before dispatch")
+        raise RunInterrupted("Run was stopped before dispatch")
+    if rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
+        settle(db, reservation, 0)
+        db.commit()
+        raise ProviderError("Model call limit exhausted")
     rv["model_calls"] = rv.get("model_calls", 0) + 1
     run.data = canonical(rv)
     db.commit()
@@ -837,6 +867,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
         run.owner,
         {
             "run_id": run.id,
+            "task_id": getattr(run, "_swarm_claim", (None, None))[0],
             "provider_id": provider.id,
             "model": req.model,
             "campaign_id": rv.get("campaign_id"),
@@ -848,14 +879,14 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             "estimated": response.usage_estimated,
         },
     )
-    db.refresh(run)
+    db.refresh(run, with_for_update=True)
     rv = run.value()
     rv["budget_used"] = rv.get("budget_used", 0) + cost
     rv.setdefault("role_spent", {})[role] = rv.get("role_spent", {}).get(role, 0) + cost
     run.data = canonical(rv)
     db.commit()
     if rv["status"] not in ("running", "queued"):
-        raise ProviderError("Run was paused or cancelled during provider request")
+        raise RunInterrupted("Run was paused or cancelled during provider request")
     return response
 
 

@@ -8,6 +8,7 @@ from .policy import Strict, Denied, Scope, request
 from .db import document, append, canonical, digest, uid, now
 from .config import settings
 from .vault import redact
+from .knowledge import CAPABILITIES as KNOWLEDGE_CAPABILITIES, execute as knowledge_execute
 
 EXCLUDED = {
     ".git",
@@ -404,6 +405,7 @@ TOOLS = {
     "run_approved_test_command": ("gated", ExecutionInput),
     "run_local_reproduction": ("gated", ExecutionInput),
 }
+TOOLS.update({name: ("read_only", schema) for name, schema in KNOWLEDGE_CAPABILITIES.items()})
 
 
 def broker(db, run, repo, name, payload, actor):
@@ -416,6 +418,9 @@ def broker(db, run, repo, name, payload, actor):
 
         if name not in TOOLS:
             raise Denied("Tool not registered")
+        from .swarm import check_fence
+
+        check_fence(db, run)
         if repo is not None and v.get("repository_id"):
             pinned = db.get(type(run), v["repository_id"])
             if (
@@ -440,7 +445,9 @@ def broker(db, run, repo, name, payload, actor):
         args = model.model_validate(payload) if model else None
         if risk == "gated" and not v.get("offline_execution_approved"):
             raise Denied("Explicit offline execution approval required")
-        if name in KNOWLEDGE_CONTROLS:
+        if name in KNOWLEDGE_CAPABILITIES:
+            result = knowledge_execute(db, run, name, args, actor)
+        elif name in KNOWLEDGE_CONTROLS:
             result = knowledge_control(db, run, name, args, actor)
         elif name in ("http_request", "fetch_allowed_url", "inspect_redirect_chain"):
             if not settings().relay_url or not settings().service_token_file:
@@ -499,6 +506,7 @@ def broker(db, run, repo, name, payload, actor):
                     0.1, min(30, v.get("deadline", time.time() + 30) - time.time())
                 ),
             )
+        check_fence(db, run)
         v = run.value()
         v["tool_calls"] = v.get("tool_calls", 0) + 1
         run.data = canonical(v)
@@ -509,6 +517,7 @@ def broker(db, run, repo, name, payload, actor):
             run.owner,
             {
                 "run_id": run.id,
+                "task_id": getattr(run, "_swarm_claim", (None, None))[0],
                 "campaign_id": v["campaign_id"],
                 "tool_name": name,
                 "tool_version": "1.0",
@@ -540,6 +549,7 @@ def broker(db, run, repo, name, payload, actor):
             "policy_decision",
             {
                 "tool": name,
+                "task_id": getattr(run, "_swarm_claim", (None, None))[0],
                 "decision": decision,
                 "reason": reason,
                 "input_hash": digest(canonical(payload)),

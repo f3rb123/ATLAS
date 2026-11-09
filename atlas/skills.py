@@ -170,6 +170,39 @@ STARTER = Skill(
 STARTER_HASH = digest(canonical(STARTER.model_dump()))
 
 
+def install_references(db, owner, root=None):
+    """Install reviewed bundled material as data, never as enabled procedures."""
+    root = Path(root or Path(__file__).parent / "data" / "skill_references").resolve()
+    catalog = json.loads((root / "catalog.json").read_text())
+    installed = []
+    for item in catalog:
+        path = (root / item["file"]).resolve()
+        license_path = (root / item["license_file"]).resolve()
+        if not path.is_relative_to(root) or not license_path.is_relative_to(root):
+            raise Denied("Reference path escapes registry")
+        content = path.read_bytes()
+        if len(content) > 64000 or digest(content) != item["sha256"] or not license_path.is_file():
+            raise Denied("Reference integrity/license check failed")
+        id = digest("skill-reference:" + owner + ":" + item["skill_id"] + ":" + item["version"])[:36]
+        existing = db.get(Document, id)
+        if existing:
+            if (existing.kind != "skill_reference" or existing.owner != owner
+                or existing.value()["content_hash"] != item["sha256"]
+                or digest(existing.value()["content"]) != item["sha256"]):
+                raise Denied("Reference versions are immutable")
+            installed.append(id)
+            continue
+        d = document(db, "skill_reference", owner, {
+            **{k: v for k, v in item.items() if k not in ("file", "sha256")},
+            "content": content.decode("utf-8"), "content_hash": item["sha256"],
+            "status": "source_reviewed_reference_only", "enabled": False,
+            "provenance": "community_import", "license_notice": license_path.read_text(),
+        }, id)
+        installed.append(d.id)
+        append(db, owner, "registry", "skill_reference_installed", {"id": d.id, "hash": item["sha256"], "source": item["source"]})
+    return installed
+
+
 def benchmark_skill(db, d, actor):
     v = d.value()
     if v["status"] != "reviewed":

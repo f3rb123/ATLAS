@@ -7,6 +7,15 @@ mkdir -p "$UV_CACHE_DIR" "$XDG_CACHE_HOME"
 uv sync --frozen
 npm ci --prefix apps/web --cache /workspace/.cache/npm
 command -v bwrap >/dev/null || { echo 'Install bubblewrap before offline execution; do not weaken sandbox policy.' >&2; exit 1; }
-uv run atlas host embeddings-prepare
-# Secret creation, bootstrap and application migrations are explicit operator actions.
+npm run build --prefix apps/web
+uv run python - <<'PY'
+from atlas.embeddings import verify_model
+try:
+    verify_model()
+    print('Pinned semantic assets verified.')
+except ValueError:
+    print('Semantic assets are not ready. After approved Hugging Face access, run: uv run atlas host embeddings-prepare')
+    print('The original corpus is not included; no data was recreated or re-embedded.')
+PY
+# Real semantic readiness is a separate acceptance gate, never a hash-mode claim.
 # Preserve any existing database, corpus, master key and local Git checkpoints.

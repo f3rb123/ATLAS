@@ -1,5 +1,12 @@
 # ATLAS V3
 
+Current rebuild: [audit](ATLAS_V3_FULL_AUDIT.md), [research](ATLAS_V3_REFERENCE_RESEARCH.md), [implementation ledger](ATLAS_V3_IMPLEMENTATION_LEDGER.md), [handoff](ATLAS_HANDOFF.md).
+The supplied release has been restored with a shared knowledge harness, SQL-backed concurrent specialist tasks and live persisted visibility. Default new runs use eight roles; legacy runs remain supported. Password-only private operator access is the default; enrolled factors remain enforced, and `ATLAS_REQUIRE_MFA=true` enables the stricter enrollment policy.
+
+**The historical corpus and embedding assets were not delivered.** Counts below describe the previous release environment, not this checkout. Do not treat local synthetic/hash-mode tests as original-corpus or real-model validation. Full rebuild/deployment remains in progress.
+
+Cloud development: run `bash scripts/cloud-install.sh`, then `bash scripts/cloud-start.sh`. The launcher creates only isolated `.runtime/cloud-dev` state, preserves existing keys and applies additive migrations. In an interactive terminal, source `scripts/cloud-dev-env.sh` before `uv run atlas host bootstrap`; never put the token or provider secrets in chat. Semantic setup remains a separate required gate once download access is available.
+
 Private, evidence-driven vulnerability research workbench. Next.js Web UI and Python CLI share an authenticated FastAPI backend, PostgreSQL/pgvector state, durable workers, deterministic scope relay, encrypted provider gateway and independent verifier.
 
 This repository was built from an empty checkout. Read [the specification](docs/SPECIFICATION.md), [build log](docs/BUILD_LOG.md), [requirement ledger](docs/IMPLEMENTATION_GAP_ANALYSIS.md) and [current resume point](docs/NEXT_ACTION.md) for evidence and remaining work. Historical tests and historical seed-library counts are not claimed as delivered artifacts.

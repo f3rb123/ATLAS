@@ -5,7 +5,11 @@ from atlas.db import *
 from atlas.auth import *
 
 
-def test_bootstrap_password_session_and_csrf(db):
+def test_bootstrap_password_session_and_csrf(db, monkeypatch):
+    from atlas.config import settings
+
+    monkeypatch.setenv("ATLAS_REQUIRE_MFA", "true")
+    settings.cache_clear()
     token = bootstrap_token(db)
     with TestClient(app) as c:
         assert c.get("/api/v1/campaigns").status_code == 401
@@ -160,6 +164,7 @@ def test_production_cookie_and_enrollment_gate(db, monkeypatch):
     from atlas.config import settings
 
     monkeypatch.setenv("ATLAS_ENV", "production")
+    monkeypatch.setenv("ATLAS_REQUIRE_MFA", "true")
     monkeypatch.setenv("ATLAS_EXTERNAL_URL", "https://atlas.example.invalid")
     settings.cache_clear()
     token = bootstrap_token(db)

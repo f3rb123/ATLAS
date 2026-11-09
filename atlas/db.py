@@ -98,6 +98,27 @@ class Knowledge(Base):
     record: Mapped[str] = mapped_column(Text)
 
 
+class SwarmTask(Base):
+    __tablename__ = "swarm_tasks"
+    __table_args__ = (UniqueConstraint("run_id", "dedupe_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    owner: Mapped[str] = mapped_column(String(36), index=True)
+    role: Mapped[str] = mapped_column(String(60))
+    worker_kind: Mapped[str] = mapped_column(String(20), index=True)
+    dedupe_key: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    payload: Mapped[str] = mapped_column(Text)
+    result: Mapped[str] = mapped_column(Text, default="{}")
+    priority: Mapped[float] = mapped_column(Float, default=1)
+    available_at: Mapped[float] = mapped_column(Float, default=0)
+    lease_until: Mapped[float] = mapped_column(Float, default=0)
+    lease_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[float] = mapped_column(Float)
+    updated_at: Mapped[float] = mapped_column(Float)
+
+
 class Alias(Base):
     __tablename__ = "knowledge_aliases"
     alias: Mapped[str] = mapped_column(String(255), primary_key=True)

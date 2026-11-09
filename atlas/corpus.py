@@ -527,6 +527,8 @@ def search(db, query, source=None, limit=5, owner="public", filters=None):
     if source:
         q = q.filter(Knowledge.source == source)
     filters = filters or {}
+    if filters.get("report_only"):
+        q = q.filter(Knowledge.category == "full_text_research_reports")
     q = q.filter(~Knowledge.record.contains('"curation_status":"deprecated"'))
     for key in ("package", "ecosystem", "record_type", "language", "trust_boundary"):
         if filters.get(key):

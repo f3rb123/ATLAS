@@ -153,6 +153,20 @@ def login(db, email, password):
     return issue(db, u)
 
 
+def change_password(db, user, old_password, new_password, mfa=False):
+    password_ok(new_password)
+    try:
+        valid = ph.verify(user.password, old_password)
+    except (VerificationError, InvalidHashError):
+        valid = False
+    if not valid:
+        raise ValueError("Current passphrase is incorrect")
+    user.password = ph.hash(new_password)
+    db.query(Session).filter_by(user_id=user.id).delete()
+    append(db, user.id, user.id, "password_changed", {"sessions_revoked": True})
+    return issue(db, user, mfa=mfa)
+
+
 def rp():
     return urlsplit(settings().external_url).hostname
 
@@ -327,7 +341,7 @@ def totp_verify(db, u, s, code, enroll=False):
         db.delete(d)
         u.mfa = 1
     else:
-        if not db.query(Document).filter_by(kind="passkey", owner=u.id).first():
+        if settings().require_mfa and not db.query(Document).filter_by(kind="passkey", owner=u.id).first():
             raise ValueError("Passkey enrollment required")
         s.mfa = 1
     append(db, u.id, u.id, "totp_enrolled" if enroll else "totp_verified", {})

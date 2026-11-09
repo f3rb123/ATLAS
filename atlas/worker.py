@@ -16,6 +16,10 @@ def stop(*_):
 
 
 def tick(role):
+    from .swarm import execute_one
+
+    if execute_one(role):
+        return
     with session() as db:
         rows = (
             db.query(Document)
@@ -26,6 +30,8 @@ def tick(role):
         for run in rows:
             db.refresh(run, with_for_update=True)
             v = run.value()
+            if v.get("execution_mode") == "swarm":
+                continue
             if (
                 v["status"] not in ("queued", "running")
                 or v.get("lease_until", 0) > time.time()
@@ -84,6 +90,9 @@ def tick(role):
                 job.data = canonical(value)
                 db.commit()
         id = "heartbeat-" + role
+        from .db import transaction_lock
+
+        transaction_lock(db, id)
         d = db.get(Document, id)
         if d:
             d.data = canonical({"role": role, "timestamp": time.time()})
@@ -99,19 +108,32 @@ def main(role=None):
     if role not in ("research", "verify"):
         raise SystemExit("Expected research or verify")
     from .logging import configure
+    from .db import engine
 
     configure()
+    engine()  # Initialize the shared engine/factory before starting worker threads.
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     import redis
 
     r = redis.from_url(settings().redis_url, socket_connect_timeout=1, socket_timeout=2)
-    while alive:
-        tick(role)
-        try:
-            r.blpop("atlas:wake:" + role, timeout=1)
-        except redis.RedisError:
-            time.sleep(1)
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+
+    with ThreadPoolExecutor(max_workers=settings().worker_concurrency) as pool:
+        pending = set()
+        while alive:
+            while len(pending) < settings().worker_concurrency:
+                pending.add(pool.submit(tick, role))
+            done, pending = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
+            for future in done:
+                try:
+                    future.result()
+                except Exception:
+                    logging.getLogger("atlas").error("worker_tick_failed", exc_info=True)
+            try:
+                r.blpop("atlas:wake:" + role, timeout=1)
+            except redis.RedisError:
+                time.sleep(1)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, HTTPException
 from .config import settings
 from .db import session, Document
 from .policy import Strict
-from .gateway import ModelRequest, generate_budgeted
+from .gateway import ModelRequest, generate_budgeted, RunInterrupted, CapacityWait
 from .workflow import model_binding
 
 app = FastAPI(docs_url=None, openapi_url=None)
@@ -16,6 +16,8 @@ class Generate(Strict):
     run_id: str
     alias: str
     request: ModelRequest
+    task_id: str | None = None
+    lease_token: str | None = None
 
 
 def service_role(request):
@@ -53,6 +55,13 @@ def generate(body: Generate, request: Request):
         if kill and kill.value()["enabled"]:
             raise HTTPException(403)
         p, m = model_binding(db, run, body.alias)
+        if body.task_id or body.lease_token:
+            from .swarm import check_fence
+
+            if not body.task_id or not body.lease_token:
+                raise HTTPException(403)
+            run._swarm_claim = (body.task_id, body.lease_token)
+            check_fence(db, run)
         if (
             body.request.model != m.value()["model_id"]
             or body.request.max_tokens > m.value()["max_output_tokens"]
@@ -62,6 +71,12 @@ def generate(body: Generate, request: Request):
             return generate_budgeted(
                 db, p, m, body.request, run, body.alias
             ).model_dump()
+        except RunInterrupted:
+            db.commit()
+            raise HTTPException(409, detail={"code": "run_interrupted"}) from None
+        except CapacityWait:
+            db.rollback()
+            raise HTTPException(409, detail={"code": "capacity_wait"}) from None
         except Exception:
             db.commit()
             raise HTTPException(409, "Provider request blocked or failed") from None

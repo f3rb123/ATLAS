@@ -41,3 +41,9 @@ The complete specification remains the product contract. This ledger describes i
 ## External inputs and deliberately disabled capabilities
 
 The exact historical64/67files/URLs and rights, owner-paid provider credentials, a real domain/VPS and deployment approval are not supplied. None is silently substituted or treated as permission. Optional advanced adapters and unverified skills/capabilities remain disabled; no mock feature runs in production as a replacement. Initial GHSA archive SHA was not recorded before pinning was added; original per-record bytes/hashes remain, and that historical limitation is preserved.
+
+## 2026-11-09 — owner handoff rebuild slice
+
+Restored release/bundle; preserved tags. Added shared knowledge/skill access, attributed retrieval/feedback, SQL concurrent tasks/event activation, fenced recovery/capacity waiting, optional-factor operator auth/password rotation and persisted live UI. Preserved legacy FSM, policy/broker/relay, budgets and independent replay. Added migration 0005 without modifying historical knowledge. Two MIT references are pinned/licensed research-only data. AntiFox is reference eight; no AGPL code copied.
+
+Current validation: 138 backend tests passed, one semantic test deselected; actual sandbox/disposable PG included; frontend/TypeScript/full eight-task browser passed. See ATLAS_V3_IMPLEMENTATION_LEDGER.md and docs/test-results/REBUILD_VALIDATION.md. Original corpus/model assets, three websites and real provider/VPS acceptance remain blocked/unverified. Install/start/network draft saved; runtime access/publication not claimed. No push or remote scan.

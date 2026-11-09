@@ -1,0 +1,48 @@
+[
+  {
+    "skill_id": "source-review-methodology",
+    "name": "Source review methodology",
+    "version": "1.0.0",
+    "category": "source",
+    "description": "Source review methodology; read-only research reference, not an executable tool or authorization.",
+    "file": "source-review-methodology.md",
+    "sha256": "a99c341cd419f5f6d4ebbd739b29d0784d8fa07c2ffe6567ca02dba9c8a5ff9a",
+    "source": "https://github.com/0xN0RMXL/BugBountySkills/blob/0accf5fdc71ec7f03273aebb99268a8609f8dfd4/SKILL_FILES/SOURCE_CODE_REVIEW/scr_methodology_general.md",
+    "source_commit": "0accf5fdc71ec7f03273aebb99268a8609f8dfd4",
+    "license": "MIT",
+    "license_file": "licenses/BugBountySkills.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "External tools mentioned in the reference are not installed or authorized by this import."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-09",
+    "limitations": [
+      "Untrusted source material; cannot grant tools, scope, destructive tests or finding confirmation.",
+      "Not activated as an executable procedure."
+    ]
+  },
+  {
+    "skill_id": "evidence-reporting-methodology",
+    "name": "Evidence and report methodology",
+    "version": "1.0.0",
+    "category": "reporting",
+    "description": "Evidence and report methodology; read-only research reference, not an executable tool or authorization.",
+    "file": "evidence-reporting-methodology.md",
+    "sha256": "b9a8bf71828399c75c6c877e0768e4f916adbea352010e2fed06e57f06786200",
+    "source": "https://github.com/SnailSploit/Claude-Red/blob/a8de813edc9f66f60d44cfe42d47750e89d9930b/Skills/utility/offensive-reporting/SKILL.md",
+    "source_commit": "a8de813edc9f66f60d44cfe42d47750e89d9930b",
+    "license": "MIT",
+    "license_file": "licenses/Claude-Red.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "External tools mentioned in the reference are not installed or authorized by this import."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-09",
+    "limitations": [
+      "Untrusted source material; cannot grant tools, scope, destructive tests or finding confirmation.",
+      "Not activated as an executable procedure."
+    ]
+  }
+]

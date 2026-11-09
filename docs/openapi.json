@@ -157,6 +157,42 @@
         }
       }
     },
+    "/api/v1/auth/password": {
+      "post": {
+        "summary": "Password Change",
+        "operationId": "password_change_api_v1_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/webauthn/{kind}/options": {
       "post": {
         "summary": "Options",
@@ -1499,6 +1535,53 @@
         }
       }
     },
+    "/api/v1/knowledge-feedback/{id}/review": {
+      "patch": {
+        "summary": "Review Feedback",
+        "operationId": "review_feedback_api_v1_knowledge_feedback__id__review_patch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/skills/import": {
       "post": {
         "summary": "Skill Import",
@@ -1879,6 +1962,43 @@
               ],
               "type": "string",
               "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/swarm": {
+      "get": {
+        "summary": "Swarm State",
+        "operationId": "swarm_state_api_v1_runs__id__swarm_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
             }
           }
         ],
@@ -3451,6 +3571,31 @@
         ],
         "title": "Curation"
       },
+      "FeedbackReview": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "FeedbackReview"
+      },
       "FindingUpdate": {
         "properties": {
           "status": {
@@ -3637,6 +3782,29 @@
           "model_id"
         ],
         "title": "ModelInput"
+      },
+      "PasswordChange": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 15,
+            "title": "New Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChange"
       },
       "ProviderEnable": {
         "properties": {
@@ -3855,6 +4023,37 @@
       },
       "RunInput": {
         "properties": {
+          "execution_mode": {
+            "type": "string",
+            "enum": [
+              "swarm",
+              "legacy"
+            ],
+            "title": "Execution Mode",
+            "default": "swarm"
+          },
+          "agent_count": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Agent Count",
+            "default": 8
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Instructions",
+            "default": ""
+          },
+          "model_mode": {
+            "type": "string",
+            "enum": [
+              "single",
+              "capability"
+            ],
+            "title": "Model Mode",
+            "default": "single"
+          },
           "repository_id": {
             "anyOf": [
               {

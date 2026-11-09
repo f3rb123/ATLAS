@@ -1,3 +1,11 @@
+# Current rebuild continuation — 2026-11-09
+
+Read ATLAS_HANDOFF.md, ATLAS_V3_IMPLEMENTATION_LEDGER.md and the eight requested project documents first. Native concurrent/knowledge-aware core is implemented and locally verified (138 backend tests, one semantic case unrun; browser/build passed). Full rebuild is not complete.
+
+Saved install/start instructions use existing isolated checkout and .runtime/cloud-dev. No worktrees, reset, push, production-data operation or VPS deployment without authorization. Apply four domain additions before retrying missing references/model preparation. Original corpus/model assets are withheld; do not recreate/re-embed them. Configure owner providers securely before real-model lab acceptance. Continue routing/fairness, advanced recon/MCP, chain analysis and engagement chat from the rebuild roadmap.
+
+## Preserved original release handoff
+
 # ATLAS V3 delivery state
 
 The current release handoff is a manual-install source package. No VPS connection or deployment, GitHub publication, or external target test was performed.

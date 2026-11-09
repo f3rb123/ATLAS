@@ -15,3 +15,8 @@ Stop application/gateway/workers for maintenance. Back up the database encrypted
 ## Recovery
 
 `atlas host break-glass` requires interactive privileged access to the host/application data. It prompts for a new long passphrase, revokes all sessions and CLI tokens, removes authenticators/recovery codes, records an immutable recovery event and forces fresh passkey enrollment. There is no remote equivalent. Protect access to Docker and database volumes as administrative host access.
+# Current private-operator policy
+
+The latest owner handoff makes ordinary password-session access available without mandatory WebAuthn/MFA. `ATLAS_REQUIRE_MFA=false` is the default. Existing enrolled factors are still required at sign-in; this does not silently disable an enrolled factor. `ATLAS_REQUIRE_MFA=true` retains the stricter passkey/production enrollment gate described in the original sections below. Sensitive factor/recovery enrollment retains its stronger controls.
+
+`POST /api/v1/auth/password` verifies the current passphrase, validates the replacement, revokes prior sessions/tokens and rotates the current session. It keeps CSRF/Origin checks and Argon2id. Password recovery remains the interactive host-only `atlas host break-glass` flow; no public password-reset bypass is added. No generated master keys, credentials or bootstrap values belong in Git or chat.
