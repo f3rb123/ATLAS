@@ -47,6 +47,6 @@ uv run pytest -q
 npm --prefix apps/web run build
 ```
 
-Sandbox tests need Linux user namespaces. The cloud command wrapper forbids nested setup; the actual outer host and configured Docker runner are tested separately. All tests use synthetic local fixtures and mock model providers, never live targets.
+Sandbox tests need Linux user namespaces. The cloud command wrapper forbids nested setup; the actual outer host and configured Docker runner are tested separately. Target-facing tests use controlled local services and test-only mock model providers; semantic and corpus validation use the actual acquired public data. No live targets were scanned.
 
 [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md), [authentication and secrets](docs/AUTHENTICATION_AND_SECRETS.md), and [backup/restore](docs/BACKUP_RESTORE.md) cover the Ubuntu VPS assets. No real VPS deployment, SSH/firewall change, or live assessment is authorized by this build.

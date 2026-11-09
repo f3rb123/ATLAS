@@ -1048,22 +1048,33 @@ def sync_api(source, limit=10, ids=None, job_id=None):
                 for r in db.query(Alias).filter(Alias.alias.like("GHSA-%")).limit(limit)
             ]
     counts = Counter(state.get("counts", {}))
-    if source == "osv":
+    if source in ("osv", "kev"):
         with session() as db:
             if state.get("ids_manifest_id"):
                 manifest_doc = db.get(Document, state["ids_manifest_id"])
                 ids = manifest_doc.value()["ids"]
+                if not isinstance(ids, list) or any(
+                    not isinstance(value, str) for value in ids
+                ):
+                    raise ValueError("Source ID manifest is invalid")
             elif state["cursor"] > 0 and state["cursor"] < limit:
                 raise ValueError(
-                    "Legacy OSV cursor has no immutable ID manifest; start a new incremental job"
+                    f"Legacy {source.upper()} cursor has no immutable ID manifest; start a new incremental job"
                 )
             elif state["cursor"] == 0:
-                manifest_doc = document(
-                    db, "source_id_manifest", "system", {"ids": ids or []}
-                )
-                state["ids_manifest_id"] = manifest_doc.id
-                db.get(Document, job_id).data = canonical(state)
-                db.commit()
+                manifest_ids = ids or []
+                if source == "kev":
+                    # The KEV endpoint is a mutable whole-feed snapshot. Store its
+                    # ordered native IDs before ingesting any item so retries can
+                    # reconcile a changed feed without shifting the durable cursor.
+                    manifest_ids = None
+                if manifest_ids is not None:
+                    manifest_doc = document(
+                        db, "source_id_manifest", "system", {"ids": manifest_ids}
+                    )
+                    state["ids_manifest_id"] = manifest_doc.id
+                    db.get(Document, job_id).data = canonical(state)
+                    db.commit()
     try:
         if source != "osv" and source_config(source)["policy"] != "allowed":
             raise ValueError("Source terms/permission review required")
@@ -1085,7 +1096,7 @@ def sync_api(source, limit=10, ids=None, job_id=None):
                 payload, etag = fetch_json(
                     source,
                     url,
-                    state.get("etag") if source == "kev" else None,
+                    None,
                     capture=fetch_meta,
                 )
             except Exception as primary_error:
@@ -1139,13 +1150,73 @@ def sync_api(source, limit=10, ids=None, job_id=None):
             if not items:
                 break
             state["source_native_items_in_response"] = len(items)
-            start = state["cursor"] if source == "kev" else 0
-            selected = (
-                items[start:limit]
-                if source == "kev"
-                else items[: limit - state["cursor"]]
-            )
-            for position, item in enumerate(selected, start=start):
+            if source == "kev":
+                by_native_id = {
+                    item.get("cveID"): (position, item)
+                    for position, item in enumerate(items)
+                    if isinstance(item, dict) and isinstance(item.get("cveID"), str)
+                }
+                if len(by_native_id) != len(items):
+                    raise ValueError("KEV feed contains missing or duplicate native IDs")
+                with session() as db:
+                    if state.get("ids_manifest_id"):
+                        manifest_doc = db.get(Document, state["ids_manifest_id"])
+                        manifest_ids = manifest_doc.value()["ids"]
+                    else:
+                        manifest_ids = [item["cveID"] for item in items]
+                        manifest_doc = document(
+                            db,
+                            "source_id_manifest",
+                            "system",
+                            {
+                                "ids": manifest_ids,
+                                "acquisition": fetch_meta,
+                                "acquisition_url": url,
+                                "snapshot_sha": state.get("snapshot_sha"),
+                            },
+                        )
+                        state["ids_manifest_id"] = manifest_doc.id
+                    db.get(Document, job_id).data = canonical(state)
+                    db.commit()
+                selected = [
+                    (native_id, by_native_id.get(native_id))
+                    for native_id in manifest_ids[
+                        state["cursor"] : min(limit, len(manifest_ids))
+                    ]
+                ]
+            else:
+                selected = [
+                    (None, (position, item))
+                    for position, item in enumerate(
+                        items[: limit - state["cursor"]]
+                    )
+                ]
+            for native_id, selected_item in selected:
+                if selected_item is None:
+                    with session() as db:
+                        counts["snapshot_records_missing"] += 1
+                        document(
+                            db,
+                            "corpus_exclusion",
+                            "system",
+                            {
+                                "source": source,
+                                "source_record_id": native_id,
+                                "reason": "missing_from_resumed_source_snapshot",
+                                "manifest_id": state["ids_manifest_id"],
+                                "job_id": job_id,
+                            },
+                        )
+                        state.update(
+                            cursor=state["cursor"] + 1,
+                            counts=dict(counts),
+                            updated=now(),
+                            status="running",
+                        )
+                        db.get(Document, job_id).data = canonical(state)
+                        db.commit()
+                    continue
+                position, item = selected_item
                 raw = canonical(item).encode()
                 with session() as db:
                     try:

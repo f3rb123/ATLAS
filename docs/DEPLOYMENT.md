@@ -45,3 +45,11 @@ Run `atlas doctor` from a client with a fresh scoped CLI token. Verify HTTPS usi
 ## Local TLS staging
 
 compose.staging.yaml uses a Caddy local CA for atlas.localhost:8443. It is for automated local validation, not public TLS. Verify it with the exported root CA and normal certificate checks; never use curl -k. Local staging does not claim ACME/DNS validation on the owner's domain.
+
+## Host hardening review
+
+Run `scripts/preflight-vps.sh` for read-only checks. The proposed `infra/ubuntu/sshd-atlas.conf` disables root/password/keyboard-interactive login and limits authentication attempts. Before installing it, establish and verify a second SSH connection using a named sudo user and public key; validate the combined SSH configuration with `sshd -t`. Apply host changes only under the owner's explicit deployment approval.
+
+Keep the application on loopback/private VPN whenever practical. If public HTTPS is approved, review the host firewall to permit only the intended SSH/VPN and HTTPS ingress. Docker-published ports can bypass some UFW rules: inspect Docker's own forwarding rules and bind addresses rather than relying on a generic UFW status display. The supplied Compose publishes no PostgreSQL/Redis/worker port. Protect the host disk, backup password and KEK independently.
+
+Do not include compose.test.yaml in production. It enables a synthetic internal model fixture and a test-only private endpoint allowlist solely for local restart/recovery validation. Remove that service/override after validation. No mock provider is used by production application code.

@@ -87,6 +87,42 @@ def test_kev_resume_slices_full_feed_at_checkpoint(db, monkeypatch):
     assert db.query(Knowledge).count() == 4
 
 
+def test_kev_resume_keeps_original_snapshot_ids_when_feed_changes(db, monkeypatch):
+    def item(number):
+        return {
+            "cveID": f"CVE-2099-{300000 + number}",
+            "vulnerabilityName": f"Synthetic KEV snapshot {number}",
+            "shortDescription": "Controlled test advisory",
+            "vendorProject": "Fixture",
+            "product": "Test",
+        }
+
+    feeds = [
+        [item(1), item(2), item(3)],
+        [item(99), item(1), item(3)],
+    ]
+    calls = []
+
+    def fetch(source, url, etag=None, capture=None):
+        calls.append(etag)
+        return {"vulnerabilities": feeds.pop(0)}, None
+
+    monkeypatch.setattr(corpus, "fetch_json", fetch)
+    monkeypatch.setattr(corpus.time, "sleep", lambda _: None)
+    first = corpus.sync_api("kev", 1)
+    resumed = corpus.sync_api("kev", 3, job_id=first["job_id"])
+
+    assert calls == [None, None]
+    assert resumed["cursor"] == 3
+    assert resumed["counts"]["snapshot_records_missing"] == 1
+    db.expire_all()
+    assert db.query(Knowledge).count() == 2
+    aliases = {row.alias for row in db.query(Alias).all()}
+    assert aliases == {"CVE-2099-300001", "CVE-2099-300003"}
+    exclusion = db.query(Document).filter_by(kind="corpus_exclusion").one().value()
+    assert exclusion["source_record_id"] == "CVE-2099-300002"
+
+
 def test_source_retry_honors_backoff_and_retains_wire_artifact(db, monkeypatch):
     calls = []
     sleeps = []

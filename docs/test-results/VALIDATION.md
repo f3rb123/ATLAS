@@ -1,0 +1,28 @@
+# Validation record
+
+Build date:2026-11-09 UTC. Environment: managed Linux cloud workspace; Python3.12, Node24, PostgreSQL17/pgvector, Redis7.4, Caddy2.10.2 and nonprivileged Docker/Bubblewrap. Application source includes the final KEV snapshot-resume correction; final Git checkpoint follows. The original repository was empty; no historical regression claim is made.
+
+| Check | Exact command / evidence | Result |
+|---|---|---|
+| Complete backend | `UV_CACHE_DIR=/workspace/.cache/uv uv run pytest -q --junitxml=docs/test-results/pytest.xml` in outer execution |86passed,1dependency deprecation warning,23.26s |
+| Web build | `npm run build --prefix apps/web` | Next.js production compilation and TypeScript passed |
+| Real browser | `npm run test --prefix apps/web` against isolated e2e.db, local test provider and separate real workers |1expanded test passed31.4s; real CDP WebAuthn, empty/error states, provider/model/probe/aliases, repository, pause/refresh-resume/approval, durable completion/report, real public-memory search and API-backed CLI |
+| Accessibility | axe-core via Playwright on welcome and research-memory screens |0violations in both checked screens; see accessibility-*.json |
+| Actual sandbox | Included Python sandbox tests and Docker worker `run_local` | Host isolation assertions plus actual7invariant fixture tests passed; no socket/network/privileged-container substitution |
+| Independent verification | `tests/test_verifier_replay.py` | Actual separate proof/control reexecutions confirm a genuine local fixture and refute an intentionally false claim; zero-test/errors never confirm |
+| Protocols/security | Actual local HTTP/SSE contracts for all built-in protocols plus custom URL/key/model configuration | Request/response/streaming, partial-secret redaction, malicious headers, endpoint-bound crypto and capability/budget checks passed |
+| Public corpus | `uv run python scripts/validate-corpus.py`, repeated inside actual PostgreSQL application context |21,012schemas/raw hashes/parents and34,229finite384-D vectors valid;0missing/bad artifacts/vectors |
+| Retrieval | `uv run python scripts/evaluate-retrieval.py`, repeated against PostgreSQL | Five-query diagnostic: precision@1=.8, hit@5=1.0, MRR=.8667 on both backends. Narrow labelled seed set only |
+| Source acquisition | Real source jobs plus fixture conditional/retry/checkpoint/native-format/withdrawal/takedown tests; KEV resume also reorders a mutated feed by persisted native IDs and records missing snapshot IDs | GHSA21000,CVE1,NVD5,KEV5,OWASP1; OSV5alias links;491reviewed withdrawn exclusions,0unclassified/parser errors |
+| Docker/TLS | Pinned image build/Compose startup; curl with `--cacert .runtime/staging-root.crt`, explicit local resolution and normal verification | Health200, protectedAPI401, readiness503until owner enrollment; internal service ports unpublished |
+| Worker restart | Local PostgreSQL fixture run stopped/restarted at RESEARCH_SLICE_SELECTION |15unique completed stages,15verified journal events, no repeated model-stage calls; before/after JSON evidence |
+| Backup/restore | `scripts/backup.sh .runtime/backups/final-semantic` then `scripts/restore-check.sh .runtime/backups/final-semantic` | Authenticated encrypted archives and isolated PostgreSQL restore passed;0004migration/21012records/34229chunks |
+| Dependency audits | `pip-audit --disable-pip --no-deps -r requirements.lock`; `npm audit --omit=dev` |0known runtime/production dependency vulnerabilities at scan time |
+| SAST | `bandit -r atlas -ll` |0high findings;4reviewed medium pattern matches for guarded official HTTPS transports/private sandbox tmpfs paths; disposition in SECURITY_REVIEW.md |
+| Secret history | Checksum-verified Gitleaks8.24.3, `gitleaks git --redact --log-opts=--all` |7public-hash false positives reviewed with exact fingerprints;0unresolved after re-scan |
+| Source integrity | Container installed Python source SHA256 compared against checkout | Machine report records exact module count and mismatches; final image must match before handoff |
+| Corpus delivery | Archive member/path/credential exclusion checks plus actual JSONL line counts |21,012records/34,229vectors,21,799archive members,159,978,397bytes |
+
+The controlled HTTP/DNS harness has no uncontrolled public target. Mock providers are test-only; the product requires real configured providers for research. No real VPS/domain/ACME or owner-paid service is represented as tested. The complete browser test uses an isolated public-corpus snapshot; scale assertions are independently verified against the current main SQLite and PostgreSQL corpora. CI uses a separately labelled single-record synthetic training fixture and does not claim20K acquisition.
+
+Earlier failures were retained in runtime logs and fixed/rechecked: unavailable nested user namespaces required the supported outer/Docker execution context; VFS disk exhaustion was resolved by removing unused build cache/obsolete app containers/images while retaining volumes; the old isolated browser DB needed the new embedding column; restarting stale Next.js modules restored valid runtime assets; a real keyboard-focus issue was corrected; the expanded approval test was aligned with documented approve-and-resume behavior. These are not silently counted as passing attempts.

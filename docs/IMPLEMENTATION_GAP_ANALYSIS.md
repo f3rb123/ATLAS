@@ -1,149 +1,42 @@
-# Requirement ledger
+# Requirement and release ledger
 
-Status is evidence based; headings cover the specification and work packages.
+The complete specification remains the product contract. This ledger describes implemented behavior and dated local evidence; it does not claim paid-provider or live-target effectiveness. No existing application was supplied, and no historical test or64/67resource inventory is fabricated.
 
-| Requirement | Status | Evidence |
+| Specification / package | Delivered implementation | Status and boundary |
 |---|---|---|
-| 0. Instructions to the implementation model | missing | |
-| Mandatory first actions | missing | |
-| Non-negotiable implementation rules | missing | |
-| Delivery expectation | missing | |
-| 0.1 Complete project context for a fresh AI account | missing | |
-| Project identity and intent | missing | |
-| Development history — design discussions only; no source repository exists | missing | |
-| Product acceptance philosophy | missing | |
-| Decisions the build model must not silently reverse | missing | |
-| What Codex should do when context conflicts | missing | |
-| 0.2 Codex single-task execution mode — one handoff, end-to-end build | missing | |
-| 1. Product definition | missing | |
-| 1.1 Primary users | missing | |
-| 1.2 Main product experiences | missing | |
-| 1.3 Supported assessment modes | missing | |
-| 2. Architecture decision | missing | |
-| 2.1 Final architecture | missing | |
-| 2.2 Core design principles | missing | |
-| 2.3 Recommended stack | missing | |
-| 2.4 Deployment topology | missing | |
-| 3. Research methodology and workflow | missing | |
-| 3.1 End-to-end run lifecycle | missing | |
-| 3.2 Required workflow stages | missing | |
-| Stage A — Authorization and scope lock | missing | |
-| Stage B — Context collection | missing | |
-| Stage C — Threat model | missing | |
-| Stage D — Surface map and research slices | missing | |
-| Stage E — Hypothesis generation | missing | |
-| Stage F — Focused investigation | missing | |
-| Stage G — Experiment design and safe execution | missing | |
-| Stage H — Independent verification | missing | |
-| Stage I — Triage, deduplication, and reporting | missing | |
-| 4. Agent and orchestration design | missing | |
-| 4.1 Roles | missing | |
-| 4.5 Versioned skills and playbook registry (required) | missing | |
-| 4.6 Skill execution contract | missing | |
-| 4.2 Orchestrator contract | missing | |
-| 4.3 Structured role output | missing | |
-| 4.4 Context management | missing | |
-| 5. Tool broker and security policy | missing | |
-| 5.1 Tool interface | missing | |
-| 5.2 Initial tool set | missing | |
-| 5.3 Action classes | missing | |
-| 5.4 Scope enforcement requirements | missing | |
-| 5.5 Prompt injection and untrusted data | missing | |
-| 6. Model gateway, routing, and cost control | missing | |
-| 6.1 Provider architecture — provider-neutral by design | missing | |
-| 6.1.1 Custom provider connection wizard (mandatory product feature) | missing | |
-| 6.1.2 Credential and custom-URL security | missing | |
-| 6.1.3 Adapter contract and normalization | missing | |
-| 6.2 Model roles | missing | |
-| 6.3 Budget controls | missing | |
-| 6.4 Model quality benchmark | missing | |
-| 7. Research memory and RAG | missing | |
-| 7.1 Purpose | missing | |
-| 7.2 Knowledge sources | missing | |
-| 7.3 Metadata schema for a knowledge record | missing | |
-| 7.4 Retrieval behavior | missing | |
-| 7.5 Initial knowledge corpus strategy — build the pipeline and perform a real seed ingest | missing | |
-| 7.6 Historical seed-library plan and exact-count caveat | missing | |
-| 7.7 Corpus acquisition and ingestion workflow | missing | |
-| 7.8 Skills as a separately governed knowledge class | missing | |
-| 7.9 Canonical ATLAS Research Record format — mandatory conversion target | missing | |
-| 7.10 Source connectors and 20K+ acquisition execution | missing | |
-| 7.11 Seed resources, 64/67 uncertainty, skills, and training material | missing | |
-| 8. Data model | missing | |
-| 8.1 Core entities | missing | |
-| 8.2 Journal properties | missing | |
-| 8.3 Artifact policy | missing | |
-| 9. Backend API contract | missing | |
-| 9.1 Suggested endpoints | missing | |
-| 9.2 API rules | missing | |
-| 10. Web UI specification | missing | |
-| 10.1 Design direction | missing | |
-| 10.2 Primary navigation | missing | |
-| 10.3 Pages and required behavior | missing | |
-| 10.4 UI interaction requirements | missing | |
-| 11. CLI specification | missing | |
-| 12. Vulnerability category coverage | missing | |
-| 12.1 Initial category taxonomy | missing | |
-| 12.2 Capability maturity labels | missing | |
-| 12.3 MVP prioritization | missing | |
-| 13. Reporting and evidence standards | missing | |
-| 13.1 Finding report fields | missing | |
-| 13.2 Evidence requirements | missing | |
-| 13.3 Export formats | missing | |
-| 14. Application security requirements — protect ATLAS as a high-value security system | missing | |
-| 14.1 Strong authentication — mandatory before VPS exposure | missing | |
-| 14.2 API keys and application secrets | missing | |
-| 14.3 VPS and network hardening | missing | |
-| 14.4 Application security and audit | missing | |
-| 15. Deployment specification — Ubuntu VPS | missing | |
-| 15.1 Initial server sizing | missing | |
-| 15.2 Required deployment files | missing | |
-| 15.2.1 Required secret-management configuration | missing | |
-| 15.3 Compose requirements | missing | |
-| 15.4 Deployment flow | missing | |
-| 15.5 Backups and recovery | missing | |
-| 15.6 Operations | missing | |
-| 16. Testing and acceptance gates | missing | |
-| Gate 0 — Baseline preservation | missing | |
-| Gate 1 — Domain and state machine | missing | |
-| Gate 2 — Scope engine and relay | missing | |
-| Gate 3 — Tool sandbox | missing | |
-| Gate 4 — Model and prompt-injection robustness | missing | |
-| Gate 5 — Verification quality | missing | |
-| Gate 6 — Product UX and API | missing | |
-| Gate 7 — Deployment | missing | |
-| Gate 8 — Performance and budget | missing | |
-| Gate 9 — Authentication and secret protection | missing | |
-| Gate 10 — Corpus acquisition, normalization, and scale | missing | |
-| Quality metrics | missing | |
-| 17. Build order and work packages | missing | |
-| WP0 — Greenfield bootstrap | missing | |
-| WP1 — Domain foundation and persistence | missing | |
-| WP2 — Scope and policy engine | missing | |
-| WP3 — Tool broker and sandboxes | missing | |
-| WP4 — Model gateway and usage accounting | missing | |
-| WP5 — Durable research workflow | missing | |
-| WP6 — Independent verifier and finding lifecycle | missing | |
-| WP7 — Research memory and benchmarks | missing | |
-| WP8 — Web UI | missing | |
-| WP9 — CLI | missing | |
-| WP10 — Deployment, observability, and recovery | missing | |
-| WP11 — Advanced category adapters and adaptive orchestration | missing | |
-| 18. Repository structure target | missing | |
-| 19. Definition of done | missing | |
-| Release stages | missing | |
-| 20. Research basis and design interpretation | missing | |
-| 20.1 Devansh Batham — “Needle in the haystack: LLMs for vulnerability research” (9 March 2026) | missing | |
-| 20.2 Devansh Batham — “On LLMs and vulnerability research” (6 April 2026) | missing | |
-| 20.3 Public $100,000 bounty statement | missing | |
-| 20.4 Niels Provos — “Finding Zero-Days with Any Model” (29 April 2026; APNIC republication 11 August 2026) | missing | |
-| 20.5 Acronis TRU — “BOSSAI: Inside the AI attack mesh that targeted Taiwan’s emergency services” (4 November 2026) | missing | |
-| 20.6 Related primary-source research and tools | missing | |
-| 20.7 Standards and engineering references | missing | |
-| 20.8 Corpus sources and ingestion documentation | missing | |
-| 20.9 Authentication, session, and secrets standards | missing | |
-| 20.10 Complete URL register from the ATLAS design discussion | missing | |
-| 20.8 Final synthesis | missing | |
-| 21.0 Codex single-task master execution prompt — use this as the one task | missing | |
-| 21.1 Explicit custom model API requirement — acceptance checklist | missing | |
-| 22. Final note to the owner | missing | |
+| 0–2, WP0–1: greenfield foundation, architecture, persistence | Baseline tag, Git checkpoints/log, FastAPI/Python, Next.js, API-backed CLI, PostgreSQL/pgvector migrations, Redis hints, typed domain modules, append-only hash journal | Implemented; SQLite is isolated development, PostgreSQL is deployment authority |
+| 3–4, WP5: research orchestration |16-stage durable FSM; authorization/policy pins; source context; structured threat model; prioritized slices; cited hypotheses with durable IDs; focused investigation; bounded experiments; pause/resume/cancel/deadlines; queue admission and leases | Implemented; specialist coding/fast reviews require explicit run enablement, pinned aliases and shared budgets; no recursive delegation |
+| 4.5–4.6, WP7: skill governance | SKILL.md/strict JSON and declarative ZIP import; immutable versions/hashes; human review; independently bound fixtures; enable/disable/rollback; attributed ATLAS-authored starter | Implemented; executable installation hooks denied. Community procedures without a registered exact-hash fixture remain disabled |
+| 5, WP2–3: scope, relay and tool broker | Canonical IDNA/IP/CIDR/wildcard/path/method policy; deny precedence/expiry; connection-time DNS validation/pinning; separate relay; typed broker; durable denials; snapshot integrity; explicit approvals; real offline sandbox and limits | Implemented. Target adapters expose only bounded approved GET/HEAD; state-changing/destructive adapters remain disabled |
+| 6, WP4: model gateway | All specified built-in protocol adapters; unlimited configured connections/models; encrypted keys/headers; manual IDs/discovery/probes; explicit aliases/version pins; trusted plugin SDK; genuine SSE adapters; shared budgets/reservations, hard stops and verified-billing reconciliation | Implemented and local contract-tested. Native tool calls/vision require verified task capability; no silent fallback or claim of compatibility with arbitrary proprietary APIs |
+| 7, WP7: acquisition and memory | Real official GHSA/CVE/NVD/OSV/KEV connectors, durable checkpoints/revisions/withdrawals, rights review/robots-aware exact URLs, all requested practical file formats, ATLAS-RR validation, raw/wire/hash/page lineage, ownership, dedupe, curation, semantic chunks/retrieval | Implemented;21,012unique public records/34,229real MiniLM384chunks. Full-text bounty reports0, exact historical64/67manifest externally missing |
+| 7.6, 7.11: seed uncertainty | Attributed candidate registry and owner JSON/JSONL/CSV manifest import, review-only permissions | Implemented; imported URLs never automatically authorize acquisition or imply historical mapping |
+| 8–9: data/API | Versioned contracts, ownership/RBAC, CSRF, idempotent creation, SSE reconnect, bounded list/search, evidence and lineage/export APIs | Implemented; generated OpenAPI included |
+| 10, WP8: Web UI | Bootstrap/passkeys/TOTP/recovery, campaigns/frozen scope/source wizard, run/threat/slice/hypothesis/tool/approval/journal workspace, findings/reports, providers/model metadata/probes/aliases, memory/import/source/seed governance, skills/benchmarks, budgets/sessions/kill switch | Implemented with real API actions. Browser flow and core-screen axe checks recorded; JSON editors are used for advanced structured policies/metadata |
+| 11, WP9: CLI | Shared authenticated API commands plus deliberately host-only bootstrap/migrations/recovery/KEK/acquisition/transfer operations | Implemented; browser-to-CLI integration tested with a scoped generated token |
+| 12, WP11: category maturity/adaptation | Honest capability registry, source and local-fixture techniques, bounded specialist review and configurable model benchmark | Advanced mobile/cloud/fuzzing/state-changing adapters disabled pending dedicated safe harnesses. Synthetic benchmarks do not imply live-target coverage |
+| 13, WP6: verifier/evidence/reporting | Fresh separate verifier worker/context; independent proof and secure-control reexecution; evidence-ID binding; explicit refutation/inconclusive outcomes; root-cause dedupe; escaped Markdown/HTML/JSON/SARIF/PDF exports | Implemented; genuine and intentionally false local candidates tested. No invented CVE/CVSS/impact |
+| 14: application security | Owner-only bootstrap, Argon2id/passkey MFA/TOTP/recovery, session rotation/expiry, step-up, CSRF, RBAC, encrypted endpoint-bound provider secrets, safe logs and audited host recovery | Implemented; production enrollment gate blocks research until setup complete. Host disk encryption remains an operator prerequisite |
+| 15, WP10: deployment/operations | Pinned nonroot/read-only Compose images, separated egress/internal networks and secrets, migration/app DB roles, authenticated Redis, scoped sandbox profile, Caddy HTTPS, health/restart assets, SSH proposal/read-only preflight, encrypted backup/restore docs/scripts | Local Docker/TLS/worker restart/restore verified. Real VPS/domain/SSH/firewall changes expressly not authorized |
+| 16: acceptance evidence | Full Python suite, property and local transport harness, real Linux sandbox, real semantic inference, browser/WebAuthn/CLI/axe, actual PostgreSQL/vector corpus, local TLS/restart/backup and security scans | Evidence in test-results; controlled deployment candidate, not an external security certification |
+| 17–22: task continuity/handoff | Persistent build/resume ledger, implementation checkpoints, source/spec/docs, reproducible cloud setup, delivery bundles and source attribution | Final handoff artifacts described in DELIVERY.md |
+
+## Acceptance gates
+
+| Gate | Local result | Evidence / practical limit |
+|---|---|---|
+| 0 baseline | Passed | Empty-repository baseline/tag and checkpoints; no previous regression suite existed |
+| 1 state/domain | Passed | All FSM edges, idempotency, pause/cancel/deadline, journal hashes, queued capacity, actual PG worker restart with15unique completed stages |
+| 2 scope/relay | Passed local harness | Adversarial/property/DNS/redirect/size/timeout tests use controlled services; no public target probe |
+| 3 sandbox | Passed | Actual Bubblewrap tests and seven-case Docker worker harness; readonly/no host/socket/no network and bounded execution |
+| 4 models/injection | Passed local contracts | Strict role/tool schemas, non-authoritative data, no arbitrary shell, all built-in serialization/normalization/live streams, configured custom local HTTP endpoint, SSRF/crypto/redaction/capability/budget tests. Paid vendor live-service validation requires owner keys |
+| 5 verification | Passed local fixtures | Real independent proof/control replay and false-candidate refutation; seven representative invariant fixtures; tool errors/zero tests do not confirm findings |
+| 6 UX/API/CLI | Passed core flows | Real browser WebAuthn bootstrap, campaign/provider/model/run/report/memory/CLI; pause/approval/reconnect and core accessibility evidence. Not a claim of exhaustive assistive-technology certification |
+| 7 deployment | Passed local staging | Clean container builds/start, verified local-CA TLS, unpublished internal ports, nonroot/key separation, actual worker restart and authenticated backup/restore. Real-domain ACME/VPS remains owner-authorized work |
+| 8 performance/budgets | Passed bounded local tests | Concurrent first-budget reservations, owner/campaign queue limits, run/role/global hard caps, bounded source/repository/import/output/context limits and responsive browser during workers. No production throughput/SLA claim |
+| 9 auth/secrets | Passed local tests | Real passkey enrollment/authentication plus replay/CSRF/ownership/recovery/session/KEK/write-only/redaction tests and secret/dependency/SAST review |
+| 10 corpus | Passed scale and validation | Persisted21,012unique/34,229semanticchunks; every public schema/raw hash/vector/parent verified; resume, native connector, conversion/dedupe/rights/conditional/retry/takedown tests; five-query labelled retrieval diagnostic |
+
+## External inputs and deliberately disabled capabilities
+
+The exact historical64/67files/URLs and rights, owner-paid provider credentials, a real domain/VPS and deployment approval are not supplied. None is silently substituted or treated as permission. Optional advanced adapters and unverified skills/capabilities remain disabled; no mock feature runs in production as a replacement. Initial GHSA archive SHA was not recorded before pinning was added; original per-record bytes/hashes remain, and that historical limitation is preserved.

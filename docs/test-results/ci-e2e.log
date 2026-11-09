@@ -1,0 +1,18 @@
+Isolated public corpus fixture and one-time bootstrap prepared; secret values not printed.
+curl: (7) Failed to connect to localhost port 8000 after 2 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Could not connect to server
+
+> atlas-web@0.1.0 test
+> playwright test
+
+
+Running 1 test using 1 worker
+
+(node:260841) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/workspace.spec.ts:6:1 › real owner bootstrap, passkey MFA, campaign, provider UI and corpus search (36.5s)
+
+  1 passed (38.7s)

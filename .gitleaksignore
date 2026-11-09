@@ -1,0 +1,8 @@
+# Exact reviewed false positives: public model SHA256 checksums and the OWASP content-hash identity.
+d97e79e38ce15435416667077114e28375c61074:knowledge/retrieval_queries_v1.json:generic-api-key:27
+adbb3eec006526fdadd7fa8c8d67512fa28e758f:knowledge/embedding_model.json:generic-api-key:11
+adbb3eec006526fdadd7fa8c8d67512fa28e758f:knowledge/embedding_model.json:generic-api-key:14
+adbb3eec006526fdadd7fa8c8d67512fa28e758f:knowledge/embedding_model.json:generic-api-key:15
+bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic-api-key:11
+bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic-api-key:14
+bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic-api-key:15
