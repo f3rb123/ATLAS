@@ -67,18 +67,49 @@ def rewrap(blob, identity, old, new):
 
 
 def redact(text):
+    # Public advisory text can contain credentials copied from source examples.
+    # Redact recognizable credential forms before normalized content is indexed.
+    text = re.sub(
+        (
+            r"(?is)-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"
+            r".*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"
+        ),
+        "[REDACTED PRIVATE KEY]",
+        text,
+    )
+    text = re.sub(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b", "[REDACTED AWS KEY]", text)
+    text = re.sub(r"\bsgp_[A-Za-z0-9]{20,}\b", "[REDACTED SOURCEGRAPH TOKEN]", text)
+    text = re.sub(
+        r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{8,}\b",
+        "[REDACTED JWT]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)(\b(?:aws_secret_access_key|aws_session_token|x-amz-security-token)\b\s*[=:]\s*[\"']?)[^\s,;\"']+",
+        r"\1[REDACTED]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)(\bcurl\b[^\r\n]*?\s(?:-u|--user)(?:\s+|=)[\"']?)[^\s\"']+",
+        r"\1[REDACTED]",
+        text,
+    )
     text = re.sub(r"(https?://)[^/\s@]+@", r"\1[REDACTED]@", text)
     text = re.sub(
-        r"(?i)([?&](?:api[_-]?key|token|password|secret)=)[^&\s]+",
+        r"(?i)([?&](?:api[_-]?key|access[_-]?token|token|password|secret)=)[^&\s]+",
         r"\1[REDACTED]",
         text,
     )
     text = re.sub(
-        r'(?i)(bearer\s+|[\"\']?(?:api[_-]?key|token|password|secret)[\"\']?\s*[=:]\s*[\"\']?)[^\s,;"\']+',
+        r"(?i)(bearer\s+|[\"']?\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|secret(?:[_-]?key|[_-]?token)?|token|password|authorization)\b[\"']?\s*[=:]\s*[\"']?)[^\s,;\"']+",
         r"\1[REDACTED]",
         text,
     )
-    return re.sub(r"\b(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]+", "[REDACTED]", text)
+    return re.sub(
+        r"\b(?:sk-|ghp_|gho_|github_pat_|glpat-|xox[baprs]-)[A-Za-z0-9_-]+",
+        "[REDACTED]",
+        text,
+    )
 
 
 def rotate_database_keys(db, new_key, old_key=None):

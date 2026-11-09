@@ -59,6 +59,34 @@ def test_invalid_record_unknown_fields():
         Record.model_validate({"made_up": "record"})
 
 
+def test_source_text_redacts_credential_and_private_key_shapes():
+    from atlas.vault import redact
+
+    aws = "AKIA" + "Z" * 16
+    sourcegraph = "sgp_" + "a" * 40
+    jwt = "eyJ" + "a" * 24 + "." + "b" * 24 + "." + "c" * 24
+    private_key = (
+        "-----BEGIN PRIVATE KEY-----\nfixture-material\n-----END PRIVATE KEY-----"
+    )
+    source = (
+        f"{aws} {sourcegraph} {jwt} {private_key} "
+        "curl -u test-user:test-password https://example.invalid/?api_key=fixture-value"
+    )
+
+    cleaned = redact(source)
+
+    for value in (
+        aws,
+        sourcegraph,
+        jwt,
+        "fixture-material",
+        "test-user:test-password",
+        "fixture-value",
+    ):
+        assert value not in cleaned
+    assert "[REDACTED PRIVATE KEY]" in cleaned
+
+
 def test_canonical_export_can_be_reimported(db):
     item = fixture()
     raw = canonical(item).encode()
