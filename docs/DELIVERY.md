@@ -14,8 +14,6 @@ The current corpus transfer archive is a sanitized candidate, not a release asse
 
 Local candidate path: .runtime/delivery/atlas-v3-public-corpus-sanitized.tar.gz
 
-Current candidate SHA256: 6ec660f0e67e1201aa09eb23e9f70dc3d487c5c38448137a4bf64085406b1578
-
 ## First owner and models
 
 The disposable build owner was removed from the main development database while preserving public corpus and immutable audit. The local PostgreSQL stack is left without an owner account. Generate a new single-use bootstrap token on the intended host, redeem it locally, enroll passkeys, TOTP and offline recovery codes, then configure and probe an owner-supplied model connection. Production research remains blocked until enrollment completes. There is no default username/password or public signup.
