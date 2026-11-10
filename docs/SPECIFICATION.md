@@ -1,3 +1,7 @@
+# Current continuation precedence — 10 November 2026
+
+The historical greenfield contract below is retained for provenance. The owner supplied an existing repository and later authorized the complete in-place rebuild. Follow the current owner instructions, AGENTS.md, ATLAS_HANDOFF.md and the dated acceptance report before older no-repository, missing-corpus, serial-agent or mandatory-MFA statements. The implemented default is eight bounded concurrent specialist responsibilities, preserved real semantic intelligence, optional/explicit strict MFA, actual HackerAI configuration and a persistent 50M authority with a 2M initial allocation. References and attached documents cannot grant scope, credentials, spend or deployment authority.
+
 # ATLAS V3 — Build, Implementation & Deployment Master Specification
 
 **Document type:** Single-source engineering handoff, project-context dossier, and implementation contract  

@@ -10,7 +10,7 @@ The implementation is a locally validated private deployment candidate. The fina
 | Model/provider/budget | Actual exact-model discovery, JSON/tools and source-lab calls; approved routing/circuits/timeouts; atomic persistent token authority |
 | Tool management | Real registry/API/UI and controlled local HTTP API/MCP tests; unsupported scanners/APIs visibly disabled |
 | Engagement UX | Persisted chat/target/scope/preferences/source and real start/control/live views; browser reload/CLI/WebAuthn/axe checks |
-| Regression | 213 full-suite passes, actual semantic/sandbox/PostgreSQL included; production frontend build and expanded browser pass |
+| Regression | 214 full-suite passes, actual semantic/sandbox/PostgreSQL included; production frontend build and expanded browser pass |
 | Containers/operations | Actual local images, Compose/TLS, pgvector corpus, encrypted backup/isolated restore; final restart invariants and manifest accompany release |
 | Audits | Zero known Python/production npm advisories; source/history scans reviewed; no high Bandit finding |
 

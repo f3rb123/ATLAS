@@ -1,7 +1,7 @@
 # Next action — 10 November 2026
 
-Local implementation and acceptance are complete; finish final image restart/security/artifact checks and record their hashes in the delivery manifest. Preserve the original database, corpus, model, raw `.env`, master key, all tags and global budget. Current paid consumption is 744,368 tokens; held capacity 282,255; allocation remaining 973,377. No reset/increase/replay of uncertain requests.
+Local implementation and acceptance are complete. Release artifacts/checksums and exact source refs are recorded under ignored `.runtime/delivery/` and in its manifest. Preserve original database/corpus/model files, raw `.env`, master key, release tags and the global budget. Reported usage is 744,368 tokens, held capacity 282,255, remaining allocation 973,377. No automatic reset, increase or uncertain-call replay.
 
-Do not start further paid calls automatically. The private source ZIP and complete Git bundle are for review/manual deployment, not publication. No push or real VPS/public deployment is authorized. The app remains locally accessible on port 3000.
+No more paid testing is planned. Source ZIP and complete Git bundle are for owner review/manual installation. No push, environment publication, public deployment or real VPS operation is authorized. Review the saved environment draft before publishing; local-only Git restoration is not guaranteed, so retain the independently verified bundle.
 
-If the owner supplies a specific observed hostname under `*.sbicard.org`, perform only the previously authorized minimal root-HEAD smoke with the two-request maximum and retain structured scope/evidence/usage events. Until then target requests remain zero. Billing reconciliation requires actual provider evidence. Original private/full-text corpus and historical manifest remain external recovery inputs.
+External next steps: verified pricing and five billing outcomes; one specific verified hostname under `*.sbicard.org` for at most two root HEADs; original private/full-text assets and historical manifest; actual owner-approved deployment destination. Until a hostname is supplied, target requests remain zero.

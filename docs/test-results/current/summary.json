@@ -1,6 +1,6 @@
 {
   "date": "2026-11-10",
-  "backend_passed": 213,
+  "backend_passed": 214,
   "real_semantic": true,
   "real_sandbox": true,
   "real_postgresql": true,
@@ -18,5 +18,8 @@
   "full_text_bounty_reports": 0,
   "target_requests": 0,
   "vps_changes": false,
-  "published": false
+  "published": false,
+  "compose_restart": true,
+  "compose_native_sandbox": true,
+  "sqlite_integrity": "ok"
 }

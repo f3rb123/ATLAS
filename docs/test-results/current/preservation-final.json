@@ -1,0 +1,10 @@
+{
+  "sqlite_quick_check": "ok",
+  "records": 21012,
+  "vectors": 34229,
+  "reported_tokens": 744368,
+  "held": 282255,
+  "remaining": 973377,
+  "credential_binding_verified": true,
+  "raw_key_mode": "0o600"
+}

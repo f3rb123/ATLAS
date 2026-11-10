@@ -1,0 +1,79 @@
+[
+  {
+    "service": "api",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": true,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "web",
+    "image_id": "sha256:2941c4efb2e7c64da5215f857278adef70b0ef5afc562bc2ebca8732381c3df6",
+    "user": "node",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": false,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "gateway",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": true,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "relay",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": false,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "worker-research",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": false,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "worker-verify",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": false,
+    "docker_socket_mount": false
+  },
+  {
+    "service": "worker-corpus",
+    "image_id": "sha256:7d048b771d38e680f5458c3eb762df952bfc0c05cf81c38545e015e5769152bc",
+    "user": "10001:10001",
+    "running": true,
+    "read_only_root": true,
+    "privileged": false,
+    "oom_killed": false,
+    "master_mount": false,
+    "docker_socket_mount": false
+  }
+]

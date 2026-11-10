@@ -149,7 +149,7 @@ outside this completed local acceptance.
 
 ## Final regression and operational refinements
 
-The final complete backend suite passed **213 tests**, including actual semantic
+The final complete backend suite passed **214 tests**, including actual semantic
 inference, Linux namespaces and disposable PostgreSQL migrations/concurrency.
 The two warnings are upstream TestClient deprecation and pgvector reflection.
 Finding metadata review now preserves verification/evidence, and confirmed
@@ -164,3 +164,5 @@ The live application browser also verified Engagements, Recon Tools and Budgets
 with zero serious/critical accessibility violations. Its displayed consumption
 remained 744,368 tokens with 282,255 held and 973,377 remaining; this UI check
 performed no paid inference. Machine evidence is in `test-results/current/`.
+
+Final container recreation passed after reclaiming disposable build cache from the managed VFS daemon; original data volumes were retained. Every application container is nonprivileged with a read-only root and no Docker socket. Worker containers have no master-key mount. Three real sandbox checks passed inside the nonroot Compose research worker: read-only source, absent master/socket and isolated host loopback. PostgreSQL still has migration 0005, 21,012 records and all 34,229 native vectors. The SQLite quick check returned `ok`; the raw-file/encrypted binding matched in memory without emitting a value or prefix. Scoped CLI tokens preserve the actual factor level of their issuing session rather than claiming unperformed MFA.

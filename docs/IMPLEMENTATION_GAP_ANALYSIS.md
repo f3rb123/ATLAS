@@ -13,6 +13,6 @@
 | Research/findings/chains | Attributed notes, competing explanations, unverified relationships, typed hypotheses/experiments, independent proof/control/evidence binding, metadata/timeline and Markdown/SARIF exports | Authored lab success is not real-target vulnerability effectiveness |
 | Engagement UI/CLI | Durable conversation/target/scope/preferences/source/start/pause/stop/resume and persisted live views; API-backed CLI/scoped tokens | Chat cannot change active pins or grant authority |
 | Security/operations | Optional/strict MFA, CSRF/ownership/secrets, no destructive/admin/shell tools, token budgets; pinned containers/TLS/backup/restore/restart assets | Host/VPN/DNS/ACME require actual owner environment and authorization |
-| Acceptance | 213 full-suite passes; actual semantic/sandbox/PostgreSQL; production build, browser/WebAuthn/CLI/axe; real-provider lab and corrected independent replay | SBI smoke awaits one specific verified hostname; zero target requests |
+| Acceptance | 214 full-suite passes; actual semantic/sandbox/PostgreSQL; production build, browser/WebAuthn/CLI/axe; real-provider lab and corrected independent replay | SBI smoke awaits one specific verified hostname; zero target requests |
 
 All mandatory references, including AntiFox, are source-reviewed. Public RSS and public share endpoints resolved prior web access gaps. AGPL projects supplied architecture evidence only; no AGPL implementation was copied. No push, public deployment or destructive original-data operation occurred.

@@ -625,7 +625,7 @@ def cli_token(body: TokenInput, who=Depends(stepup), db=Depends(db_dep)):
     s, t, c = auth.issue(
         db,
         who[0],
-        True,
+        bool(who[1].mfa),
         canonical(body.scopes),
         300 if sensitive else body.expires_hours * 3600,
     )

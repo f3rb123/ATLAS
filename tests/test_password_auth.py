@@ -6,6 +6,26 @@ from atlas.config import settings
 from atlas.db import Session
 
 
+def test_password_only_sensitive_cli_token_preserves_actual_factor_level(db):
+    with TestClient(app) as client:
+        assert client.post("/api/v1/auth/bootstrap", json={"token": bootstrap_token(db), "email": "owner@example.invalid",
+            "password": "fixture CLI unique passphrase 93473"}).status_code == 200
+        me = client.get("/api/v1/users/me").json()
+        headers = {"Origin": settings().external_url, "X-CSRF-Token": me["csrf_token"]}
+        response = client.post("/api/v1/auth/cli-tokens", headers=headers, json={"scopes": ["read", "tool"]})
+        assert response.status_code == 200
+        token = response.json()["token"]
+        # A scoped password token does not pretend MFA happened, and the
+        # optional-factor policy matches browser operator behavior.
+        from atlas.db import digest
+        db.expire_all()
+        issued = db.query(Session).filter_by(token_hash=digest(token)).one()
+        assert issued.mfa == 0
+        configured = client.post("/api/v1/tools/integrations", headers={"Authorization": "Bearer " + token},
+            json={"name": "Unconnected fixture", "adapter": "mcp_resources", "base_url": "https://fixture.example.invalid/mcp", "readonly_contract_attested": True})
+        assert configured.status_code == 200 and not configured.json()["enabled"]
+
+
 def test_password_only_operator_csrf_change_rotation_and_logout(db):
     password = "local fixture unique passphrase 73420"
     new = "different fixture passphrase 89273"
