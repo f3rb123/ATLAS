@@ -1,3 +1,7 @@
+# Central tools — 10 November 2026
+
+Typed registry, API/UI connection management and narrow read-only API/MCP adapters implemented. 56 focused tests passed. Unprovided external connections and scanner harnesses remain explicitly disabled/unverified.
+
 # Research collaboration — 10 November 2026
 
 Dependency gating, explainable priorities/fairness, attributed notes, unverified chain relationships, finding provenance/timeline and UI are implemented; 52 focused tests passed. Actual paid eight-role acceptance remains pending.

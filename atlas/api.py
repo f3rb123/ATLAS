@@ -49,6 +49,7 @@ from .workflow import control
 from .vault import master, seal
 from .corpus_transfers import UploadInput
 from .research_artifacts import ResearchNote, ChainLink
+from .tool_registry import IntegrationInput
 
 
 @asynccontextmanager
@@ -2086,6 +2087,45 @@ def swarm_task_create(id: str, body: TaskRequest, who=Depends(enrolled), db=Depe
     task = enqueue(db, run, body.role, body.model_dump(exclude={"role", "priority"}), digest(canonical(body.model_dump())), body.priority)
     db.commit()
     return {"task_id": task.id if task else None, "queued": bool(task)}
+
+
+@app.get("/api/v1/tools")
+def tool_inventory(who=Depends(admin), db=Depends(db_dep)):
+    from .tool_registry import inventory
+
+    return inventory(db, who[0].id)
+
+
+@app.post("/api/v1/tools/integrations")
+def tool_create(body: IntegrationInput, who=Depends(stepup), db=Depends(db_dep)):
+    from .tool_registry import create, safe
+
+    row = create(db, who[0].id, body)
+    db.commit()
+    return safe(row)
+
+
+@app.post("/api/v1/tools/integrations/{id}/test")
+def tool_test(id: str, who=Depends(stepup), db=Depends(db_dep)):
+    from .tool_registry import test_connection
+
+    result = test_connection(db, own(db, id, "tool_integration", who[0].id, True), who[0].id)
+    db.commit()
+    return result
+
+
+class ToolEnablement(Strict):
+    enabled: bool
+
+
+@app.post("/api/v1/tools/integrations/{id}/enablement")
+def tool_enablement(id: str, body: ToolEnablement, who=Depends(stepup), db=Depends(db_dep)):
+    from .tool_registry import enable, safe
+
+    row = own(db, id, "tool_integration", who[0].id, True)
+    enable(db, row, body.enabled, who[0].id)
+    db.commit()
+    return safe(row)
 
 
 @app.post("/api/v1/skills/starter")

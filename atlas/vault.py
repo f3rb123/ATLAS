@@ -136,6 +136,14 @@ def rotate_database_keys(db, new_key, old_key=None):
         if u.totp:
             u.totp = rewrap(u.totp, f"totp:{u.id}", old_key, new_key)
             count += 1
+    from .tool_registry import identity as integration_identity
+
+    for row in db.query(Document).filter_by(kind="tool_integration").with_for_update():
+        value = row.value()
+        if value.get("secret"):
+            value["secret"] = rewrap(value["secret"], integration_identity(row), old_key, new_key)
+            row.data = canonical(value)
+            count += 1
     for d in db.query(Document).filter_by(kind="totp_pending").with_for_update():
         s = db.get(__import__("atlas.db", fromlist=["Session"]).Session, d.owner)
         if not s:

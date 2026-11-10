@@ -10,6 +10,7 @@ from .config import settings
 from .vault import redact
 from .knowledge import CAPABILITIES as KNOWLEDGE_CAPABILITIES, execute as knowledge_execute
 from .research_artifacts import ResearchNote, ChainLink, store_note, link_chain
+from .tool_registry import IntelligenceLookup, MCPRead
 
 EXCLUDED = {
     ".git",
@@ -382,6 +383,8 @@ TOOLS = {
     "get_dependency_record": ("read_only", SearchInput),
     "store_research_note": ("read_only", NoteInput),
     "link_attack_chain": ("read_only", ChainLink),
+    "external_intelligence_lookup": ("low_impact", IntelligenceLookup),
+    "mcp_read_resource": ("read_only", MCPRead),
     "link_finding_to_reference": ("read_only", LinkInput),
     "pause_run": ("read_only", ReasonInput),
     "request_more_budget": ("read_only", BudgetInput),
@@ -448,6 +451,10 @@ def broker(db, run, repo, name, payload, actor):
             result = knowledge_execute(db, run, name, args, actor)
         elif name in KNOWLEDGE_CONTROLS:
             result = knowledge_control(db, run, name, args, actor)
+        elif name in ("external_intelligence_lookup", "mcp_read_resource"):
+            from .tool_registry import execute
+
+            result = execute(db, run, name, args)
         elif name in ("http_request", "fetch_allowed_url", "inspect_redirect_chain"):
             if not settings().relay_url or not settings().service_token_file:
                 raise Denied("Scoped target relay is not configured")
