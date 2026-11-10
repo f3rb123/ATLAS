@@ -38,5 +38,13 @@ for attempt in $(seq 1 30); do
 done
 [[ "$ready" == 1 ]] || { echo 'Startup failed; inspect .runtime/cloud-dev/logs.' >&2; exit 1; }
 echo 'API database readiness and rendered web response verified. Services stay attached to this launcher.'
-echo 'No owner, provider or original corpus was provisioned. Semantic retrieval is not yet validated.'
+.venv/bin/python - <<'PY'
+from atlas.db import session, Document
+from atlas.knowledge import availability
+with session() as db:
+    state = availability(db, "public")
+    providers = db.query(Document).filter_by(kind="provider").count()
+    print(f"Knowledge: {state['status']}; {state['visible_records']} records / {state['active_chunks']} active chunks; {providers} configured providers.")
+    print("Startup preserves existing data and keys. Provider acceptance and deployment evidence are recorded separately.")
+PY
 wait -n "${pids[@]}"

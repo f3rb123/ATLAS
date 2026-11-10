@@ -471,6 +471,8 @@ def restore_package(path, expected_sha256, actor="host_operator"):
                     raise ValueError(
                         "Previously restored corpus changed; refusing replacement"
                     )
+                install_review_policy(db, expected_sha256)
+                db.commit()
                 return {
                     "status": "already_restored",
                     "sha256": expected_sha256,
@@ -575,6 +577,7 @@ def restore_package(path, expected_sha256, actor="host_operator"):
                 "source_archive_unchanged": True,
             }
             document(db, "corpus_transfer", "public", value, transfer_id)
+            install_review_policy(db, expected_sha256)
             append(
                 db,
                 transfer_id,
@@ -604,3 +607,12 @@ def restore_package(path, expected_sha256, actor="host_operator"):
             },
             "withheld_raw_artifacts": len(checked["withheld_raw_artifacts"]),
         }
+
+
+def install_review_policy(db, source_sha256):
+    """Apply the source-specific reviewed output masks, never alter stored text."""
+    review = Path(__file__).parent / "data" / "corpus_reviews" / (source_sha256 + ".json")
+    if review.is_file():
+        from .corpus_privacy import register_review
+
+        register_review(db, review)

@@ -6,7 +6,7 @@ from urllib.parse import urljoin, urlsplit
 from fastapi import FastAPI, Request, HTTPException
 from .config import settings
 from .policy import Strict, Scope, Denied, request, normalize
-from .db import session, Document, canonical, digest, append
+from .db import session, Document, canonical, digest, append, transaction_lock
 from .vault import redact
 
 app = FastAPI(docs_url=None, openapi_url=None)
@@ -45,6 +45,7 @@ def execute(body, actor):
     chain = []
     for hop in range(body.max_redirects + 1):
         with session() as db:
+            transaction_lock(db, "relay:" + body.run_id)
             run = (
                 db.query(Document)
                 .filter_by(id=body.run_id, kind="run")
@@ -71,10 +72,19 @@ def execute(body, actor):
                 scope = Scope.model_validate(policy.value()["scope"])
                 if digest(canonical(scope.model_dump())) != v["policy_hash"]:
                     raise Denied("Policy integrity failure")
-                from .policy import authorize
+                from .policy import authorize, readonly_target_request
 
+                readonly_target_request(url, body.method)
+                profile = v.get("assessment_profile", campaign.value().get("assessment_profile", "standard"))
+                if profile == "smoke_readonly":
+                    parsed = urlsplit(url)
+                    if body.method != "HEAD" or parsed.path not in ("", "/") or parsed.query:
+                        raise Denied("Smoke profile permits only metadata HEAD requests to the verified root URL")
+                    if any(k.lower() not in ("accept", "user-agent") for k in body.headers):
+                        raise Denied("Smoke profile prohibits authentication, cookies and method overrides")
                 authorize(scope, url, body.method)
-                if v.get("http_requests", 0) >= scope.max_requests:
+                request_limit = min(scope.max_requests, 2) if profile == "smoke_readonly" else scope.max_requests
+                if v.get("http_requests", 0) >= request_limit:
                     raise Denied("HTTP quota exhausted")
                 if time.time() - v.get("last_request", 0) < 1:
                     raise Denied("Rate/concurrency limit: one request per second")

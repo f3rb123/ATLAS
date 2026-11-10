@@ -72,6 +72,8 @@ class ModelInput(Strict):
     capabilities: dict[str, bool] = {}
     input_price: float = Field(default=10, ge=0, le=1000)
     output_price: float = Field(default=30, ge=0, le=1000)
+    pricing_status: Literal["unverified", "verified"] = "unverified"
+    pricing_source: str | None = Field(default=None, max_length=1000)
 
 
 class ModelRequest(Strict):
@@ -90,6 +92,10 @@ class ModelResponse(Strict):
     finish_reason: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    cached_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+    reasoning_tokens: int = 0
+    total_tokens: int | None = None
     usage_estimated: bool = False
     model_id: str = ""
     request_id: str | None = None
@@ -159,6 +165,29 @@ def provider_scope(url):
     )
 
 
+def validate_provider_configuration(url):
+    """Validate an untested connection without requiring working DNS/egress.
+
+    Actual dispatch still resolves and pins addresses through provider_scope.
+    Saving an encrypted connection never marks it healthy or enables a model.
+    """
+    import ipaddress
+
+    _, hostname, port, _, scheme = normalize(url)
+    exact = f"{hostname}:{port}"
+    local = exact in settings().provider_local_allowlist
+    if scheme != "https" and not local:
+        raise Denied("HTTPS required; local inference requires operator allowlist")
+    if settings().provider_allowlist and exact not in settings().provider_allowlist and not local:
+        raise Denied("Provider not in operator egress allowlist")
+    try:
+        literal = ipaddress.ip_address(hostname)
+    except ValueError:
+        literal = None
+    if literal is not None and not literal.is_global and not local:
+        raise Denied("Private provider address requires explicit operator allowlist")
+
+
 def safe_metadata(d):
     v = d.value()
     return {
@@ -204,7 +233,7 @@ def create_provider(db, owner, input, id=None):
         raise Denied("Custom authentication requires a header name")
     validate_headers(v["headers"])
     validate_headers(v["secret_headers"])
-    provider_scope(v["base_url"])
+    validate_provider_configuration(v["base_url"])
     if v["auth_header_name"]:
         validate_headers({v["auth_header_name"]: "x"})
     if any(
@@ -430,6 +459,24 @@ class Adapter:
         for count in (inp, out):
             if count is not None and (type(count) is not int or count < 0):
                 raise ProviderError("Malformed usage counters")
+        cached = usage.get("prompt_cache_hit_tokens", usage.get("prompt_tokens_details", {}).get("cached_tokens", usage.get("input_tokens_details", {}).get("cached_tokens", 0)))
+        created = 0
+        reasoning = usage.get("completion_tokens_details", {}).get("reasoning_tokens", usage.get("output_tokens_details", {}).get("reasoning_tokens", usage.get("reasoning_tokens", 0)))
+        reported_total = usage.get("total_tokens")
+        if protocol == "anthropic_messages":
+            cached = usage.get("cache_read_input_tokens", 0)
+            created = usage.get("cache_creation_input_tokens", 0)
+            if inp is not None:
+                inp += cached + created
+        elif protocol == "gemini":
+            cached = u.get("cachedContentTokenCount", 0)
+            reasoning = u.get("thoughtsTokenCount", 0)
+            if out is not None:
+                out += reasoning
+            reported_total = u.get("totalTokenCount")
+        for count in (cached, created, reasoning, reported_total):
+            if count is not None and (type(count) is not int or count < 0):
+                raise ProviderError("Malformed detailed usage counters")
         est = inp is None or out is None
         inp = (
             inp
@@ -439,6 +486,8 @@ class Adapter:
         out = out if isinstance(out, int) and out >= 0 else len(content)
         if inp > 10000000 or out > 10000000:
             raise ProviderError("Malformed usage counters")
+        if cached + created > inp:
+            raise ProviderError("Cached usage exceeds input usage")
         structured = None
         if r.structured:
             try:
@@ -454,6 +503,10 @@ class Adapter:
             finish_reason=finish,
             input_tokens=inp,
             output_tokens=out,
+            cached_input_tokens=cached,
+            cache_creation_input_tokens=created,
+            reasoning_tokens=reasoning,
+            total_tokens=max(reported_total or 0, inp + out),
             usage_estimated=est,
             model_id=r.model,
             request_id=p.get("id"),
@@ -702,7 +755,7 @@ class Adapter:
         return {"status": "reachable", "models": self.list_models()}
 
 
-def reserve(db, owner, run_id, ceiling, role=None, provider_id=None):
+def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceiling=0):
     # Serialize initial creation as well as existing-row reservations.
     from .db import transaction_lock
 
@@ -772,6 +825,10 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None):
                     raise CapacityWait("Campaign budget capacity reserved by in-flight requests")
                 raise ProviderError("Campaign budget exhausted")
     id = uid()
+    if token_ceiling:
+        from .token_budget import reserve as reserve_tokens
+
+        reserve_tokens(db, id, token_ceiling, owner, run_id, role, provider_id)
     v["reserved"][id] = {
         "amount": ceiling,
         "owner": owner,
@@ -780,13 +837,14 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None):
         "role": role,
         "provider_id": provider_id,
         "task_id": getattr(run, "_swarm_claim", (None, None))[0] if run else None,
+        "token_ceiling": token_ceiling,
     }
     d.data = canonical(v)
     db.commit()
     return id
 
 
-def settle(db, reservation, cost):
+def settle(db, reservation, cost, token_usage=None, not_dispatched=False):
     from .db import transaction_lock
 
     transaction_lock(db, "budget-global")
@@ -795,6 +853,18 @@ def settle(db, reservation, cost):
     r = v["reserved"].pop(reservation)
     v["spent"][r["month"]] = v["spent"].get(r["month"], 0) + cost
     d.data = canonical(v)
+    from .token_budget import settle as settle_tokens
+
+    settle_tokens(db, reservation, token_usage, not_dispatched)
+
+
+def token_usage(response):
+    return {"input_tokens": response.input_tokens, "output_tokens": response.output_tokens,
+            "cached_input_tokens": response.cached_input_tokens,
+            "cache_creation_input_tokens": response.cache_creation_input_tokens,
+            "reasoning_tokens": response.reasoning_tokens,
+            "total_tokens": response.total_tokens if response.total_tokens is not None else response.input_tokens + response.output_tokens,
+            "estimated": response.usage_estimated}
 
 
 def generate_budgeted(db, provider, model, req, run, role="reasoning"):
@@ -821,7 +891,9 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     role_spent = rv.get("role_spent", {}).get(role, 0)
     if role_spent + estimate > rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
         raise ProviderError("Role budget exhausted")
-    reservation = reserve(db, run.owner, run.id, estimate, role, provider_id=provider.id)
+    from .token_budget import ceiling as token_ceiling, mark_unknown
+
+    reservation = reserve(db, run.owner, run.id, estimate, role, provider_id=provider.id, token_ceiling=token_ceiling(req))
     campaign = db.get(Document, rv["campaign_id"]) if rv.get("campaign_id") else None
     if campaign:
         campaign_id = rv["campaign_id"]
@@ -830,7 +902,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             if usage.value().get("campaign_id") == campaign_id:
                 total += usage.value()["cost"]
         if total + estimate > campaign.value().get("budget_limit", 10):
-            settle(db, reservation, 0)
+            settle(db, reservation, 0, not_dispatched=True)
             db.commit()
             raise ProviderError("Campaign budget exhausted")
     from .db import transaction_lock
@@ -840,11 +912,11 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     rv = run.value()
     kill = db.get(Document, "kill-switch")
     if rv["status"] not in ("queued", "running") or (kill and kill.value()["enabled"]):
-        settle(db, reservation, 0)
+        settle(db, reservation, 0, not_dispatched=True)
         db.commit()
         raise RunInterrupted("Run was stopped before dispatch")
     if rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
-        settle(db, reservation, 0)
+        settle(db, reservation, 0, not_dispatched=True)
         db.commit()
         raise ProviderError("Model call limit exhausted")
     rv["model_calls"] = rv.get("model_calls", 0) + 1
@@ -854,13 +926,15 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     try:
         response = construct_adapter(provider).generate(req)
     except Exception:
+        mark_unknown(db, reservation)
+        db.commit()
         raise
     cost = (
         response.input_tokens * m["input_price"]
         + response.output_tokens * m["output_price"]
     ) / 1000000
     cost = max(cost, estimate) if response.usage_estimated else cost
-    settle(db, reservation, cost)
+    settle(db, reservation, cost, token_usage(response))
     document(
         db,
         "usage",
@@ -875,8 +949,17 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             "pricing_version": model.version,
             "input_tokens": response.input_tokens,
             "output_tokens": response.output_tokens,
+            "cached_input_tokens": response.cached_input_tokens,
+            "cache_creation_input_tokens": response.cache_creation_input_tokens,
+            "reasoning_tokens": response.reasoning_tokens,
+            "total_tokens": response.total_tokens if response.total_tokens is not None else response.input_tokens + response.output_tokens,
             "cost": cost,
-            "estimated": response.usage_estimated,
+            "cost_confirmed": m.get("pricing_status") == "verified" and not response.usage_estimated,
+            "pricing_source": m.get("pricing_source"),
+            "actual_cost_usd": cost if m.get("pricing_status") == "verified" and not response.usage_estimated else None,
+            "estimated": response.usage_estimated or m.get("pricing_status") != "verified",
+            "token_usage_estimated": response.usage_estimated,
+            "reservation_id": reservation,
         },
     )
     db.refresh(run, with_for_update=True)

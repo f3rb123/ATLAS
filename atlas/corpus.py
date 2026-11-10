@@ -594,7 +594,9 @@ def search(db, query, source=None, limit=5, owner="public", filters=None):
             seen.add(result["record_id"])
         if len(unique) == limit:
             break
-    return unique
+    from .corpus_privacy import result_views
+
+    return result_views(db, unique)
 
 
 def import_parts(path, max_size=20 * 1024 * 1024):

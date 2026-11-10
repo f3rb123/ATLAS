@@ -327,3 +327,90 @@ def test_upload_quota_bounds_and_owner_isolation(db, candidate):
         ).status_code
         == 404
     )
+
+
+def test_content_review_masks_views_without_mutating_records_or_vectors(
+    db, candidate, tmp_path
+):
+    from atlas.corpus_privacy import (
+        PLACEHOLDER,
+        record_view,
+        register_review,
+        result_views,
+    )
+
+    archive, sha = candidate["write"]()
+    transfer.restore_package(archive, sha)
+    db.expire_all()
+    r = candidate["record"]
+    original = db.get(Knowledge, r.record_id).record
+    vector = db.get(Chunk, candidate["vector"]["id"])
+    original_text = vector.text
+    review = tmp_path / "review.json"
+    review.write_text(
+        canonical(
+            {
+                "source_archive_sha256": sha,
+                "scanner": "synthetic",
+                "records": [
+                    {
+                        "record_id": r.record_id,
+                        "paths": [["summary"], ["content", "chunks", 0, "text"]],
+                        "rules": ["fixture"],
+                    }
+                ],
+            }
+        )
+    )
+    assert register_review(db, review)["masked_fields"] == 2
+    db.commit()
+    view = record_view(db, json.loads(original))
+    assert view["summary"] == view["content"]["chunks"][0]["text"] == PLACEHOLDER
+    assert view["content"]["chunks"][0]["original_hash"] == digest(original_text)
+    assert view["content"]["chunks"][0]["hash"] == digest(PLACEHOLDER)
+    hits = result_views(
+        db,
+        [
+            {
+                "record_id": r.record_id,
+                "chunk_index": 0,
+                "text": original_text,
+                "title": r.title,
+                "chunk_sha256": digest(original_text),
+            }
+        ],
+    )
+    assert hits[0]["content_redacted"] and hits[0]["text"] == PLACEHOLDER
+    assert hits[0]["chunk_sha256"] == digest(original_text)
+    db.expire_all()
+    assert db.get(Knowledge, r.record_id).record == original
+    assert db.get(Chunk, candidate["vector"]["id"]).text == original_text
+    assert transfer.restore_package(archive, sha)["status"] == "already_restored"
+
+
+def test_content_review_cannot_change_identity_or_apply_to_unknown_package(
+    db, candidate, tmp_path
+):
+    from atlas.corpus_privacy import register_review
+
+    archive, sha = candidate["write"]()
+    transfer.restore_package(archive, sha)
+    review = tmp_path / "review.json"
+    review.write_text(
+        canonical(
+            {
+                "source_archive_sha256": sha,
+                "records": [
+                    {
+                        "record_id": candidate["record"].record_id,
+                        "paths": [["record_id"]],
+                    }
+                ],
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="only summary/chunk text"):
+        register_review(db, review)
+    review.write_text(canonical({"source_archive_sha256": "0" * 64, "records": []}))
+    with pytest.raises(ValueError, match="installed package"):
+        register_review(db, review)

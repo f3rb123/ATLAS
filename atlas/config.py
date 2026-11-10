@@ -1,12 +1,13 @@
 from pathlib import Path
 from functools import lru_cache
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator, Field
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="ATLAS_", env_file=".env", extra="ignore"
+        env_prefix="ATLAS_", env_file=None, extra="ignore"
     )
     env: str = "development"
     database_url: str = Field(default="sqlite:///.runtime/atlas.db", repr=False)
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     research_token_file: str | None = None
     verify_token_file: str | None = None
     api_token_file: str | None = None
+    provider_key_file: str | None = Field(default=None, repr=False)
+    global_token_cap: int = Field(default=50000000, ge=1, le=50000000)
+    token_allocation: int = Field(default=2000000, ge=1, le=50000000)
+    validation_token_reserve: int = Field(default=200000, ge=0, le=50000000)
     passkey_only_recovery: bool = False
     require_mfa: bool = False
     worker_concurrency: int = Field(default=8, ge=1, le=16)
@@ -86,4 +91,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def settings():
-    return Settings()
+    # A raw credential may legitimately be named .env. Never parse it as config.
+    # Dotenv configuration is opt-in through an explicit, non-secret selector.
+    return Settings(_env_file=os.environ.get("ATLAS_CONFIG_FILE"))

@@ -200,6 +200,9 @@ def execute(db, run, name, args, actor):
         "knowledge.submit_feedback",
     ):
         k, r = record(db, run.owner, args.record_id)
+        from .corpus_privacy import record_view
+
+        r = record_view(db, r)
         if name == "knowledge.submit_feedback":
             from .vault import redact
 

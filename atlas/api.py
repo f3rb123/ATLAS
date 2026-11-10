@@ -628,6 +628,7 @@ class CampaignInput(Strict):
     authorization_attested: bool
     scope: Scope = Field(default_factory=Scope)
     policy_notes: str = ""
+    assessment_profile: Literal["standard", "smoke_readonly"] = "standard"
     budget_limit: float = Field(default=10, gt=0, le=1000)
 
 
@@ -804,6 +805,7 @@ def run_start(
     v = {
         **body.model_dump(),
         "campaign_id": id,
+        "assessment_profile": c.value().get("assessment_profile", "standard"),
         "policy_id": p.id,
         "policy_hash": p.value()["hash"],
         "state": "SWARM_RUNNING" if body.execution_mode == "swarm" else "CREATED",
@@ -951,6 +953,7 @@ def models(id: str, who=Depends(enrolled), db=Depends(db_dep)):
 
 class TestInput(Strict):
     model_id: str | None = None
+    mode: Literal["structured", "tools"] = "structured"
 
 
 @app.post("/api/v1/providers/{id}/test")
@@ -964,33 +967,69 @@ def provider_test(id: str, body: TestInput, who=Depends(stepup), db=Depends(db_d
         req = ModelRequest(
             model=m.value()["model_id"],
             messages=[{"role": "user", "content": 'Return only {"ok":true} as JSON.'}],
-            max_tokens=32,
+            max_tokens=256,
+            structured=body.mode != "tools",
+            tools=[{"type": "function", "function": {
+                "name": "acceptance_echo", "description": "Return a fixed local acceptance value; no external action.",
+                "parameters": {"type": "object", "properties": {"value": {"type": "string", "enum": ["atlas-local-probe"]}},
+                               "required": ["value"], "additionalProperties": False},
+            }}] if body.mode == "tools" else [],
         )
-        from .gateway import reserve, settle
+        if body.mode == "tools":
+            req.messages = [{"role": "user", "content": "Call acceptance_echo with value atlas-local-probe. Do not perform any external action."}]
+        from .gateway import reserve, settle, token_usage
+        from .token_budget import ceiling, mark_unknown
 
         mv = m.value()
-        estimate = (128 * mv["input_price"] + 32 * mv["output_price"]) / 1000000
-        reservation = reserve(db, who[0].id, "provider_test", estimate)
-        result = construct_adapter(d).generate(req)
+        estimate = ((len(canonical(req.messages).encode("utf-8")) + 512) * mv["input_price"] + req.max_tokens * mv["output_price"]) / 1000000
+        reservation = reserve(db, who[0].id, "provider_test", estimate, "provider_probe", provider_id=d.id, token_ceiling=ceiling(req))
+        try:
+            response = construct_adapter(d).generate(req)
+        except Exception:
+            mark_unknown(db, reservation)
+            db.commit()
+            raise
         settle(
             db,
             reservation,
             max(
                 estimate,
                 (
-                    result.input_tokens * mv["input_price"]
-                    + result.output_tokens * mv["output_price"]
+                    response.input_tokens * mv["input_price"]
+                    + response.output_tokens * mv["output_price"]
                 )
                 / 1000000,
             ),
+            token_usage(response),
         )
-        if result.structured_content != {"ok": True}:
+        document(db, "usage", who[0].id, {
+            "run_id": "provider_test", "provider_id": d.id, "model": mv["model_id"],
+            "role": "provider_probe", **token_usage(response), "reservation_id": reservation,
+            "cost": max(estimate, (response.input_tokens * mv["input_price"] + response.output_tokens * mv["output_price"]) / 1000000),
+            "cost_confirmed": mv.get("pricing_status") == "verified" and not response.usage_estimated,
+            "pricing_source": mv.get("pricing_source"),
+            "estimated": response.usage_estimated or mv.get("pricing_status") != "verified",
+        })
+        # A failed capability probe is still a real, accounted provider response.
+        db.commit()
+        if body.mode == "structured" and response.structured_content != {"ok": True}:
             raise ProviderError("Structured capability probe failed")
         v = m.value()
-        v["verified_structured"] = True
-        v["capability_status"] = "structured_output_verified"
+        if body.mode == "tools":
+            calls = response.tool_calls
+            functions = [c.get("function", c) for c in calls]
+            if not any(f.get("name") == "acceptance_echo" and
+                       (json.loads(f.get("arguments", "{}")) if isinstance(f.get("arguments", "{}"), str) else f.get("arguments")) == {"value": "atlas-local-probe"}
+                       for f in functions):
+                raise ProviderError("Tool calling capability probe failed")
+            v["verified_tools"] = True
+            v["capability_status"] = "tool_calling_verified"
+        else:
+            v["verified_structured"] = True
+            v["capability_status"] = "structured_output_verified"
         m.data = canonical(v)
-        result = {"status": "structured_output_verified"}
+        result = {"status": v["capability_status"], "token_usage": token_usage(response),
+                  "pricing_confirmed": mv.get("pricing_status") == "verified"}
     else:
         result = construct_adapter(d).health_check()
     v = d.value()
@@ -1318,6 +1357,59 @@ def budgets(who=Depends(enrolled), db=Depends(db_dep)):
 
 class BudgetInput(Strict):
     cap: float = Field(gt=0, le=10000)
+
+
+class TokenBudgetInput(Strict):
+    cap: int = Field(default=50000000, ge=1, le=50000000)
+    allocation: int = Field(default=2000000, ge=1, le=50000000)
+    validation_reserve: int = Field(default=200000, ge=0, le=50000000)
+
+
+@app.get("/api/v1/budgets/tokens")
+def token_budget_status(who=Depends(admin), db=Depends(db_dep)):
+    from .token_budget import summarize
+
+    result = summarize(db)
+    db.commit()
+    return result
+
+
+@app.patch("/api/v1/budgets/tokens")
+def token_budget_configure(body: TokenBudgetInput, who=Depends(stepup), db=Depends(db_dep)):
+    from .token_budget import configure
+
+    result = configure(db, body.cap, body.allocation, body.validation_reserve)
+    audit(db, who[0].id, "token_budget_configured", body.model_dump())
+    db.commit()
+    return result
+
+
+class TokenReconciliation(Strict):
+    input_tokens: int = Field(ge=0, le=50000000)
+    output_tokens: int = Field(ge=0, le=50000000)
+    cached_input_tokens: int = Field(default=0, ge=0, le=50000000)
+    cache_creation_input_tokens: int = Field(default=0, ge=0, le=50000000)
+    reasoning_tokens: int = Field(default=0, ge=0, le=50000000)
+    total_tokens: int = Field(ge=0, le=50000000)
+    billing_reference: str = Field(min_length=10, max_length=500)
+
+
+@app.post("/api/v1/budgets/tokens/reservations/{id}/reconcile")
+def token_budget_reconcile(id: str, body: TokenReconciliation, who=Depends(stepup), db=Depends(db_dep)):
+    from .token_budget import ledger, settle, summarize
+
+    value = ledger(db).value()
+    reservation = value["reserved"].get(id)
+    if not reservation or reservation["owner"] != who[0].id:
+        raise HTTPException(404)
+    run = db.get(Document, reservation["run_id"])
+    if run and run.kind == "run" and run.value()["status"] in ("queued", "running"):
+        raise Denied("Stop the run before reconciling uncertain provider usage")
+    settle(db, id, body.model_dump(exclude={"billing_reference"}))
+    audit(db, who[0].id, "token_billing_reconciled", {"id": id, "billing_reference": body.billing_reference})
+    result = summarize(db)
+    db.commit()
+    return result
 
 
 @app.patch("/api/v1/budgets")
@@ -2179,7 +2271,9 @@ def knowledge_record(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     k = db.get(Knowledge, id)
     if not k or k.owner not in ("public", who[0].id):
         raise HTTPException(404)
-    return json.loads(k.record)
+    from .corpus_privacy import record_view
+
+    return record_view(db, json.loads(k.record))
 
 
 @app.get("/api/v1/knowledge/{id}/sources")

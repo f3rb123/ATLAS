@@ -1,0 +1,158 @@
+{
+  "scanner": "Gitleaks 8.24.3",
+  "source_archive_sha256": "e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025",
+  "classification": "Conservative output withholding on a review copy; no candidate classified as a verified live secret",
+  "metadata_false_positives": {
+    "public_ghsa_identity": 1841,
+    "exact_pinned_embedding_version": 52,
+    "public_cve_alias_identity": 227,
+    "verified_importer_identity_digest": 1
+  },
+  "normalized_content_findings": 23,
+  "raw_content_findings": 4,
+  "raw_artifacts_to_withhold": [
+    "99b240003011cb8fa56310c835906f3ec4782ae739cd5f9403202bbb889ed44d",
+    "a3fb378ec5cb0bc5f4cd731b649481e2e4245ca7388f40a82688cf3edca87f09",
+    "ec82a58f53d4fb0d16eec9e5479cc36f562c516d4735b64149b2977fd194d48a"
+  ],
+  "quarantined_record_ids": [],
+  "records": [
+    {
+      "record_id": "791cfcb0-538c-4f34-8ad0-3f7991826f26",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          1,
+          "text"
+        ],
+        [
+          "summary"
+        ]
+      ],
+      "rules": [
+        "sourcegraph-access-token"
+      ]
+    },
+    {
+      "record_id": "040aabb3-9864-46e8-aa8b-6b5fc14d8f70",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          6,
+          "text"
+        ],
+        [
+          "content",
+          "chunks",
+          7,
+          "text"
+        ],
+        [
+          "summary"
+        ]
+      ],
+      "rules": [
+        "generic-api-key",
+        "private-key"
+      ]
+    },
+    {
+      "record_id": "45bc2356-fe18-427d-8e99-23627b11d895",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          1,
+          "text"
+        ],
+        [
+          "summary"
+        ]
+      ],
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "record_id": "949b3645-90ea-4ff0-b2b7-6d14f1fe9685",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          1,
+          "text"
+        ]
+      ],
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "record_id": "e7b33c85-42ca-4848-afac-aa183e09fe4a",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          2,
+          "text"
+        ],
+        [
+          "content",
+          "chunks",
+          4,
+          "text"
+        ],
+        [
+          "summary"
+        ]
+      ],
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "record_id": "49b7eff3-1321-415e-8ef6-fccbd8a6c40e",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          0,
+          "text"
+        ]
+      ],
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "record_id": "74b82e6d-9fb0-4a3e-a390-ab47d5d65135",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          0,
+          "text"
+        ]
+      ],
+      "rules": [
+        "sourcegraph-access-token"
+      ]
+    },
+    {
+      "record_id": "caa5fe1e-2be5-44d7-b95f-3289a023cf9d",
+      "paths": [
+        [
+          "content",
+          "chunks",
+          9,
+          "text"
+        ]
+      ],
+      "rules": [
+        "generic-api-key"
+      ]
+    }
+  ]
+}

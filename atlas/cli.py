@@ -599,5 +599,44 @@ def corpus_restore(file: Path, sha256: str = typer.Option(..., "--sha256")):
     corpus_package_command(file, sha256, True)
 
 
+@groups["host"].command("token-budget")
+def host_token_budget():
+    """Read persistent token consumption/reservations without resetting them."""
+    from .db import session
+    from .token_budget import summarize
+
+    with session() as db:
+        result = summarize(db)
+        db.commit()
+    out(result)
+
+
+@groups["host"].command("configure-provider-file")
+def configure_provider_file(
+    key_file: Path,
+    base_url: str = "https://api.hackerai.sh/v1",
+    primary_model: str = "deepseek-v4.1-flash",
+    verifier_model: str = "deepseek-v4-pro",
+    owner_email: str | None = None,
+    bootstrap_local_owner: bool = False,
+):
+    """Load a raw key into encrypted settings; verify exact models without inference."""
+    from .db import session
+    from .provider_setup import configure_provider
+    from .gateway import ProviderError
+    from .token_budget import summarize
+
+    with session() as db:
+        summarize(db)
+        db.commit()
+        try:
+            result = configure_provider(db, key_file, base_url, primary_model, verifier_model,
+                                        owner_email, bootstrap_local_owner)
+        except (ValueError, ProviderError, OSError):
+            # Provider errors must not expose a credential, headers or file data.
+            raise typer.BadParameter("Provider setup blocked; check exact file permissions, endpoint access and existing owner configuration") from None
+    out(result)
+
+
 if __name__ == "__main__":
     app()
