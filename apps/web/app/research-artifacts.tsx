@@ -1,0 +1,15 @@
+'use client';
+import {useEffect,useState} from 'react';
+type Api=(path:string,method?:string,body?:any)=>Promise<any>;
+export default function ResearchArtifacts({runId,call}:{runId:string,call:Api}){
+ const [notes,N]=useState<any[]>([]),[chains,C]=useState<any[]>([]),[nodes,V]=useState<any[]>([]),[error,E]=useState('');
+ async function refresh(){try{const [n,c,h,f]=await Promise.all([call(`runs/${runId}/objects/research-notes`),call(`runs/${runId}/objects/attack-chains`),call(`runs/${runId}/objects/hypotheses`),call('findings')]);N(n);C(c);V([...h,...f.filter((x:any)=>x.run_id===runId)])}catch(e:any){E(e.message)}}
+ useEffect(()=>{refresh()},[runId]);
+ return <section className="card"><h2>Research and attack chains</h2><p>Notes compare explanations and preserve sources. Chain links describe proposed relationships; each combined claim needs independent evidence.</p>
+ {notes.map(n=><details key={n.id}><summary>{n.title} · {n.status}</summary><p>{n.text}</p><p>Sources: {n.citations?.join(', ')||'None supplied'}</p><p>Missing: {n.missing_information?.join('; ')||'Not specified'}</p></details>)}
+ <details><summary>Add research note</summary><form onSubmit={async e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);try{await call(`runs/${runId}/research-notes`,'POST',{title:f.get('title'),text:f.get('text'),citations:String(f.get('citations')).split('\n').filter(Boolean),missing_information:String(f.get('missing')).split('\n').filter(Boolean)});form.reset();await refresh()}catch(e:any){E(e.message)}}}><label>Title<input name="title" maxLength={200} required/></label><label>Observation and competing explanations<textarea name="text" maxLength={12000} required/></label><label>Source citations (one per line)<textarea name="citations"/></label><label>Missing evidence (one per line)<textarea name="missing"/></label><button>Save note</button></form></details>
+ {chains.map(c=><article className="card" key={c.id}><span className="badge">Unverified relationship</span><p>{c.source_id} → {c.relationship} → {c.target_id}</p><p>{c.rationale}</p></article>)}
+ <details><summary>Link hypotheses or findings</summary>{nodes.length<2?<p>Create two sourced hypotheses or findings before linking them.</p>:<form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await call(`runs/${runId}/attack-chains`,'POST',{source_id:f.get('source'),target_id:f.get('target'),relationship:f.get('relationship'),rationale:f.get('rationale')});await refresh()}catch(e:any){E(e.message)}}}>{['source','target'].map(name=><label key={name}>{name==='source'?'Source':'Target'}<select name={name}>{nodes.map(n=><option key={n.id} value={n.id}>{n.title||n.claim||n.id}</option>)}</select></label>)}<label>Relationship<select name="relationship">{['enables','depends_on','shares_root_cause','contradicts'].map(r=><option key={r}>{r}</option>)}</select></label><label>Rationale<textarea name="rationale" maxLength={4000} required/></label><button>Save relationship</button></form>}</details>
+ {error&&<p className="error" role="alert">{error}</p>}
+ </section>;
+}

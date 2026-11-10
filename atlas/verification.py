@@ -1,7 +1,7 @@
 """Independent replay and counterfactual evidence gate. No model-only promotion."""
 
 import re
-from .db import Document, document, canonical, digest
+from .db import Document, document, canonical, digest, now, SwarmTask
 from .tools import broker
 
 
@@ -116,6 +116,19 @@ def verify_candidates(db, run, repo, done):
             "title": h.value()["claim"],
             "status": response.status,
             "severity": "unscored",
+            "vulnerability_class": "unclassified",
+            "asset": None,
+            "endpoint": None,
+            "parameter_or_component": None,
+            "confidence": None,
+            "technical_explanation": response.reason,
+            "impact": h.value().get("impact"),
+            "reproduction_steps": {"test_path": e["test_path"], "secure_control": e["control_test_path"], "snapshot": repo.inventory()["snapshot_hash"]},
+            "discovery_agent": (db.get(SwarmTask, h.value()["task_id"]).role if h.value().get("task_id") and db.get(SwarmTask, h.value()["task_id"]) else "research"),
+            "validation_agent": "independent_verifier",
+            "source_references": h.value().get("citations", []),
+            "related_findings": [],
+            "timeline": [{"at": now(), "actor": "independent_verifier", "status": response.status}],
             "hypothesis": h.value(),
             "verification": response.model_dump(),
             "evidence_ids": list(allowed),

@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 
-type Task={id:string,role:string,status:string,attempts:number,reason?:string,parent_event?:string,result:Record<string,unknown>};
+type Task={id:string,role:string,status:string,attempts:number,reason?:string,parent_event?:string,priority_explanation?:any,dependency_state?:string,result:Record<string,unknown>};
 type Event={type:string,actor:string,timestamp:string,payload:Record<string,unknown>};
 type State={execution_mode:string,agent_count:number,tasks:Task[],events:Event[],usage:{input_tokens:number,output_tokens:number,cost:number,requests:number,includes_estimates:boolean}};
 
@@ -16,7 +16,7 @@ export default function Swarm({runId,load}:{runId:string,load:(path:string)=>Pro
   <p>{state.usage.requests} recorded model responses · {state.usage.input_tokens} input / {state.usage.output_tokens} output tokens · ${state.usage.cost.toFixed(4)}{state.usage.includes_estimates?' (includes estimates)':''}</p>
   <p>Knowledge sources and discoveries below are research evidence. Confirmation requires independent reproduction.</p>
   <h3>Agent responsibilities and tasks</h3>
-  {state.tasks.map(t=><details key={t.id}><summary>{t.role} · {t.status} · attempt {t.attempts}</summary><p>{t.reason}</p>{t.parent_event&&<p>Triggered by discovery {t.parent_event}</p>}<pre>{JSON.stringify(t.result,null,2)}</pre></details>)}
+  {state.tasks.map(t=><details key={t.id}><summary>{t.role} · {t.status} · attempt {t.attempts}</summary><p>{t.reason}</p><p>Dependencies: {t.dependency_state} · priority {t.priority_explanation?.score}</p><details><summary>Why this priority</summary><pre>{JSON.stringify(t.priority_explanation?.terms,null,2)}</pre></details>{t.parent_event&&<p>Triggered by discovery {t.parent_event}</p>}<pre>{JSON.stringify(t.result,null,2)}</pre></details>)}
   <h3>Discoveries, knowledge and skills</h3>
   {!state.events.length&&<p>No persisted swarm activity yet.</p>}
   {state.events.slice(-60).map((e,i)=><details key={i}><summary>{e.type} · {e.actor}</summary><pre>{JSON.stringify(e.payload,null,2)}</pre></details>)}

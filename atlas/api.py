@@ -48,6 +48,7 @@ from .gateway import (
 from .workflow import control
 from .vault import master, seal
 from .corpus_transfers import UploadInput
+from .research_artifacts import ResearchNote, ChainLink
 
 
 @asynccontextmanager
@@ -1880,7 +1881,7 @@ def corpus_errors(
 
 
 class FindingUpdate(Strict):
-    status: Literal["reported", "fixed", "closed"]
+    status: Literal["report_ready", "reported", "fixed", "closed"]
     review_notes: str = Field(min_length=1, max_length=6000)
 
 
@@ -1893,7 +1894,8 @@ def finding_update(
     d = own(db, id, "finding", who[0].id, True)
     v = d.value()
     transitions = {
-        "confirmed": ["reported", "fixed", "closed"],
+        "confirmed": ["report_ready", "reported", "fixed", "closed"],
+        "report_ready": ["reported", "fixed", "closed"],
         "reported": ["fixed", "closed"],
         "fixed": ["closed"],
     }
@@ -1902,6 +1904,7 @@ def finding_update(
             "Only evidence-confirmed findings may enter reporting/fix workflow"
         )
     v.update(body.model_dump())
+    v.setdefault("timeline", []).append({"at": now(), "actor": who[0].id, "status": body.status})
     d.data = canonical(v)
     audit(db, who[0].id, "finding_status_changed", {"id": id, "status": body.status})
     db.commit()
@@ -1941,11 +1944,15 @@ def repository_read(
 @app.get("/api/v1/runs/{id}/objects/{kind}")
 def run_objects(
     id: str,
-    kind: Literal["hypotheses", "stages", "tools", "slices"],
+    kind: Literal["hypotheses", "stages", "tools", "slices", "research-notes", "attack-chains"],
     who=Depends(enrolled),
     db=Depends(db_dep),
 ):
     own(db, id, "run", who[0].id)
+    if kind in ("research-notes", "attack-chains"):
+        artifact_kind = "research_note" if kind == "research-notes" else "attack_chain"
+        return [expose(d) for d in db.query(Document).filter_by(kind=artifact_kind, owner=who[0].id).order_by(Document.created.desc()).limit(500)
+                if d.value().get("run_id") == id]
     if kind == "stages":
         return [
             expose(d)
@@ -1975,6 +1982,7 @@ def run_objects(
 @app.get("/api/v1/runs/{id}/swarm")
 def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     from .db import SwarmTask
+    from .scheduling import dependency_state, score
 
     run = own(db, id, "run", who[0].id)
     task_rows = (
@@ -2007,6 +2015,8 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
                 "status": t.status,
                 "attempts": t.attempts,
                 "priority": t.priority,
+                "priority_explanation": score(t),
+                "dependency_state": dependency_state(db, t),
                 "reason": json.loads(t.payload).get("reason"),
                 "parent_event": json.loads(t.payload).get("event_id"),
                 "result": {
@@ -2021,16 +2031,61 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
         "events": [
             e
             for e in reversed(events)
-            if e["type"].startswith(("swarm_", "knowledge_", "skill_", "model_route"))
+            if e["type"].startswith(("swarm_", "knowledge_", "skill_", "model_route", "research_note", "attack_chain"))
         ],
         "usage": {
-            "input_tokens": sum(u["input_tokens"] for u in usage),
-            "output_tokens": sum(u["output_tokens"] for u in usage),
-            "cost": sum(u["cost"] for u in usage),
+            "input_tokens": sum(u.get("input_tokens", 0) for u in usage),
+            "output_tokens": sum(u.get("output_tokens", 0) for u in usage),
+            "cached_input_tokens": sum(u.get("cached_input_tokens", 0) for u in usage),
+            "reasoning_tokens": sum(u.get("reasoning_tokens", 0) for u in usage),
+            "cost": sum(u.get("cost", 0) for u in usage),
             "requests": len(usage),
             "includes_estimates": any(u.get("estimated") for u in usage),
         },
     }
+
+
+@app.post("/api/v1/runs/{id}/research-notes")
+def research_note_create(id: str, body: ResearchNote, who=Depends(enrolled), db=Depends(db_dep)):
+    from .research_artifacts import store_note
+
+    run = own(db, id, "run", who[0].id, True)
+    result = store_note(db, run, body, who[0].id)
+    db.commit()
+    return result
+
+
+@app.post("/api/v1/runs/{id}/attack-chains")
+def attack_chain_create(id: str, body: ChainLink, who=Depends(enrolled), db=Depends(db_dep)):
+    from .research_artifacts import link_chain
+
+    run = own(db, id, "run", who[0].id, True)
+    result = link_chain(db, run, body, who[0].id)
+    db.commit()
+    return result
+
+
+class TaskRequest(Strict):
+    role: str = Field(max_length=60)
+    instructions: str = Field(min_length=1, max_length=4000)
+    reason: str = Field(min_length=1, max_length=1000)
+    depends_on: list[str] = Field(default_factory=list, max_length=12)
+    priority: float = Field(default=1, ge=0, le=10, allow_inf_nan=False)
+
+
+@app.post("/api/v1/runs/{id}/tasks")
+def swarm_task_create(id: str, body: TaskRequest, who=Depends(enrolled), db=Depends(db_dep)):
+    from .swarm import active, enqueue
+
+    run = own(db, id, "run", who[0].id, True)
+    if run.value().get("execution_mode") != "swarm":
+        raise Denied("Follow-up tasks require a swarm run")
+    active(db, run)
+    if body.role == "proof-validation":
+        raise Denied("Independent proof tasks require broker-captured evidence")
+    task = enqueue(db, run, body.role, body.model_dump(exclude={"role", "priority"}), digest(canonical(body.model_dump())), body.priority)
+    db.commit()
+    return {"task_id": task.id if task else None, "queued": bool(task)}
 
 
 @app.post("/api/v1/skills/starter")

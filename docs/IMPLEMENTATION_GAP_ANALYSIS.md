@@ -1,3 +1,7 @@
+# Research collaboration — 10 November 2026
+
+Dependency gating, explainable priorities/fairness, attributed notes, unverified chain relationships, finding provenance/timeline and UI are implemented; 52 focused tests passed. Actual paid eight-role acceptance remains pending.
+
 # Routing continuation — 10 November 2026
 
 Automatic pinned routing, persistent circuits, pre-dispatch fallback, preview UI and destructive-command guard are implemented and covered by 53 focused tests. Paid swarm acceptance and remaining completion packages are still pending; see DEPLOYMENT_READINESS.md.

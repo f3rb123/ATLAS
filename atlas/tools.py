@@ -9,6 +9,7 @@ from .db import document, append, canonical, digest, uid, now
 from .config import settings
 from .vault import redact
 from .knowledge import CAPABILITIES as KNOWLEDGE_CAPABILITIES, execute as knowledge_execute
+from .research_artifacts import ResearchNote, ChainLink, store_note, link_chain
 
 EXCLUDED = {
     ".git",
@@ -26,10 +27,7 @@ SECRET = re.compile(
 )
 
 
-class NoteInput(Strict):
-    title: str = Field(max_length=200)
-    text: str = Field(max_length=12000)
-    status: Literal["proposed", "refuted"] = "proposed"
+NoteInput = ResearchNote
 
 
 class RecordInput(Strict):
@@ -383,6 +381,7 @@ TOOLS = {
     "get_advisory_record": ("read_only", RecordInput),
     "get_dependency_record": ("read_only", SearchInput),
     "store_research_note": ("read_only", NoteInput),
+    "link_attack_chain": ("read_only", ChainLink),
     "link_finding_to_reference": ("read_only", LinkInput),
     "pause_run": ("read_only", ReasonInput),
     "request_more_budget": ("read_only", BudgetInput),
@@ -679,6 +678,7 @@ KNOWLEDGE_CONTROLS = {
     "get_advisory_record",
     "get_dependency_record",
     "store_research_note",
+    "link_attack_chain",
     "link_finding_to_reference",
     "pause_run",
     "request_more_budget",
@@ -701,23 +701,14 @@ def knowledge_control(db, run, name, args, actor):
         k = db.get(Knowledge, args.record_id)
         if not k or k.owner not in ("public", run.owner):
             raise Denied("Knowledge record not authorized")
-        r = __import__("json").loads(k.record)
+        from .corpus_privacy import record_view
+
+        r = record_view(db, __import__("json").loads(k.record))
         return {"record": r, "trust": "source_reported_not_independently_reproduced"}
     if name == "store_research_note":
-        d = document(
-            db,
-            "research_note",
-            run.owner,
-            {
-                "run_id": run.id,
-                "campaign_id": run.value()["campaign_id"],
-                "title": redact(args.title),
-                "text": redact(args.text),
-                "status": args.status,
-                "source": "model_unverified",
-            },
-        )
-        return {"note_id": d.id, "status": args.status}
+        return store_note(db, run, args, actor)
+    if name == "link_attack_chain":
+        return link_chain(db, run, args, actor)
     if name == "link_finding_to_reference":
         f = db.get(Document, args.finding_id)
         k = db.get(Knowledge, args.record_id)

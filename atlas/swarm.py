@@ -91,6 +91,9 @@ def enqueue(db, run, role, payload, key, priority=1):
     if role not in ROLES and role != "proof-validation":
         raise Denied("Specialist capability is not registered")
     transaction_lock(db, "swarm:" + run.id)
+    from .scheduling import validate_dependencies
+
+    validate_dependencies(db, run, payload)
     old = tasks(db, run.id).filter_by(dedupe_key=key).first()
     if old:
         return old
@@ -210,11 +213,13 @@ def claim_one(db, worker_kind):
                 (SwarmTask.status == "running") & (SwarmTask.lease_until < time.time()),
             ),
         )
-        .order_by(SwarmTask.priority.desc(), SwarmTask.created_at)
+        .order_by((SwarmTask.priority + (time.time() - SwarmTask.created_at) / 300).desc(), SwarmTask.created_at)
         .limit(100)
         .all()
     )
-    for candidate in candidates:
+    from .scheduling import dependency_state, order_candidates
+
+    for explanation, candidate in order_candidates(db, candidates):
         transaction_lock(db, "swarm:" + candidate.run_id)
         run = db.get(Document, candidate.run_id, populate_existing=True)
         t = db.get(
@@ -251,6 +256,17 @@ def claim_one(db, worker_kind):
             db.commit()
             finish_run(db, run)
             continue
+        dependency = dependency_state(db, t)
+        if dependency != "ready":
+            if dependency == "failed":
+                t.status, t.updated_at = "cancelled", time.time()
+                t.result = canonical({"error": "dependency_failed", "depends_on": json.loads(t.payload).get("depends_on", [])})
+                append(db, run.id, "scheduler", "swarm_dependency_failed", {"task_id": t.id}, run.value()["campaign_id"])
+                db.commit()
+                finish_run(db, run)
+            else:
+                db.commit()
+            continue
         if t.attempts:
             budget = db.get(Document, "budget-global", populate_existing=True)
             if budget and any(
@@ -286,7 +302,7 @@ def claim_one(db, worker_kind):
             run.id,
             "scheduler",
             "swarm_task_claimed",
-            {"task_id": t.id, "role": t.role, "attempt": t.attempts},
+            {"task_id": t.id, "role": t.role, "attempt": t.attempts, "priority_explanation": explanation},
             value["campaign_id"],
         )
         db.commit()
@@ -339,6 +355,8 @@ def publish(db, run, task, discovery):
                 "event_id": id,
                 "instructions": ROLES[discovery.topic],
                 "reason": "Cited " + discovery.topic + " discovery from " + task.role,
+                "signals": {"confidence": discovery.confidence, "evidence_count": len(discovery.citations), "relevance": 1.0,
+                            "estimated_effort": 0.5, "hypothesis": discovery.kind == "hypothesis"},
             },
             digest("subscription:" + discovery.topic + ":" + id),
             discovery.confidence,
@@ -352,6 +370,8 @@ def publish(db, run, task, discovery):
                 "event_id": id,
                 "instructions": ROLES["deep-research"],
                 "reason": "Challenge and research cited hypothesis",
+                "signals": {"confidence": discovery.confidence, "evidence_count": len(discovery.citations), "relevance": 1.0,
+                            "estimated_effort": 0.8, "hypothesis": True},
             },
             digest("research:" + id),
             discovery.confidence,
