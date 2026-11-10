@@ -231,3 +231,16 @@ helper which first checks the original bundle hashes, then adds separate fixed
 verifier/installer files without modifying original payload/checksums/data.
 Python compilation and formatting passed; actual Docker 29 execution awaits the
 owner's VPS run. No application tests, paid calls or target requests were run.
+
+### Failed-run offline preflight support
+
+Owner output confirms the Docker 29 repair passed, corpus restore completed
+(21,012 records / 34,229 vectors), and API/PostgreSQL/Redis became healthy. New
+assessment runs still terminate partial with ProviderError, zero recorded model
+calls and generic diagnostics. Model binding and circuit checks now pass; web
+was disabled in the reported run. Added a read-only diagnostic that reconstructs
+role contexts from saved retrieval artifacts, stops at routing/dispatch preflight,
+blocks Python network connections and reports only sizes/configuration errors.
+It cannot dispatch a model call or target tool. No application acceptance tests
+or live calls were performed while preparing it. Cause remains unconfirmed
+until the owner runs the diagnostic against the VPS.
