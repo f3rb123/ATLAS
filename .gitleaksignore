@@ -7,5 +7,5 @@ bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic
 bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic-api-key:14
 bc61b85cd2110b39db571d63cb60ecd4b261c2bc:atlas/data/embedding_model.json:generic-api-key:15
 
-# Public BugBountySkills unsigned JWT teaching example; empty signature. Historical heading now redacted.
+# Public BugBountySkills alg=none JWT teaching example with empty signature; not a signed credential.
 64048a446e6e1eb467d821555e204d667e886c73:docs/research/skills-source-inventory.json:jwt:10359
