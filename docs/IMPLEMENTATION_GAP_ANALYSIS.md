@@ -25,3 +25,5 @@
 | Acceptance | Prior checkpoint: 214 full-suite passes plus semantic/sandbox/PostgreSQL/browser/provider evidence; new checkpoint: build checks recorded separately | New regression, browser, provider and deployment acceptance deferred by build-first steering; SBI awaits a specific verified hostname |
 
 All mandatory references, including AntiFox, are source-reviewed. Public RSS and public share endpoints resolved prior web access gaps. AGPL projects supplied architecture evidence only; no AGPL implementation was copied. No push, public deployment or destructive original-data operation occurred.
+
+Docker 29 compatibility: the owner's installer stopped before database initialization because the image store reports OCI manifest IDs. A configuration-digest verifier and non-overwriting repair are implemented; owner-host execution remains pending.

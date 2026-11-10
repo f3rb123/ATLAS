@@ -218,3 +218,16 @@ verification by release ID and publication completed separately. The workflow
 lookup is fixed without rerunning an already published build. Its historical
 failure remains recorded. No application tests, paid calls, target requests or
 VPS operations occurred. See DELIVERY_PREBUILT_2026-11-10.md.
+
+### Docker 29 image identity compatibility repair
+
+The owner supplied Docker 29.9.3 metadata showing OCI manifest digests in image
+.Id/Descriptor rather than the configuration digests recorded by the builder.
+The original installer rejected all five correct-platform images before database
+initialization. Updated the verifier to stream a local Docker image export and
+validate each requested tag's configuration bytes against the pinned SHA256,
+including its platform. Mismatches still fail closed. Added an external repair
+helper which first checks the original bundle hashes, then adds separate fixed
+verifier/installer files without modifying original payload/checksums/data.
+Python compilation and formatting passed; actual Docker 29 execution awaits the
+owner's VPS run. No application tests, paid calls or target requests were run.
