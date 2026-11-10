@@ -559,5 +559,45 @@ def load_vectors():
     out(load(sys.stdin))
 
 
+def corpus_package_command(file, sha256, restore):
+    from contextlib import nullcontext
+    import tempfile
+    from .corpus_package import MAX_ARCHIVE_BYTES, inspect_package, restore_package
+    from .config import settings
+
+    root = Path(settings().data_dir)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = tempfile.TemporaryDirectory(prefix="corpus-stdin-", dir=root) if str(file) == "-" else nullcontext()
+    with temporary as directory:
+        path = Path(file)
+        if directory:
+            path = Path(directory) / "package.zip"
+            size = 0
+            with path.open("xb") as output:
+                path.chmod(0o600)
+                for block in iter(lambda: sys.stdin.buffer.read(1024**2), b""):
+                    size += len(block)
+                    if size > MAX_ARCHIVE_BYTES:
+                        raise typer.BadParameter("Corpus archive exceeds 1 GiB")
+                    output.write(block)
+        try:
+            result = restore_package(path, sha256) if restore else inspect_package(path, sha256)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from None
+        out(result)
+
+
+@groups["host"].command("corpus-inspect")
+def corpus_inspect(file: Path, sha256: str = typer.Option(..., "--sha256")):
+    """Verify all records/vectors/model assets without importing. Use '-' for stdin."""
+    corpus_package_command(file, sha256, False)
+
+
+@groups["host"].command("corpus-restore")
+def corpus_restore(file: Path, sha256: str = typer.Option(..., "--sha256")):
+    """Restore a verified package into an empty corpus; existing data is preserved."""
+    corpus_package_command(file, sha256, True)
+
+
 if __name__ == "__main__":
     app()

@@ -1,12 +1,13 @@
 """Dedicated durable source/index worker. No target/model egress or model credentials."""
 
 import time
-from .db import session, Document, canonical, document, now
+from .db import session, Document, canonical, document, now, uid, transaction_lock
 from .corpus import sync_bulk, sync_api, reindex_job
 
 
 def tick():
     with session() as db:
+        transaction_lock(db, "corpus:worker")
         rows = (
             db.query(Document)
             .filter(
@@ -16,6 +17,7 @@ def tick():
                         "index_request",
                         "source_acquisition_request",
                         "file_import_request",
+                        "corpus_transfer_request",
                     ]
                 )
             )
@@ -41,6 +43,7 @@ def tick():
             status="running",
             lease_until=time.time() + 600,
             attempts=v.get("attempts", 0) + 1,
+            lease_token=uid(),
         )
         if v["attempts"] > 3:
             v.update(status="blocked", error="retry_limit")
@@ -63,9 +66,16 @@ def tick():
             )
             v["resume_id"] = source_job.id
         request.data = canonical(v)
+        if request.kind == "corpus_transfer_request" and v.get("upload_id"):
+            upload = db.get(Document, v["upload_id"])
+            if upload and upload.owner == request.owner and upload.kind == "corpus_upload":
+                value = upload.value()
+                value["status"] = "running"
+                upload.data = canonical(value)
         db.commit()
         id = request.id
         kind = request.kind
+        lease_token = v["lease_token"]
     import threading
 
     stopped = threading.Event()
@@ -74,6 +84,7 @@ def tick():
         while not stopped.wait(30):
             try:
                 with session() as lease_db:
+                    transaction_lock(lease_db, "corpus:worker")
                     current = (
                         lease_db.query(Document)
                         .filter_by(id=id)
@@ -81,7 +92,7 @@ def tick():
                         .one()
                     )
                     value = current.value()
-                    if value["status"] != "running":
+                    if value["status"] != "running" or value.get("lease_token") != lease_token:
                         return
                     value["lease_until"] = time.time() + 600
                     current.data = canonical(value)
@@ -92,7 +103,12 @@ def tick():
     heartbeat = threading.Thread(target=renew, daemon=True)
     heartbeat.start()
     try:
-        if kind == "file_import_request":
+        if kind == "corpus_transfer_request":
+            from .corpus_package import restore_package
+
+            counts = restore_package(v["path"], v["sha256"], request.owner)
+            result = {"status": "completed", "counts": counts}
+        elif kind == "file_import_request":
             from .corpus import import_file
 
             with session() as db:
@@ -128,11 +144,25 @@ def tick():
         stopped.set()
         heartbeat.join(timeout=1)
     with session() as db:
-        d = db.get(Document, id)
+        transaction_lock(db, "corpus:worker")
+        d = db.query(Document).filter_by(id=id).with_for_update().one()
         v = d.value()
+        if v.get("lease_token") != lease_token or v["status"] != "running":
+            return
         v.update(status=result["status"], result=result)
         d.data = canonical(v)
+        if kind == "corpus_transfer_request" and v.get("upload_id"):
+            upload = db.get(Document, v["upload_id"])
+            if upload and upload.owner == d.owner and upload.kind == "corpus_upload":
+                value = upload.value()
+                value.update(status=result["status"], result=result)
+                upload.data = canonical(value)
         db.commit()
+    if kind == "corpus_transfer_request" and v.get("upload_id"):
+        from .corpus_transfers import root_for
+
+        for part in root_for(v["upload_id"]).glob("[0-9][0-9][0-9][0-9].part"):
+            part.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

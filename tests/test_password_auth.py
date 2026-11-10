@@ -23,6 +23,21 @@ def test_password_only_operator_csrf_change_rotation_and_logout(db):
         me = client.get("/api/v1/users/me").json()
         assert me["operator_access"] and not me["mfa_required"]
         headers = {"Origin": settings().external_url, "X-CSRF-Token": me["csrf_token"]}
+        scoped = client.post(
+            "/api/v1/campaigns",
+            headers=headers,
+            json={
+                "name": "Password-only authorized lab configuration",
+                "mode": "lab",
+                "authorization_ref": "Isolated fixture; no live requests",
+                "authorization_attested": True,
+                "scope": {
+                    "allow": [{"host": "example.invalid"}],
+                    "lab_networks": ["127.0.0.0/8"],
+                },
+            },
+        )
+        assert scoped.status_code == 200
         assert (
             client.post("/api/v1/campaigns", json={"name": "forged"}).status_code == 403
         )

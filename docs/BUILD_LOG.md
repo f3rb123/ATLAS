@@ -28,3 +28,13 @@ Final local security/code checkpoint: focused redaction regression passed and fu
 Restored release/bundle; preserved tags. Added shared knowledge/skill access, attributed retrieval/feedback, SQL concurrent tasks/event activation, fenced recovery/capacity waiting, optional-factor operator auth/password rotation and persisted live UI. Preserved legacy FSM, policy/broker/relay, budgets and independent replay. Added migration 0005 without modifying historical knowledge. Two MIT references are pinned/licensed research-only data. AntiFox is reference eight; no AGPL code copied.
 
 Current validation: 138 backend tests passed, one semantic test deselected; actual sandbox/disposable PG included; frontend/TypeScript/full eight-task browser passed. See ATLAS_V3_IMPLEMENTATION_LEDGER.md and docs/test-results/REBUILD_VALIDATION.md. Original corpus/model assets, three websites and real provider/VPS acceptance remain blocked/unverified. Install/start/network draft saved; runtime access/publication not claimed. No push or remote scan.
+
+## 2026-11-10 — verified identity-preserving corpus integration
+
+- Added bounded full-archive preflight and one-transaction empty-store restore, pinned model/file hashes, canonical/vector alignment, alias collision checks, explicit raw omissions, immutable input handling and retry fingerprints. Existing corpus/data files are never replaced.
+- Added host corpus-inspect/corpus-restore (including private stdin transfer), resumable 8 MiB API upload, durable corpus worker job/state/fencing and package UI.
+- Restored the real owner-supplied ZIP into development after a consistent backup: 21,012 records, 34,229 vectors, 39,985 aliases. Repeat restore and all five diagnostic queries passed; real ONNX semantic integration: 1 passed.
+- Focused package/API tests: 17 passed; combined corpus/knowledge/password tests: 61 passed. Frontend TypeScript passed. Source archive SHA256 remains pinned. Tests use synthetic fixtures except the explicitly recorded real-candidate/model runs.
+- Added direct task provenance for skill search/retrieval and removed the remaining mandatory step-up from password-only target-scope configuration. Optional/strict MFA remains enforced when configured.
+- Runtime network remains unchanged; fresh four-host reference probes still receive proxy CONNECT 403. Official Gitleaks 8.24.3 was acquired with release-checksum verification for the requested optional audit. No paid provider or target scan occurred.
+- Full deployment completion continues through routing, tools, skills, research/chain features, conversational operator UX and final local production-stack acceptance.

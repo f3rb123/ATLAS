@@ -16,6 +16,7 @@ from .db import (
     digest,
     uid,
     now,
+    transaction_lock,
 )
 from .records import Record, Source
 from .config import settings
@@ -270,6 +271,7 @@ def category(r):
 
 
 def ingest(db, r, raw):
+    transaction_lock(db, "corpus:ingest")
     # Raw artifact retained only under explicit permission, before publication.
     if r.source.full_text_policy not in ("allowed", "derived_only"):
         raise ValueError("Full-text permission requires review")

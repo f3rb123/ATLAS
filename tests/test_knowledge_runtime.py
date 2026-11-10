@@ -245,6 +245,25 @@ def test_knowledge_tools_cannot_escape_stop_or_budget_policies(db):
         db.commit()
 
 
+def test_task_skill_search_and_retrieval_have_direct_provenance(db):
+    from test_swarm import prepare
+    from atlas.swarm import claim_one
+
+    run = prepare(db, 1)
+    install_references(db, run.owner)
+    db.commit()
+    claim = claim_one(db, "research")
+    run._swarm_claim = claim
+    found = broker(db, run, None, "knowledge.search_skills", {"query": "reporting"}, "recon")["result"]["results"]
+    broker(db, run, None, "knowledge.retrieve_skill", {"record_id": found[0]["record_id"]}, "recon")
+    events = [json.loads(j.payload) for j in db.query(Journal).filter_by(stream=run.id)]
+    selected = [e for e in events if e["type"] in ("skill_search", "skill_retrieved")]
+    assert {e["type"] for e in selected} == {"skill_search", "skill_retrieved"}
+    assert all(e["payload"]["task_id"] == claim[0] for e in selected)
+    assert all(e["run_id"] == run.id and e["campaign_id"] == run.value()["campaign_id"] for e in selected)
+    assert all("query" not in e["payload"] for e in selected)
+
+
 def test_owner_feedback_review_preserves_source_and_other_owner_isolation(db, tmp_path):
     from test_auth_api import authenticated
 

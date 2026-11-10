@@ -47,6 +47,7 @@ from .gateway import (
 )
 from .workflow import control
 from .vault import master, seal
+from .corpus_transfers import UploadInput
 
 
 @asynccontextmanager
@@ -638,7 +639,7 @@ def campaign_create(body: CampaignInput, who=Depends(enrolled), db=Depends(db_de
         body.scope.allow
         or body.scope.lab_networks
         or body.mode in ("passive", "safe-active")
-    ) and who[1].stepup < time.time() - 300:
+    ) and (settings().require_mfa or who[1].mfa) and who[1].stepup < time.time() - 300:
         raise Denied("Recent WebAuthn step-up required for target scope authorization")
     v = body.model_dump()
     scope = v.pop("scope")
@@ -1227,6 +1228,68 @@ def corpus_sync(body: CorpusSync, who=Depends(stepup), db=Depends(db_dep)):
     return expose(d)
 
 
+@app.post("/api/v1/corpus/transfers")
+def corpus_transfer_start(body: UploadInput, who=Depends(stepup), db=Depends(db_dep)):
+    from .corpus_transfers import start, status
+
+    row = start(db, who[0].id, body)
+    audit(db, who[0].id, "corpus_upload_started", {"id": row.id, "sha256": body.sha256, "bytes": body.byte_size})
+    db.commit()
+    return status(row)
+
+
+@app.get("/api/v1/corpus/transfers")
+def corpus_transfers(who=Depends(admin), db=Depends(db_dep)):
+    from .corpus_transfers import status
+
+    uploads = [status(d) for d in db.query(Document).filter_by(kind="corpus_upload", owner=who[0].id).order_by(Document.created.desc()).limit(20)]
+    restored = [{"id": d.id, **{k: d.value().get(k) for k in ("sha256", "restored_at", "records", "vectors", "dimension", "embedding_model")},
+                 "withheld_raw_artifacts": len(d.value().get("withheld_raw_artifacts", []))}
+                for d in db.query(Document).filter_by(kind="corpus_transfer", owner="public")]
+    return {"uploads": uploads, "restored": restored}
+
+
+@app.get("/api/v1/corpus/transfers/{id}")
+def corpus_transfer_status(id: str, who=Depends(admin), db=Depends(db_dep)):
+    from .corpus_transfers import status
+
+    return status(own(db, id, "corpus_upload", who[0].id))
+
+
+@app.put("/api/v1/corpus/transfers/{id}/parts/{index}")
+async def corpus_transfer_part(id: str, index: int, request: Request, who=Depends(stepup), db=Depends(db_dep)):
+    from .corpus_transfers import PART_BYTES, accept_part
+
+    row = own(db, id, "corpus_upload", who[0].id)
+    data = bytearray()
+    async for block in request.stream():
+        if len(data) + len(block) > PART_BYTES:
+            raise HTTPException(413, "Upload part exceeds 8 MiB")
+        data.extend(block)
+    result = accept_part(db, row, index, data)
+    db.commit()
+    return result
+
+
+@app.post("/api/v1/corpus/transfers/{id}/complete")
+def corpus_transfer_complete(id: str, who=Depends(stepup), db=Depends(db_dep)):
+    from .corpus_transfers import finish
+
+    result = finish(db, own(db, id, "corpus_upload", who[0].id, True))
+    audit(db, who[0].id, "corpus_restore_queued", {"id": id, "job_id": result["job_id"]})
+    db.commit()
+    return result
+
+
+@app.delete("/api/v1/corpus/transfers/{id}")
+def corpus_transfer_cancel(id: str, who=Depends(stepup), db=Depends(db_dep)):
+    from .corpus_transfers import cancel
+
+    result = cancel(db, own(db, id, "corpus_upload", who[0].id, True))
+    db.commit()
+    return result
+
+
 @app.post("/api/v1/runs/{id}/reports")
 def report(
     id: str,
@@ -1722,6 +1785,7 @@ def corpus_jobs(
                     "index_request",
                     "file_import_request",
                     "source_acquisition_request",
+                    "corpus_transfer_request",
                 ]
             ),
             Document.owner.in_(["system", who[0].id]),

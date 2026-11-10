@@ -147,10 +147,16 @@ def skill_results(db, owner, query, limit):
 def execute(db, run, name, args, actor):
     """Called only through the typed broker (also used for automatic context retrieval)."""
     if name == "knowledge.search_skills":
-        return {
+        result = {
             "status": "available",
             "results": skill_results(db, run.owner, args.query, args.limit),
         }
+        append(db, run.id, actor, "skill_search", {
+            "task_id": getattr(run, "_swarm_claim", (None, None))[0],
+            "query_hash": digest(args.query),
+            "results": [{"id": r["record_id"], "hash": r["hash"]} for r in result["results"]],
+        }, run.value()["campaign_id"])
+        return result
     if name == "knowledge.retrieve_skill":
         d = db.get(Document, args.record_id)
         if not d or d.owner != run.owner or d.kind not in ("skill", "skill_reference"):
@@ -184,7 +190,7 @@ def execute(db, run, name, args, actor):
             run.id,
             actor,
             "skill_retrieved",
-            {"id": d.id, "hash": v["content_hash"]},
+            {"id": d.id, "hash": v["content_hash"], "task_id": getattr(run, "_swarm_claim", (None, None))[0]},
             run.value()["campaign_id"],
         )
         return result
@@ -242,7 +248,7 @@ def execute(db, run, name, args, actor):
             run.id,
             actor,
             "knowledge_retrieved",
-            {"record_id": k.id, "hash": k.content_hash},
+            {"record_id": k.id, "hash": k.content_hash, "task_id": getattr(run, "_swarm_claim", (None, None))[0]},
             run.value()["campaign_id"],
         )
         return result
