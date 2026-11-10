@@ -183,3 +183,15 @@ without extracting or displaying it. Updated requirement/readiness documents to
 separate this release candidate from historical acceptance. Compilation,
 undefined-name and shell syntax checks passed; runtime acceptance is deferred
 under the owner's build-first instruction.
+
+### All-in-one prebuilt distribution
+
+The owner authorized GitHub upload and clarified that the download must include
+prebuilt components and knowledge by default. Added a checksum-verified installer
+and private Compose override that load five existing Linux amd64 images without
+pull/build operations, preserve host-only secrets and populated stores, import
+the original corpus/vectors/model assets automatically, and seed the historical
+consumption floor without publishing private account/billing identifiers.
+The API/frontend engine remains implementation checkpoint 5a7834d. Source-only
+archive packaging is superseded by the all-in-one release. No new application
+tests, paid model calls, target requests or remote VPS changes were performed.

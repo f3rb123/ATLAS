@@ -1,5 +1,18 @@
 # Autonomous web completion in progress
 
+Latest owner steering: publish an all-in-one prebuilt GitHub release, including
+container images and the original corpus/vectors/model assets by default. Do not
+run application tests. See docs/PREBUILT_INSTALL.md and the delivery manifest for
+atlas-v3-prebuilt-20261110. The engine is 5a7834d; later changes add installation
+and packaging only. Do not replace or relabel the old source-only artifact.
+
+VPS deployment is authorized but blocked before login; private connection status
+is retained under .runtime/deployments. No password was persisted or used, and no
+remote changes occurred. No GitHub authorization is needed again for the
+requested prebuilt release. Publish only the reviewed archive/metadata and its
+matching new tag, leaving remote branches untouched. Preserve all original
+assets, private state and the single spending authority.
+
 The owner requires the full authorized autonomous engagement-to-report workflow.
 The old 486739d package is a prior local milestone, not the final requested build.
 Continue docs/AUTONOMOUS_BUILD_CHECKLIST.md. Preserve the raw .env, all original

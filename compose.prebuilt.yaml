@@ -1,0 +1,21 @@
+# Loaded from the checksum-verified all-in-one bundle. No image pulls or builds.
+services:
+  init: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  api: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  gateway: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  relay: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  worker-research: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  worker-verify: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  worker-corpus: {image: 'atlas-prebuilt/api:20261110', pull_policy: never}
+  web: {image: 'atlas-prebuilt/web:20261110', pull_policy: never}
+  postgres: {image: 'atlas-prebuilt/postgres:20261110', pull_policy: never}
+  redis: {image: 'atlas-prebuilt/redis:20261110', pull_policy: never}
+  proxy:
+    image: 'atlas-prebuilt/proxy:20261110'
+    pull_policy: never
+    ports: !override
+      - '${ATLAS_BIND_IP:-127.0.0.1}:${ATLAS_HTTPS_PORT:-8443}:443'
+    volumes: !override
+      - './Caddyfile.private:/etc/caddy/Caddyfile:ro'
+      - 'caddy_data:/data'
+      - 'caddy_config:/config'
