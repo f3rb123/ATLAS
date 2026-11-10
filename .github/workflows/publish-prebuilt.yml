@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/atlas-delivery"
           gh release upload atlas-v3-prebuilt-20261110 atlas-v3-prebuilt-20261110.zip atlas-v3-prebuilt-20261110.zip.sha256 atlas-v3-prebuilt-20261110/RELEASE-MANIFEST.md atlas-v3-prebuilt-20261110/README-FIRST.md atlas-v3-prebuilt-20261110/BUILD-RECORD.json
-          gh api "repos/$GH_REPO/releases/tags/atlas-v3-prebuilt-20261110" > remote-assets.json
+          release_api="$(gh release view atlas-v3-prebuilt-20261110 --json apiUrl --jq '.apiUrl')"
+          gh api "$release_api" > remote-assets.json
           python3 "$GITHUB_WORKSPACE/factory/scripts/build-prebuilt-release.py" --verify-assets remote-assets.json --output "$RUNNER_TEMP/atlas-delivery"
           gh release edit atlas-v3-prebuilt-20261110 --draft=false --prerelease --notes-file GITHUB-NOTES.md

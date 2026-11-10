@@ -206,3 +206,15 @@ implement binary uploads (404). Prepared a build-only GitHub Actions publisher
 to assemble the same tagged source/corpus on GitHub and upload with the normal
 runner token. Delivery branches/tags are excluded from the normal test workflow
 to honor the owner's instruction. No application tests or paid calls were run.
+
+### Published prebuilt delivery
+
+Published atlas-v3-prebuilt-20261110 as a public GitHub prerelease. All five assets
+uploaded; ZIP size 915,558,886 bytes and SHA256
+864592232af31678ca56ae0830fc5ffc60a9529ee8a25e95b386707c6d117b7c matched the
+checksum and GitHub digest. Public HEAD returned 200 with the expected length.
+The publisher built/uploaded successfully, then its draft-by-tag lookup failed;
+verification by release ID and publication completed separately. The workflow
+lookup is fixed without rerunning an already published build. Its historical
+failure remains recorded. No application tests, paid calls, target requests or
+VPS operations occurred. See DELIVERY_PREBUILT_2026-11-10.md.
