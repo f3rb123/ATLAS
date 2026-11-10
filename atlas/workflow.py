@@ -201,6 +201,9 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
         )
     campaign = db.get(Document, run.value()["campaign_id"])
     system = SYSTEM + "\n" + GLOBAL_POLICY
+    if alias == "verifier" and schema is VerificationOutput:
+        system = system.replace("Never declare a finding confirmed.",
+            "Review the supplied independent proof and secure control, try to disprove the claim, and return an evidence-bound classification. A confirmed classification must cite both independent artifact IDs and explain the secure counterfactual; the backend proof gate remains authoritative.")
     if campaign and campaign.value()["mode"] in ("passive", "safe-active", "lab"):
         system = system.replace(
             "No live traffic is allowed by this source-only task.",

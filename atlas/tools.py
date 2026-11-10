@@ -452,9 +452,20 @@ def broker(db, run, repo, name, payload, actor):
         elif name in KNOWLEDGE_CONTROLS:
             result = knowledge_control(db, run, name, args, actor)
         elif name in ("external_intelligence_lookup", "mcp_read_resource"):
-            from .tool_registry import execute
+            if settings().gateway_url:
+                import httpx
 
-            result = execute(db, run, name, args)
+                claim = getattr(run, "_swarm_claim", (None, None))
+                with httpx.Client(timeout=55, trust_env=False) as client:
+                    response = client.post(settings().gateway_url + "/integration-read", headers={"Authorization": "Bearer " + Path(settings().service_token_file).read_text().strip()},
+                        json={"run_id": run.id, "capability": name, "input": args.model_dump(), "task_id": claim[0], "lease_token": claim[1]})
+                    if response.status_code != 200:
+                        raise Denied("Credential service denied or failed the integration read")
+                    result = response.json()
+            else:
+                from .tool_registry import execute
+
+                result = execute(db, run, name, args)
         elif name in ("http_request", "fetch_allowed_url", "inspect_redirect_chain"):
             if not settings().relay_url or not settings().service_token_file:
                 raise Denied("Scoped target relay is not configured")

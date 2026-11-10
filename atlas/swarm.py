@@ -649,7 +649,7 @@ def execute_one(worker_kind):
             from .gateway import CapacityWait, RunInterrupted
 
             if not isinstance(exc, (RunInterrupted, CapacityWait)):
-                logging.getLogger("atlas").warning("swarm_task_failed", exc_info=True)
+                logging.getLogger("atlas").warning("swarm_task_failed", extra={"error_type": type(exc).__name__, "task_id": claim[0]})
             db.rollback()
             # Stale/cancelled workers must not overwrite a newer claim or results.
             transaction_lock(db, "swarm:" + run.id)

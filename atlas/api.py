@@ -50,6 +50,7 @@ from .vault import master, seal
 from .corpus_transfers import UploadInput
 from .research_artifacts import ResearchNote, ChainLink
 from .tool_registry import IntegrationInput
+from .engagements import EngagementInput, Preferences, Message
 
 
 @asynccontextmanager
@@ -647,6 +648,10 @@ class CampaignInput(Strict):
 
 @app.post("/api/v1/campaigns")
 def campaign_create(body: CampaignInput, who=Depends(enrolled), db=Depends(db_dep)):
+    return _campaign_create(body, who, db)
+
+
+def _campaign_create(body, who, db, commit=True):
     if not body.authorization_attested:
         raise Denied("Explicit authorization attestation required")
     if (
@@ -681,8 +686,92 @@ def campaign_create(body: CampaignInput, who=Depends(enrolled), db=Depends(db_de
         "campaign_created",
         {"id": c.id, "policy_hash": p.value()["hash"]},
     )
-    db.commit()
+    if commit:
+        db.commit()
     return expose(c)
+
+
+@app.post("/api/v1/engagements")
+def engagement_create(body: EngagementInput, who=Depends(enrolled), db=Depends(db_dep)):
+    from .engagements import validate_target, save_message
+
+    target = validate_target(body)
+    result = _campaign_create(CampaignInput(name=body.name, mode="passive", authorization_ref=body.authorization_ref,
+        authorization_attested=body.authorization_attested, scope=body.scope, assessment_profile=body.assessment_profile,
+        budget_limit=body.budget_limit), who, db, commit=False)
+    campaign = own(db, result["id"], "campaign", who[0].id)
+    value = campaign.value()
+    value.update(engagement=True, target_url=target, execution_preferences=Preferences().model_dump())
+    campaign.data = canonical(value)
+    save_message(db, campaign, body.instructions, who[0].id)
+    db.commit()
+    return expose(campaign)
+
+
+@app.get("/api/v1/engagements")
+def engagement_list(who=Depends(enrolled), db=Depends(db_dep)):
+    return [expose(row) for row in db.query(Document).filter_by(kind="campaign", owner=who[0].id).order_by(Document.created.desc()).limit(500)
+            if row.value().get("engagement")]
+
+
+@app.get("/api/v1/engagements/{id}/messages")
+def engagement_messages(id: str, who=Depends(enrolled), db=Depends(db_dep)):
+    from .engagements import messages
+
+    return [expose(row) for row in messages(db, own(db, id, "campaign", who[0].id))]
+
+
+@app.post("/api/v1/engagements/{id}/messages")
+def engagement_message(id: str, body: Message, who=Depends(enrolled), db=Depends(db_dep)):
+    from .engagements import save_message
+
+    row = save_message(db, own(db, id, "campaign", who[0].id, True), body.text, who[0].id)
+    db.commit()
+    return expose(row)
+
+
+@app.put("/api/v1/engagements/{id}/preferences")
+def engagement_preferences(id: str, body: Preferences, who=Depends(enrolled), db=Depends(db_dep)):
+    from .engagements import save_preferences
+
+    result = save_preferences(db, own(db, id, "campaign", who[0].id, True), body, who[0].id)
+    db.commit()
+    return result
+
+
+@app.post("/api/v1/engagements/{id}/start")
+def engagement_start(id: str, request: Request, who=Depends(enrolled), db=Depends(db_dep)):
+    from .engagements import Preferences, run_instructions
+
+    campaign = own(db, id, "campaign", who[0].id)
+    if not campaign.value().get("engagement"):
+        raise Denied("Start requires an engagement")
+    readiness = engagement_readiness(id, who, db)
+    if readiness["blockers"]:
+        raise Denied("; ".join(readiness["blockers"]))
+    preferences = Preferences.model_validate(campaign.value().get("execution_preferences", {}))
+    return run_start(id, RunInput(**preferences.model_dump(), instructions=run_instructions(db, campaign),
+        budget_limit=campaign.value()["budget_limit"]), request, who, db)
+
+
+@app.get("/api/v1/engagements/{id}/readiness")
+def engagement_readiness(id: str, who=Depends(enrolled), db=Depends(db_dep)):
+    from .knowledge import availability
+    from .token_budget import summarize
+
+    own(db, id, "campaign", who[0].id)
+    blockers = []
+    aliases = {row.value()["alias"]: row.value() for row in db.query(Document).filter_by(kind="alias", owner=who[0].id)}
+    for alias in ("reasoning", "verifier"):
+        pin = aliases.get(alias)
+        provider = db.get(Document, pin["provider_id"]) if pin else None
+        model = db.get(Document, pin["model_id"]) if pin else None
+        if not provider or not model or provider.owner != who[0].id or model.owner != who[0].id or not provider.value().get("enabled") or provider.value().get("health_status") != "tested" or not model.value().get("verified_structured"):
+            blockers.append(f"Configure and test the {alias} model alias before starting")
+    budget = summarize(db)
+    if budget["blocked"] or budget["remaining_allocation"] <= 0:
+        blockers.append("Global token capacity requires operator review")
+    return {"blockers": blockers, "knowledge": availability(db, who[0].id), "token_budget": {k: budget[k] for k in ("cap", "allocation", "remaining_allocation", "reserved_tokens")}}
 
 
 @app.post("/api/v1/campaigns/{id}/scope/validate")

@@ -67,3 +67,11 @@ Added a broker-backed central capability inventory, explicit disabled scanner/AP
 These optional adapters have controlled local HTTP tests; no actual SecurityTrails credential or remote MCP server was supplied. Optional scanner binaries remain disabled with a required-harness explanation. Certificate transparency provided only a wildcard/apex certificate, no specific SBI target hostname; target requests remain zero.
 
 Tool package verification: 56 focused integration/foundation/registry/knowledge tests passed, including the actual local JSON-RPC handshake, denied arbitrary methods/URIs, scope-before-request checks and encrypted key rotation. Frontend TypeScript passed.
+
+## 10 November 2026 — engagement conversation and execution controls
+
+Added the primary engagement screen with explicit target/scope/authorization, durable operator messages, saved agent/model/runtime preferences, source snapshot upload, model/knowledge/token readiness, start/pause/stop/resume and persisted live swarm/research views. Chat text never changes scope, quotas or an already-running instruction snapshot. Start uses the existing run/policy/broker/gateway services; it requires tested reasoning and independent-verifier aliases. The default capability mode keeps the owner's separate verifier assignment. Creation is atomic with its first conversation message.
+
+Also routed external integration credentials through the internal credential gateway for keyless production workers; worker containers retain no master key. Corrected the independent verifier's instruction to classify captured proof/control evidence while preserving the backend confirmation gate. Model validation failures no longer put their payloads into swarm exception logs. Frontend production build passed; engagement/auth/swarm checks are recorded after the final rerun below.
+
+Engagement package validation: 30 focused engagement/tool/auth/swarm tests passed and production Next.js build passed. These are controlled fixtures; paid eight-role evidence is the next acceptance gate.

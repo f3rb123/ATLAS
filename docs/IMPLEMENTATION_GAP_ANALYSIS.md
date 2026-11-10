@@ -1,3 +1,7 @@
+# Engagement flow — 10 November 2026
+
+Durable engagement conversation, explicit authorization/scope, saved execution preferences, source attachment and actual start/control/live views implemented. 30 focused backend checks and frontend production build passed. Real-model lab and deployment/browser gates remain pending.
+
 # Central tools — 10 November 2026
 
 Typed registry, API/UI connection management and narrow read-only API/MCP adapters implemented. 56 focused tests passed. Unprovided external connections and scanner harnesses remain explicitly disabled/unverified.

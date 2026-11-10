@@ -21,6 +21,43 @@ class Generate(Strict):
     model_record_id: str | None = None
 
 
+class IntegrationRead(Strict):
+    run_id: str
+    capability: str
+    input: dict
+    task_id: str | None = None
+    lease_token: str | None = None
+
+
+@app.post("/integration-read")
+def integration_read(body: IntegrationRead, request: Request):
+    from .db import SwarmTask
+    from .swarm import active, check_fence
+    from .tool_registry import IntelligenceLookup, MCPRead, execute
+
+    service = service_role(request)
+    schemas = {"external_intelligence_lookup": IntelligenceLookup, "mcp_read_resource": MCPRead}
+    if body.capability not in schemas:
+        raise HTTPException(403)
+    with session() as db:
+        run = db.get(Document, body.run_id)
+        if not run or run.kind != "run":
+            raise HTTPException(403)
+        try:
+            active(db, run)
+            if run.value().get("execution_mode") == "swarm":
+                task = db.get(SwarmTask, body.task_id) if body.task_id else None
+                if not task or task.worker_kind != service or not body.lease_token:
+                    raise HTTPException(403)
+                run._swarm_claim = (task.id, body.lease_token)
+                check_fence(db, run)
+            if run.value().get("tool_calls", 0) >= run.value().get("max_tool_calls", 50):
+                raise HTTPException(403)
+            return execute(db, run, body.capability, schemas[body.capability].model_validate(body.input))
+        except Exception:
+            raise HTTPException(403, "Integration read denied or failed") from None
+
+
 def service_role(request):
     token = request.headers.get("authorization", "").removeprefix("Bearer ")
     if not token:
