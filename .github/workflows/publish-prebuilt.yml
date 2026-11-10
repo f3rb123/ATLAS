@@ -1,0 +1,41 @@
+name: Publish prebuilt package (no tests)
+on:
+  push:
+    branches: [delivery/prebuilt-publisher-20261110]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: atlas-prebuilt-20261110
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: factory
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: atlas-v3-prebuilt-20261110
+          path: application
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build images and package the supplied knowledge without application tests
+        run: python3 factory/scripts/build-prebuilt-release.py --source application --output "$RUNNER_TEMP/atlas-delivery" --budget-floor factory/release/prebuilt-budget-floor-20261110.json
+      - name: Upload and publish the prebuilt candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/atlas-delivery"
+          gh release upload atlas-v3-prebuilt-20261110 atlas-v3-prebuilt-20261110.zip atlas-v3-prebuilt-20261110.zip.sha256 atlas-v3-prebuilt-20261110/RELEASE-MANIFEST.md atlas-v3-prebuilt-20261110/README-FIRST.md atlas-v3-prebuilt-20261110/BUILD-RECORD.json
+          gh api "repos/$GH_REPO/releases/tags/atlas-v3-prebuilt-20261110" > remote-assets.json
+          python3 "$GITHUB_WORKSPACE/factory/scripts/build-prebuilt-release.py" --verify-assets remote-assets.json --output "$RUNNER_TEMP/atlas-delivery"
+          gh release edit atlas-v3-prebuilt-20261110 --draft=false --prerelease --notes-file GITHUB-NOTES.md

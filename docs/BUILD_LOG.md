@@ -195,3 +195,14 @@ consumption floor without publishing private account/billing identifiers.
 The API/frontend engine remains implementation checkpoint 5a7834d. Source-only
 archive packaging is superseded by the all-in-one release. No new application
 tests, paid model calls, target requests or remote VPS changes were performed.
+
+### GitHub artifact publication route
+
+The 915,809,043-byte all-in-one ZIP was assembled, with the original corpus hash,
+five images and model assets. The matching prebuilt tag was pushed and a draft
+prerelease created. Workspace GitHub API/repository access works, but the release
+upload hostname rejected asset authentication (401); the API hostname does not
+implement binary uploads (404). Prepared a build-only GitHub Actions publisher
+to assemble the same tagged source/corpus on GitHub and upload with the normal
+runner token. Delivery branches/tags are excluded from the normal test workflow
+to honor the owner's instruction. No application tests or paid calls were run.

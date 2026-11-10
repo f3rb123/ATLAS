@@ -13,6 +13,15 @@ requested prebuilt release. Publish only the reviewed archive/metadata and its
 matching new tag, leaving remote branches untouched. Preserve all original
 assets, private state and the single spending authority.
 
+Publication continuation: the source tag and draft prerelease exist, but direct
+asset upload returned 401 from uploads.github.com. The local complete ZIP is
+ready. A build-only publisher workflow is prepared for the new isolated
+delivery/prebuilt-publisher-20261110 branch; it uses only the tagged source and
+public corpus, never starts ATLAS/tests, and publishes only after GitHub asset
+size/SHA256 verification. Do not modify main or declare upload complete until
+actual asset/publication evidence exists. Current normal CI excludes delivery
+branches and prebuilt tags.
+
 The owner requires the full authorized autonomous engagement-to-report workflow.
 The old 486739d package is a prior local milestone, not the final requested build.
 Continue docs/AUTONOMOUS_BUILD_CHECKLIST.md. Preserve the raw .env, all original
