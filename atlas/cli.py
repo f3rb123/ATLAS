@@ -79,12 +79,20 @@ def engagement_messages(id: str):
 
 @groups["engagement"].command("message")
 def engagement_message(id: str, file: Path):
-    out(client_request("engagements/" + id + "/messages", "POST", {"text": file.read_text()}))
+    out(
+        client_request(
+            "engagements/" + id + "/messages", "POST", {"text": file.read_text()}
+        )
+    )
 
 
 @groups["engagement"].command("configure")
 def engagement_configure(id: str, file: Path):
-    out(client_request("engagements/" + id + "/preferences", "PUT", json.loads(file.read_text())))
+    out(
+        client_request(
+            "engagements/" + id + "/preferences", "PUT", json.loads(file.read_text())
+        )
+    )
 
 
 @groups["engagement"].command("start")
@@ -95,6 +103,103 @@ def engagement_start(id: str):
 @groups["tools"].command("list")
 def tools_list():
     out(client_request("tools"))
+
+
+@groups["tools"].command("test")
+def tools_test(name: str):
+    out(client_request("tools/binaries/" + name + "/test", "POST", {}))
+
+
+@groups["tools"].command("enable")
+def tools_enable(name: str):
+    out(
+        client_request(
+            "tools/binaries/" + name + "/enablement", "POST", {"enabled": True}
+        )
+    )
+
+
+@groups["tools"].command("disable")
+def tools_disable(name: str):
+    out(
+        client_request(
+            "tools/binaries/" + name + "/enablement", "POST", {"enabled": False}
+        )
+    )
+
+
+@groups["tools"].command("provenance")
+def tools_provenance(name: str, source: str, license: str):
+    out(
+        client_request(
+            "tools/binaries/" + name + "/provenance",
+            "POST",
+            {
+                "source_url": source,
+                "license": license,
+                "owner_permission_attested": True,
+            },
+        )
+    )
+
+
+@groups["tools"].command("connect")
+def tools_connect(name: str, adapter: str, origin: str):
+    credential = getpass.getpass("Integration credential (write-only): ")
+    out(
+        client_request(
+            "tools/integrations",
+            "POST",
+            {
+                "name": name,
+                "adapter": adapter,
+                "base_url": origin,
+                "api_key": credential,
+            },
+        )
+    )
+
+
+@groups["tools"].command("import-output")
+def tools_import_output(run_id: str, tool: str, file: Path):
+    if file.stat().st_size > 1024 * 1024:
+        raise typer.BadParameter("Scanner output must be at most 1 MiB")
+    out(
+        client_request(
+            "tools/import-output",
+            "POST",
+            {"run_id": run_id, "tool": tool, "content": file.read_text()},
+        )
+    )
+
+
+@groups["engagement"].command("identities")
+def engagement_identities(id: str):
+    out(client_request("campaigns/" + id + "/target-identities"))
+
+
+@groups["engagement"].command("identity-add")
+def engagement_identity_add(
+    id: str, name: str, origin: str, header: str = "Authorization"
+):
+    credential = getpass.getpass("Owned test account credential (write-only): ")
+    out(
+        client_request(
+            "campaigns/" + id + "/target-identities",
+            "POST",
+            {
+                "name": name,
+                "origin": origin,
+                "headers": {header: credential},
+                "owned_test_account": True,
+            },
+        )
+    )
+
+
+@groups["run"].command("evidence")
+def run_evidence(id: str, offset: int = 0):
+    out(client_request("runs/" + id + "/web-evidence?offset=" + str(offset)))
 
 
 @groups["campaign"].command("list")
@@ -604,7 +709,11 @@ def corpus_package_command(file, sha256, restore):
 
     root = Path(settings().data_dir)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    temporary = tempfile.TemporaryDirectory(prefix="corpus-stdin-", dir=root) if str(file) == "-" else nullcontext()
+    temporary = (
+        tempfile.TemporaryDirectory(prefix="corpus-stdin-", dir=root)
+        if str(file) == "-"
+        else nullcontext()
+    )
     with temporary as directory:
         path = Path(file)
         if directory:
@@ -618,7 +727,11 @@ def corpus_package_command(file, sha256, restore):
                         raise typer.BadParameter("Corpus archive exceeds 1 GiB")
                     output.write(block)
         try:
-            result = restore_package(path, sha256) if restore else inspect_package(path, sha256)
+            result = (
+                restore_package(path, sha256)
+                if restore
+                else inspect_package(path, sha256)
+            )
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from None
         out(result)
@@ -667,11 +780,20 @@ def configure_provider_file(
         summarize(db)
         db.commit()
         try:
-            result = configure_provider(db, key_file, base_url, primary_model, verifier_model,
-                                        owner_email, bootstrap_local_owner)
+            result = configure_provider(
+                db,
+                key_file,
+                base_url,
+                primary_model,
+                verifier_model,
+                owner_email,
+                bootstrap_local_owner,
+            )
         except (ValueError, ProviderError, OSError):
             # Provider errors must not expose a credential, headers or file data.
-            raise typer.BadParameter("Provider setup blocked; check exact file permissions, endpoint access and existing owner configuration") from None
+            raise typer.BadParameter(
+                "Provider setup blocked; check exact file permissions, endpoint access and existing owner configuration"
+            ) from None
     out(result)
 
 

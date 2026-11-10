@@ -1,5 +1,13 @@
 # Requirement and release status — 10 November 2026
 
+> Autonomous build continuation: the owner clarified that SBI smoke restrictions
+> apply to build-time acceptance only. The source now includes broader scoped
+> web/tool execution and generated source experiments. The 214-test report below
+> describes the prior release; newer changes remain pending final verification
+> while implementation-first steering is active. See
+> [the active checklist](AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 [Current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) and the release manifest identify the exact local evidence. Original owner instructions govern; historical greenfield/missing-corpus/mandatory-MFA statements are superseded.
 
 | Owner requirement | Current implementation and evidence | Remaining boundary |

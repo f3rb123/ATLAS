@@ -1,5 +1,13 @@
 # ATLAS V3 completion roadmap
 
+> Autonomous build continuation: the owner clarified that SBI smoke restrictions
+> apply to build-time acceptance only. The source now includes broader scoped
+> web/tool execution and generated source experiments. The 214-test report below
+> describes the prior release; newer changes remain pending final verification
+> while implementation-first steering is active. See
+> [the active checklist](docs/AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 Updated 10 November 2026. Current owner instructions supersede the inherited greenfield and mandatory-MFA wording. No push, public deployment, VPS change or SBI target request occurred.
 
 The authorized local implementation packages are complete: corpus restore/transfer, universal knowledge and skill interface, concurrent specialists, explainable dependencies/priorities, routing/circuits/budgets, tool management, research/chain artifacts, engagement chat and deployment assets. Evidence is consolidated in the [current acceptance report](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md).

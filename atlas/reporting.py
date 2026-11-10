@@ -2,6 +2,7 @@
 
 import json, html
 from .db import Document, document, canonical, now
+from . import __version__
 
 
 def render(findings, format):
@@ -21,7 +22,7 @@ def render(findings, format):
                 "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
                 "runs": [
                     {
-                        "tool": {"driver": {"name": "ATLAS", "version": "0.1.0"}},
+                        "tool": {"driver": {"name": "ATLAS", "version": __version__}},
                         "results": [
                             {
                                 "ruleId": "ATLAS.evidence-confirmed",
@@ -87,9 +88,27 @@ def generate_report(db, run, format):
         f.value()
         for f in db.query(Document).filter_by(kind="finding", owner=run.owner)
         if f.value()["run_id"] == run.id
-        and f.value()["status"] in ("confirmed", "report_ready", "reported", "fixed", "closed")
+        and f.value()["status"]
+        in ("confirmed", "report_ready", "reported", "fixed", "closed")
         and f.value().get("verification", {}).get("status") == "confirmed"
     ]
+    coverage = {
+        "partial": bool(run.value().get("partial")),
+        "task_errors": run.value().get("task_errors", 0),
+        "tool_warnings": run.value().get("tool_warnings", []),
+        "http_and_network_requests": run.value().get("http_requests", 0),
+        "policy_hash": run.value().get("policy_hash", "unavailable"),
+        "note": "A completed run is bounded research over the captured surface, not proof that every vulnerability was found.",
+    }
+    content = render(findings, format)
+    if format == "markdown":
+        content = (
+            "# Run coverage\n\n" + json.dumps(coverage, indent=2) + "\n\n" + content
+        )
+    if format == "json":
+        parsed = json.loads(content)
+        parsed["coverage"] = coverage
+        content = canonical(parsed)
     return document(
         db,
         "report",
@@ -97,7 +116,8 @@ def generate_report(db, run, format):
         {
             "run_id": run.id,
             "format": format,
-            "content": render(findings, format),
+            "content": content,
+            "coverage": coverage,
             "confirmed_count": len(findings),
         },
     )

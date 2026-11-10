@@ -29,6 +29,8 @@ x-app: &app
     ATLAS_REDIS_URL: redis://redis:6379/0
     ATLAS_REDIS_PASSWORD_FILE: /dbkey/redis_password
     ATLAS_MASTER_KEY_FILE: /master/master_key
+    ATLAS_TARGET_KEY_FILE: /targetkeys/target_key
+    ATLAS_RESEARCH_TOOLS_DIR: /opt/atlas-tools
     ATLAS_GLOBAL_TOKEN_CAP: ${ATLAS_GLOBAL_TOKEN_CAP:-50000000}
     ATLAS_TOKEN_ALLOCATION: ${ATLAS_TOKEN_ALLOCATION:-2000000}
     ATLAS_VALIDATION_TOKEN_RESERVE: ${ATLAS_VALIDATION_TOKEN_RESERVE:-200000}
@@ -50,7 +52,7 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
     restart: 'no'
     secrets: [postgres_password, app_postgres_password, redis_password, master_key, research_token, verify_token]
-    volumes: [artifacts:/data, dbkey:/dbkey, master:/master, research:/research, verify:/verify]
+    volumes: [artifacts:/data, dbkey:/dbkey, master:/master, research:/research, verify:/verify, targetkeys:/targetkeys]
     environment:
       <<: *env
       ATLAS_DATABASE_URL_FILE_PASSWORD: /run/secrets/postgres_password
@@ -59,7 +61,7 @@ services:
     command: [python, -m, atlas.init_container]
   api:
     <<: *app
-    volumes: [artifacts:/data, dbkey:/dbkey:ro, master:/master:ro]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, master:/master:ro, targetkeys:/targetkeys:ro]
     networks: [backend, provider_egress]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -82,10 +84,11 @@ services:
   relay:
     <<: *app
     command: [uvicorn, 'atlas.relay:app', --host, 0.0.0.0, --port, '8002', --no-access-log]
-    volumes: [artifacts:/data, dbkey:/dbkey:ro, research:/research:ro]
+    volumes: [artifacts:/data, dbkey:/dbkey:ro, research:/research:ro, verify:/verify:ro, targetkeys:/targetkeys:ro]
     environment:
       <<: *env
       ATLAS_RESEARCH_TOKEN_FILE: /research/research_token
+      ATLAS_VERIFY_TOKEN_FILE: /verify/verify_token
     networks: [backend, target_egress]
     depends_on:
       init: {condition: service_completed_successfully}
@@ -115,6 +118,7 @@ services:
     environment:
       <<: *env
       ATLAS_GATEWAY_URL: http://gateway:8001
+      ATLAS_RELAY_URL: http://relay:8002
       ATLAS_SERVICE_TOKEN_FILE: /verify/verify_token
     depends_on:
       init: {condition: service_completed_successfully}
@@ -182,6 +186,7 @@ volumes:
   verify:
   dbkey:
   artifacts:
+  targetkeys:
   caddy_data:
   caddy_config:
 networks:

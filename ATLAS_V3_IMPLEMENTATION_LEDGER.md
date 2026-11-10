@@ -1,5 +1,13 @@
 # ATLAS V3 implementation ledger — 10 November 2026
 
+> Autonomous build continuation: the owner clarified that SBI smoke restrictions
+> apply to build-time acceptance only. The source now includes broader scoped
+> web/tool execution and generated source experiments. The 214-test report below
+> describes the prior release; newer changes remain pending final verification
+> while implementation-first steering is active. See
+> [the active checklist](docs/AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 Current owner instructions govern this continuation. No push, public deployment, VPS changes or SBI target requests occurred. Original corpus/model identities and existing tags remain preserved.
 
 | Local checkpoint | Package |

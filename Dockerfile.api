@@ -8,6 +8,11 @@ COPY requirements.lock ./
 RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
     if [ -f /run/proxy-ca.pem ]; then export PIP_CERT=/run/proxy-ca.pem; fi; \
     pip install --no-cache-dir --require-hashes -r requirements.lock
+COPY atlas/data/research_tools.json atlas/data/research_tools.json
+COPY scripts/install-research-tools.py scripts/install-research-tools.py
+RUN --mount=type=secret,id=proxy_ca,target=/run/proxy-ca.pem \
+    if [ -f /run/proxy-ca.pem ]; then export SSL_CERT_FILE=/run/proxy-ca.pem; fi; \
+    python scripts/install-research-tools.py --destination /opt/atlas-tools --tools httpx katana nuclei ffuf subfinder dnsx naabu gau waybackurls
 COPY atlas atlas
 COPY pyproject.toml ./
 RUN pip install --no-deps --no-build-isolation .
@@ -16,6 +21,7 @@ RUN --mount=type=tmpfs,target=/etc/ssl/certs --mount=type=secret,id=proxy_ca,tar
     if [ -f /usr/local/share/ca-certificates/cloud-proxy.crt ]; then update-ca-certificates; fi; \
     apt-get update && apt-get install -y --no-install-recommends bubblewrap git && rm -rf /var/lib/apt/lists/* && useradd -u 10001 -m atlas
 COPY --from=build /opt/venv /opt/venv
+COPY --from=build /opt/atlas-tools /opt/atlas-tools
 WORKDIR /app
 COPY --chown=10001:10001 atlas atlas
 COPY --chown=10001:10001 migrations migrations

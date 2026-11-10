@@ -1,0 +1,11 @@
+# Optional owner-authorized executable, outside the bundled image.
+services:
+  api:
+    volumes:
+      - '${ATLAS_OWNER_TOOLS_DIR:?Set an absolute owner-managed tool directory}/waybackurls:/opt/atlas-tools/waybackurls:ro'
+  worker-research:
+    volumes:
+      - '${ATLAS_OWNER_TOOLS_DIR:?Set an absolute owner-managed tool directory}/waybackurls:/opt/atlas-tools/waybackurls:ro'
+  worker-verify:
+    volumes:
+      - '${ATLAS_OWNER_TOOLS_DIR:?Set an absolute owner-managed tool directory}/waybackurls:/opt/atlas-tools/waybackurls:ro'

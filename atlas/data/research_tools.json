@@ -1,0 +1,111 @@
+{
+  "httpx": {
+    "repository": "projectdiscovery/httpx",
+    "version": "v1.12.0",
+    "url": "https://github.com/projectdiscovery/httpx/releases/download/v1.12.0/httpx_1.12.0_linux_amd64.zip",
+    "archive_sha256": "9d8439e8b6c9aa7d1e2314817a392e00d5178da3af5652f7475f88868f418f76",
+    "binary_sha256": "6d78b83b4da452a7e0bd3613c4fae04cbf523209f083904b563f4d4406a680b0",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "cbcdaab87df3175107aa28915bd253cebdd618a49c9ac5d6c669c0b1cbebcacb",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "katana": {
+    "repository": "projectdiscovery/katana",
+    "version": "v1.8.0",
+    "url": "https://github.com/projectdiscovery/katana/releases/download/v1.8.0/katana_1.8.0_linux_amd64.zip",
+    "archive_sha256": "cb027ae99d0757061b70c07a15c7a80f62c5a535ab52c4a329f80c4b0a7309d2",
+    "binary_sha256": "3214c11a0548667b37ec17bbb691706b7e0de1f0f24b3ead2ee12c301ebc1bbc",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "49982116f64385bdf8582a379e591a19d6040dec22e50e29dc311596d357af23",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "nuclei": {
+    "repository": "projectdiscovery/nuclei",
+    "version": "v3.11.1",
+    "url": "https://github.com/projectdiscovery/nuclei/releases/download/v3.11.1/nuclei_3.11.1_linux_amd64.zip",
+    "archive_sha256": "ea63d4ae232808cd7c6bc00d0142428e231fab59dae01042246097d195835ab6",
+    "binary_sha256": "c49588140f357cbdddd5436dec11201953a4c5390faeec90777f9ee2cfd70251",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "5fa6644d2dd1987a79c06f4af210d2cf8cfc4ee799999029d0f9980c9cf95a2c",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "ffuf": {
+    "repository": "ffuf/ffuf",
+    "version": "v2.3.0",
+    "url": "https://github.com/ffuf/ffuf/releases/download/v2.3.0/ffuf_2.3.0_linux_amd64.tar.gz",
+    "archive_sha256": "b2a3c725fcb9da175159682f54d6e9149f2905b00d84d155e7efc5d599975ceb",
+    "binary_sha256": "4b52c335d166cfb9a7ed0f1d8c5626f00d0c8510c3aeb4097bd60acba94ea52f",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE",
+    "license_sha256": "27efda573d21acd87c68e008a190c7456bcd93b510b8c35a1500088249d5d930",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "subfinder": {
+    "repository": "projectdiscovery/subfinder",
+    "version": "v2.17.0",
+    "url": "https://github.com/projectdiscovery/subfinder/releases/download/v2.17.0/subfinder_2.17.0_linux_amd64.zip",
+    "archive_sha256": "a39c3e5c7a26ef3c430915c4d6cbf7716a00f26769a75e9405aba796142eba37",
+    "binary_sha256": "bf4ad8590702b0bb92be9b3be185f96a230b047c9b97f2831cf8914344f0b15a",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "cbcdaab87df3175107aa28915bd253cebdd618a49c9ac5d6c669c0b1cbebcacb",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "dnsx": {
+    "repository": "projectdiscovery/dnsx",
+    "version": "v1.3.1",
+    "url": "https://github.com/projectdiscovery/dnsx/releases/download/v1.3.1/dnsx_1.3.1_linux_amd64.zip",
+    "archive_sha256": "438b964653056dd51dcfe614b1a16f8bced3cc48a1d27bc07cc6fdf2ef2a9533",
+    "binary_sha256": "5fca43ddfe95922d8d88a859c1fcc59fee327bf39ae574db66d391c6675b8ba3",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "cbcdaab87df3175107aa28915bd253cebdd618a49c9ac5d6c669c0b1cbebcacb",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "naabu": {
+    "repository": "projectdiscovery/naabu",
+    "version": "v2.7.0",
+    "url": "https://github.com/projectdiscovery/naabu/releases/download/v2.7.0/naabu_2.7.0_linux_amd64.zip",
+    "archive_sha256": "0cc77c0ca32d2f519ffbaa7665bb0e7c88c40753ab22f03551d453a1a823e9f0",
+    "binary_sha256": "34b22eb195238380947792e9c83f4276d2182871df1842d2eb927db0659e6276",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE.md",
+    "license_sha256": "cbcdaab87df3175107aa28915bd253cebdd618a49c9ac5d6c669c0b1cbebcacb",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "gau": {
+    "repository": "lc/gau",
+    "version": "v2.2.4",
+    "url": "https://github.com/lc/gau/releases/download/v2.2.4/gau_2.2.4_linux_amd64.tar.gz",
+    "archive_sha256": "10e2e248c37cafb0be3f6d2931125296b95cd4186066d596d47fa417237529a9",
+    "binary_sha256": "22a7061bfa74e90b2995b2d82cab7d432ddb4ba85e3665dc5c06ac6eaad36cc3",
+    "upstream_digest_verified": false,
+    "license_file": "LICENSE",
+    "license_sha256": "2bc98dc696486599c0b0588972238256e567bc2639fd2a06372f5059f9f84e74",
+    "license_status": "License retained from the pinned release archive"
+  },
+  "waybackurls": {
+    "repository": "tomnomnom/waybackurls",
+    "version": "v0.1.0",
+    "url": "https://github.com/tomnomnom/waybackurls/releases/download/v0.1.0/waybackurls-linux-amd64-0.1.0.tgz",
+    "archive_sha256": "884786132d11c8eb838fc88626dad96494207c79e436a72870a7d69f147500a6",
+    "binary_sha256": "da25f8f96987d59ceb85097ebd277cd79ec2f9e2e6d33bb391d42b8623f7d657",
+    "upstream_digest_verified": false,
+    "owner_managed": true,
+    "license_status": "No declared license in upstream repository/tag; provide independently authorized executable provenance"
+  },
+  "amass": {
+    "repository": "owasp-amass/amass",
+    "version": "v5.1.3",
+    "url": "https://github.com/owasp-amass/amass/releases/download/v5.1.3/amass_linux_amd64.tar.gz",
+    "archive_sha256": "4c12b725e4ce4981ece93a5e1566bd7391be1f349468856a79d31a43012ae201",
+    "binary_sha256": "185cad824c4a6857debd9a69cc3064293164fab1b102feb4497228c97545d14f",
+    "upstream_digest_verified": true,
+    "license_file": "LICENSE",
+    "license_sha256": "52c474ee3b3c9e3ca40263ec3abf32fb6b9bcadd918759026b687dd71176c676",
+    "license_status": "License retained from the pinned release archive"
+  }
+}

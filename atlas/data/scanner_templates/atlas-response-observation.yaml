@@ -1,0 +1,13 @@
+id: atlas-response-observation
+info:
+  name: ATLAS HTTP response observation
+  author: ATLAS
+  severity: info
+  description: Captures a response for research. It is not a vulnerability finding.
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: status
+        status: [200, 301, 302, 401, 403, 404]

@@ -54,6 +54,9 @@ SPECIALISTS = {
 ROLES = {**INITIAL_ROLES, **SPECIALISTS}
 ROLES.update(
     {
+        "web-discovery": "Collect the authorized web surface and run registered checks.",
+        "web-verification": "Independently replay a typed web candidate and challenge its proof/control evidence.",
+        "source-verification": "Independently replay generated source proof/control and secure-patch evidence.",
         "coding-review": "Review cited code boundaries and return independent observations.",
         "fast-triage": "Triage a narrow cited observation; do not confirm findings.",
     }
@@ -113,7 +116,13 @@ def enqueue(db, run, role, payload, key, priority=1):
         owner=run.owner,
         role=role,
         worker_kind="verify"
-        if role in ("validation-review", "proof-validation")
+        if role
+        in (
+            "validation-review",
+            "proof-validation",
+            "web-verification",
+            "source-verification",
+        )
         else "research",
         dedupe_key=key,
         payload=canonical(payload),
@@ -145,6 +154,16 @@ def initialize(db, run):
     if not 1 <= count <= 16:
         raise Denied("Agent count must be between 1 and 16")
     roles = list(INITIAL_ROLES)
+    discovery = None
+    if run.value().get("web", {}).get("enabled") and run.value().get("target_url"):
+        discovery = enqueue(
+            db,
+            run,
+            "web-discovery",
+            {"reason": "Acquire web evidence before specialist reasoning"},
+            digest("web-discovery"),
+            priority=3,
+        )
     for i in range(count):
         name = roles[i % len(roles)]
         enqueue(
@@ -155,6 +174,7 @@ def initialize(db, run):
                 "instructions": ROLES[name],
                 "partition": i // len(roles),
                 "reason": "Initial differentiated responsibility",
+                "depends_on": [discovery.id] if discovery else [],
             },
             digest("initial:" + str(i)),
         )
@@ -213,7 +233,10 @@ def claim_one(db, worker_kind):
                 (SwarmTask.status == "running") & (SwarmTask.lease_until < time.time()),
             ),
         )
-        .order_by((SwarmTask.priority + (time.time() - SwarmTask.created_at) / 300).desc(), SwarmTask.created_at)
+        .order_by(
+            (SwarmTask.priority + (time.time() - SwarmTask.created_at) / 300).desc(),
+            SwarmTask.created_at,
+        )
         .limit(100)
         .all()
     )
@@ -260,8 +283,20 @@ def claim_one(db, worker_kind):
         if dependency != "ready":
             if dependency == "failed":
                 t.status, t.updated_at = "cancelled", time.time()
-                t.result = canonical({"error": "dependency_failed", "depends_on": json.loads(t.payload).get("depends_on", [])})
-                append(db, run.id, "scheduler", "swarm_dependency_failed", {"task_id": t.id}, run.value()["campaign_id"])
+                t.result = canonical(
+                    {
+                        "error": "dependency_failed",
+                        "depends_on": json.loads(t.payload).get("depends_on", []),
+                    }
+                )
+                append(
+                    db,
+                    run.id,
+                    "scheduler",
+                    "swarm_dependency_failed",
+                    {"task_id": t.id},
+                    run.value()["campaign_id"],
+                )
                 db.commit()
                 finish_run(db, run)
             else:
@@ -302,7 +337,12 @@ def claim_one(db, worker_kind):
             run.id,
             "scheduler",
             "swarm_task_claimed",
-            {"task_id": t.id, "role": t.role, "attempt": t.attempts, "priority_explanation": explanation},
+            {
+                "task_id": t.id,
+                "role": t.role,
+                "attempt": t.attempts,
+                "priority_explanation": explanation,
+            },
             value["campaign_id"],
         )
         db.commit()
@@ -355,8 +395,13 @@ def publish(db, run, task, discovery):
                 "event_id": id,
                 "instructions": ROLES[discovery.topic],
                 "reason": "Cited " + discovery.topic + " discovery from " + task.role,
-                "signals": {"confidence": discovery.confidence, "evidence_count": len(discovery.citations), "relevance": 1.0,
-                            "estimated_effort": 0.5, "hypothesis": discovery.kind == "hypothesis"},
+                "signals": {
+                    "confidence": discovery.confidence,
+                    "evidence_count": len(discovery.citations),
+                    "relevance": 1.0,
+                    "estimated_effort": 0.5,
+                    "hypothesis": discovery.kind == "hypothesis",
+                },
             },
             digest("subscription:" + discovery.topic + ":" + id),
             discovery.confidence,
@@ -370,8 +415,13 @@ def publish(db, run, task, discovery):
                 "event_id": id,
                 "instructions": ROLES["deep-research"],
                 "reason": "Challenge and research cited hypothesis",
-                "signals": {"confidence": discovery.confidence, "evidence_count": len(discovery.citations), "relevance": 1.0,
-                            "estimated_effort": 0.8, "hypothesis": True},
+                "signals": {
+                    "confidence": discovery.confidence,
+                    "evidence_count": len(discovery.citations),
+                    "relevance": 1.0,
+                    "estimated_effort": 0.8,
+                    "hypothesis": True,
+                },
             },
             digest("research:" + id),
             discovery.confidence,
@@ -389,6 +439,51 @@ def task_context(db, run, task):
         "policy": db.get(Document, value["policy_id"]).value(),
         "constraint": "Research only. Return cited discoveries; no self-confirmed findings. Each task has an independent context.",
     }
+    if value.get("web", {}).get("enabled"):
+        from .target_auth import safe as safe_target_identity
+
+        context["web_assessment"] = {
+            "target_url": value.get("target_url"),
+            "plan": value["web"],
+            "identities": [
+                safe_target_identity(row)
+                for id in value.get("target_identities", {})
+                if (row := db.get(Document, id)) and row.owner == run.owner
+            ],
+        }
+        context["web_observations"] = [
+            row.value()
+            for row in db.query(Document)
+            .filter_by(kind="http_observation", owner=run.owner)
+            .filter(Document.data.contains('"run_id":"' + run.id + '"'))
+            .order_by(Document.created.desc())
+            .limit(30)
+            if row.value().get("run_id") == run.id
+            and row.value().get("state") == "completed"
+        ][:3]
+        for observation in context["web_observations"]:
+            observation["response"]["body"] = observation["response"]["body"][:1500]
+            observation["response"]["headers"] = {
+                k: v[:200]
+                for k, v in list(observation["response"].get("headers", {}).items())[
+                    :12
+                ]
+            }
+        context["imported_tool_observations"] = [
+            {
+                "id": row.id,
+                "tool": row.value()["tool"],
+                "execution": row.value()["execution"],
+                "trust": row.value()["trust"],
+                "records": row.value()["records"][:20],
+            }
+            for row in db.query(Document)
+            .filter_by(kind="external_tool_import", owner=run.owner)
+            .filter(Document.data.contains('"run_id":"' + run.id + '"'))
+            .order_by(Document.created.desc())
+            .limit(3)
+            if row.value().get("run_id") == run.id
+        ]
     if payload.get("event_id"):
         event = db.get(Document, payload["event_id"])
         if event and event.owner == run.owner and event.value()["run_id"] == run.id:
@@ -445,11 +540,13 @@ def finish_run(db, run):
     from .reporting import generate_report
 
     errors = tasks(db, run.id).filter_by(status="dead_letter").count()
+    value.update(partial=bool(errors or value.get("tool_warnings")), task_errors=errors)
+    run.data = canonical(value)
     report = generate_report(db, run, "markdown")
     value.update(
         state="COMPLETED",
         status="completed",
-        partial=bool(errors),
+        partial=bool(errors or value.get("tool_warnings")),
         task_errors=errors,
         report_id=report.id,
         finished=now(),
@@ -493,7 +590,19 @@ def execute_one(worker_kind):
         try:
             check_fence(db, run)
             context, repo = task_context(db, run, task)
-            if task.role == "proof-validation":
+            if task.role == "web-discovery":
+                from .web_research import discover
+
+                result = discover(db, run, task)
+            elif task.role == "source-verification":
+                from .source_experiments import verify
+
+                result = verify(db, run, repo, task)
+            elif task.role == "web-verification":
+                from .web_research import verify
+
+                result = verify(db, run, task)
+            elif task.role == "proof-validation":
                 from .verification import verify_candidates
 
                 original = json.loads(task.payload)["execution"]
@@ -649,7 +758,10 @@ def execute_one(worker_kind):
             from .gateway import CapacityWait, RunInterrupted
 
             if not isinstance(exc, (RunInterrupted, CapacityWait)):
-                logging.getLogger("atlas").warning("swarm_task_failed", extra={"error_type": type(exc).__name__, "task_id": claim[0]})
+                logging.getLogger("atlas").warning(
+                    "swarm_task_failed",
+                    extra={"error_type": type(exc).__name__, "task_id": claim[0]},
+                )
             db.rollback()
             # Stale/cancelled workers must not overwrite a newer claim or results.
             transaction_lock(db, "swarm:" + run.id)
@@ -712,12 +824,25 @@ def failure_code(exc):
     from .gateway import ProviderError
 
     if isinstance(exc, ValidationError):
-        return {"code": "model_schema_invalid", "fields": [".".join(str(x) for x in e["loc"])[:120] for e in exc.errors(include_input=False)[:8]]}
+        return {
+            "code": "model_schema_invalid",
+            "fields": [
+                ".".join(str(x) for x in e["loc"])[:120]
+                for e in exc.errors(include_input=False)[:8]
+            ],
+        }
     if isinstance(exc, ProviderError):
-        known = {"Provider request timed out": "provider_timeout", "Provider transport failure": "provider_transport",
-                 "authentication_failed": "provider_authentication", "access_denied": "provider_access_denied", "rate_limited": "provider_rate_limited",
-                 "Provider returned invalid structured output; reported usage was accounted": "structured_output_invalid_accounted"}
-        return {"code": known.get(str(exc), "provider_configuration_capacity_or_response")}
+        known = {
+            "Provider request timed out": "provider_timeout",
+            "Provider transport failure": "provider_transport",
+            "authentication_failed": "provider_authentication",
+            "access_denied": "provider_access_denied",
+            "rate_limited": "provider_rate_limited",
+            "Provider returned invalid structured output; reported usage was accounted": "structured_output_invalid_accounted",
+        }
+        return {
+            "code": known.get(str(exc), "provider_configuration_capacity_or_response")
+        }
     return {"code": "policy_or_internal_failure"}
 
 

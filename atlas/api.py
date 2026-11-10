@@ -51,6 +51,7 @@ from .corpus_transfers import UploadInput
 from .research_artifacts import ResearchNote, ChainLink
 from .tool_registry import IntegrationInput
 from .engagements import EngagementInput, Preferences, Message
+from .web_research import WebPlan
 
 
 @asynccontextmanager
@@ -116,7 +117,9 @@ def identity(request: Request, db=Depends(db_dep)):
             if request.method == "GET"
             else {
                 "campaigns": "campaign",
-                "engagements": "run" if request.url.path.endswith("/start") else "campaign",
+                "engagements": "run"
+                if request.url.path.endswith("/start")
+                else "campaign",
                 "tools": "tool",
                 "runs": "run",
                 "providers": "provider",
@@ -700,12 +703,29 @@ def engagement_create(body: EngagementInput, who=Depends(enrolled), db=Depends(d
     from .engagements import validate_target, save_message
 
     target = validate_target(body)
-    result = _campaign_create(CampaignInput(name=body.name, mode="passive", authorization_ref=body.authorization_ref,
-        authorization_attested=body.authorization_attested, scope=body.scope, assessment_profile=body.assessment_profile,
-        budget_limit=body.budget_limit), who, db, commit=False)
+    result = _campaign_create(
+        CampaignInput(
+            name=body.name,
+            mode="passive"
+            if body.assessment_profile == "smoke_readonly"
+            else "safe-active",
+            authorization_ref=body.authorization_ref,
+            authorization_attested=body.authorization_attested,
+            scope=body.scope,
+            assessment_profile=body.assessment_profile,
+            budget_limit=body.budget_limit,
+        ),
+        who,
+        db,
+        commit=False,
+    )
     campaign = own(db, result["id"], "campaign", who[0].id)
     value = campaign.value()
-    value.update(engagement=True, target_url=target, execution_preferences=Preferences().model_dump())
+    value.update(
+        engagement=True,
+        target_url=target,
+        execution_preferences=Preferences().model_dump(),
+    )
     campaign.data = canonical(value)
     save_message(db, campaign, body.instructions, who[0].id)
     db.commit()
@@ -714,8 +734,14 @@ def engagement_create(body: EngagementInput, who=Depends(enrolled), db=Depends(d
 
 @app.get("/api/v1/engagements")
 def engagement_list(who=Depends(enrolled), db=Depends(db_dep)):
-    return [expose(row) for row in db.query(Document).filter_by(kind="campaign", owner=who[0].id).order_by(Document.created.desc()).limit(500)
-            if row.value().get("engagement")]
+    return [
+        expose(row)
+        for row in db.query(Document)
+        .filter_by(kind="campaign", owner=who[0].id)
+        .order_by(Document.created.desc())
+        .limit(500)
+        if row.value().get("engagement")
+    ]
 
 
 @app.get("/api/v1/engagements/{id}/messages")
@@ -725,27 +751,83 @@ def engagement_messages(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     return [expose(row) for row in messages(db, own(db, id, "campaign", who[0].id))]
 
 
+from .target_auth import TargetIdentityInput
+
+
+@app.get("/api/v1/campaigns/{id}/target-identities")
+def target_identities(id: str, who=Depends(enrolled), db=Depends(db_dep)):
+    from .target_auth import safe
+
+    own(db, id, "campaign", who[0].id)
+    return [
+        safe(row)
+        for row in db.query(Document).filter_by(kind="target_identity", owner=who[0].id)
+        if row.value()["campaign_id"] == id
+    ]
+
+
+@app.post("/api/v1/campaigns/{id}/target-identities")
+def target_identity_create(
+    id: str, body: TargetIdentityInput, who=Depends(stepup), db=Depends(db_dep)
+):
+    from .target_auth import create, safe
+
+    campaign = own(db, id, "campaign", who[0].id)
+    row = create(db, campaign, body, who[0].id)
+    db.commit()
+    return safe(row)
+
+
+@app.post("/api/v1/campaigns/{id}/target-identities/{identity_id}/disable")
+def target_identity_disable(
+    id: str, identity_id: str, who=Depends(stepup), db=Depends(db_dep)
+):
+    from .target_auth import safe
+
+    own(db, id, "campaign", who[0].id)
+    row = own(db, identity_id, "target_identity", who[0].id, lock=True)
+    value = row.value()
+    if value["campaign_id"] != id:
+        raise Denied("Identity belongs to another campaign")
+    value["enabled"] = False
+    row.data = canonical(value)
+    row.version += 1
+    append(db, id, who[0].id, "target_identity_disabled", {"identity_id": row.id})
+    db.commit()
+    return safe(row)
+
+
 @app.post("/api/v1/engagements/{id}/messages")
-def engagement_message(id: str, body: Message, who=Depends(enrolled), db=Depends(db_dep)):
+def engagement_message(
+    id: str, body: Message, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .engagements import save_message
 
-    row = save_message(db, own(db, id, "campaign", who[0].id, True), body.text, who[0].id)
+    row = save_message(
+        db, own(db, id, "campaign", who[0].id, True), body.text, who[0].id
+    )
     db.commit()
     return expose(row)
 
 
 @app.put("/api/v1/engagements/{id}/preferences")
-def engagement_preferences(id: str, body: Preferences, who=Depends(enrolled), db=Depends(db_dep)):
+def engagement_preferences(
+    id: str, body: Preferences, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .engagements import save_preferences
 
-    result = save_preferences(db, own(db, id, "campaign", who[0].id, True), body, who[0].id)
+    result = save_preferences(
+        db, own(db, id, "campaign", who[0].id, True), body, who[0].id
+    )
     db.commit()
     return result
 
 
 @app.post("/api/v1/engagements/{id}/start")
-def engagement_start(id: str, request: Request, who=Depends(enrolled), db=Depends(db_dep)):
-    from .engagements import Preferences, run_instructions
+def engagement_start(
+    id: str, request: Request, who=Depends(enrolled), db=Depends(db_dep)
+):
+    from .engagements import Preferences, run_instructions, source_only_instructions
 
     campaign = own(db, id, "campaign", who[0].id)
     if not campaign.value().get("engagement"):
@@ -753,9 +835,26 @@ def engagement_start(id: str, request: Request, who=Depends(enrolled), db=Depend
     readiness = engagement_readiness(id, who, db)
     if readiness["blockers"]:
         raise Denied("; ".join(readiness["blockers"]))
-    preferences = Preferences.model_validate(campaign.value().get("execution_preferences", {}))
-    return run_start(id, RunInput(**preferences.model_dump(), instructions=run_instructions(db, campaign),
-        budget_limit=campaign.value()["budget_limit"]), request, who, db)
+    preferences = Preferences.model_validate(
+        campaign.value().get("execution_preferences", {})
+    )
+    if preferences.web.enabled and source_only_instructions(
+        run_instructions(db, campaign)
+    ):
+        raise Denied(
+            "Instructions request source-only work; disable autonomous web research before starting this run"
+        )
+    return run_start(
+        id,
+        RunInput(
+            **preferences.model_dump(),
+            instructions=run_instructions(db, campaign),
+            budget_limit=campaign.value()["budget_limit"],
+        ),
+        request,
+        who,
+        db,
+    )
 
 
 @app.get("/api/v1/engagements/{id}/readiness")
@@ -763,19 +862,47 @@ def engagement_readiness(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     from .knowledge import availability
     from .token_budget import summarize
 
-    own(db, id, "campaign", who[0].id)
+    campaign = own(db, id, "campaign", who[0].id)
     blockers = []
-    aliases = {row.value()["alias"]: row.value() for row in db.query(Document).filter_by(kind="alias", owner=who[0].id)}
+    from .engagements import run_instructions, source_only_instructions
+
+    if campaign.value().get("execution_preferences", {}).get("web", {}).get(
+        "enabled", True
+    ) and source_only_instructions(run_instructions(db, campaign)):
+        blockers.append(
+            "Source-only instructions require disabling autonomous web research"
+        )
+    aliases = {
+        row.value()["alias"]: row.value()
+        for row in db.query(Document).filter_by(kind="alias", owner=who[0].id)
+    }
     for alias in ("reasoning", "verifier"):
         pin = aliases.get(alias)
         provider = db.get(Document, pin["provider_id"]) if pin else None
         model = db.get(Document, pin["model_id"]) if pin else None
-        if not provider or not model or provider.owner != who[0].id or model.owner != who[0].id or not provider.value().get("enabled") or provider.value().get("health_status") != "tested" or not model.value().get("verified_structured"):
-            blockers.append(f"Configure and test the {alias} model alias before starting")
+        if (
+            not provider
+            or not model
+            or provider.owner != who[0].id
+            or model.owner != who[0].id
+            or not provider.value().get("enabled")
+            or provider.value().get("health_status") != "tested"
+            or not model.value().get("verified_structured")
+        ):
+            blockers.append(
+                f"Configure and test the {alias} model alias before starting"
+            )
     budget = summarize(db)
     if budget["blocked"] or budget["remaining_allocation"] <= 0:
         blockers.append("Global token capacity requires operator review")
-    return {"blockers": blockers, "knowledge": availability(db, who[0].id), "token_budget": {k: budget[k] for k in ("cap", "allocation", "remaining_allocation", "reserved_tokens")}}
+    return {
+        "blockers": blockers,
+        "knowledge": availability(db, who[0].id),
+        "token_budget": {
+            k: budget[k]
+            for k in ("cap", "allocation", "remaining_allocation", "reserved_tokens")
+        },
+    }
 
 
 @app.post("/api/v1/campaigns/{id}/scope/validate")
@@ -855,6 +982,7 @@ class RunInput(Strict):
     max_seconds: int = Field(default=1800, ge=30, le=86400)
     max_tool_calls: int = Field(default=50, ge=1, le=500)
     offline_execution_approved: bool = False
+    web: WebPlan = Field(default_factory=WebPlan)
     knowledge_ids: list[str] = []
     max_model_calls: int = Field(default=20, ge=1, le=100)
     role_budgets: dict[str, float] = {}
@@ -888,6 +1016,25 @@ def run_start(
     from .queueing import admit
 
     admit(db, who[0].id, id)
+    if body.web.enabled and not c.value().get("target_url"):
+        raise Denied("Autonomous web execution requires an engagement target")
+    if body.web.enabled and c.value().get("mode") not in (
+        "passive",
+        "safe-active",
+        "lab",
+    ):
+        raise Denied("Campaign mode does not authorize web execution")
+    for identity_id in set(
+        body.web.identity_ids
+        + [
+            i
+            for case in body.web.authorization_cases
+            for i in (case.owner_identity_id, case.other_identity_id)
+        ]
+    ):
+        identity = own(db, identity_id, "target_identity", who[0].id)
+        if identity.value()["campaign_id"] != id or not identity.value().get("enabled"):
+            raise Denied("Requested target identity is unavailable for this engagement")
     if any(
         not __import__("math").isfinite(value)
         or value <= 0
@@ -915,6 +1062,20 @@ def run_start(
     v = {
         **body.model_dump(),
         "campaign_id": id,
+        "target_url": c.value().get("target_url"),
+        "tool_pins": __import__("atlas.scanner_runtime", fromlist=["pins"]).pins(
+            db, who[0].id
+        ),
+        "scanner_template_pins": __import__(
+            "atlas.scanner_templates", fromlist=["pins"]
+        ).pins(db, who[0].id),
+        "target_identities": {
+            row.id: row.version
+            for row in db.query(Document).filter_by(
+                kind="target_identity", owner=who[0].id
+            )
+            if row.value()["campaign_id"] == id and row.value().get("enabled")
+        },
         "assessment_profile": c.value().get("assessment_profile", "standard"),
         "policy_id": p.id,
         "policy_hash": p.value()["hash"],
@@ -1998,7 +2159,9 @@ def finding_update(
             "Only evidence-confirmed findings may enter reporting/fix workflow"
         )
     v.update(body.model_dump())
-    v.setdefault("timeline", []).append({"at": now(), "actor": who[0].id, "status": body.status})
+    v.setdefault("timeline", []).append(
+        {"at": now(), "actor": who[0].id, "status": body.status}
+    )
     d.data = canonical(v)
     audit(db, who[0].id, "finding_status_changed", {"id": id, "status": body.status})
     db.commit()
@@ -2007,10 +2170,19 @@ def finding_update(
 
 @app.get("/api/v1/findings/{id}/evidence")
 def finding_evidence(id: str, who=Depends(enrolled), db=Depends(db_dep)):
-    d = own(db, id, "finding", who[0].id)
-    return [
-        expose(own(db, x, "artifact", who[0].id)) for x in d.value()["evidence_ids"]
-    ]
+    finding = own(db, id, "finding", who[0].id)
+    result = []
+    for evidence_id in finding.value().get("evidence_ids", []):
+        row = db.get(Document, evidence_id)
+        if (
+            not row
+            or row.owner != who[0].id
+            or row.kind not in ("artifact", "http_observation", "network_observation")
+            or row.value().get("run_id") != finding.value()["run_id"]
+        ):
+            raise Denied("Finding evidence is missing or outside its run")
+        result.append({"kind": row.kind, **expose(row)})
+    return result
 
 
 class FindingMetadata(Strict):
@@ -2019,7 +2191,9 @@ class FindingMetadata(Strict):
     asset: str | None = Field(default=None, max_length=1000)
     endpoint: str | None = Field(default=None, max_length=2000)
     parameter_or_component: str | None = Field(default=None, max_length=500)
-    severity: Literal["unscored", "informational", "low", "medium", "high", "critical"] = "unscored"
+    severity: Literal[
+        "unscored", "informational", "low", "medium", "high", "critical"
+    ] = "unscored"
     confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     technical_explanation: str = Field(default="", max_length=8000)
     impact: str = Field(default="", max_length=4000)
@@ -2029,7 +2203,9 @@ class FindingMetadata(Strict):
 
 
 @app.patch("/api/v1/findings/{id}/metadata")
-def finding_metadata(id: str, body: FindingMetadata, who=Depends(enrolled), db=Depends(db_dep)):
+def finding_metadata(
+    id: str, body: FindingMetadata, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .vault import redact
 
     if who[0].role not in ("owner_admin", "reviewer"):
@@ -2038,15 +2214,28 @@ def finding_metadata(id: str, body: FindingMetadata, who=Depends(enrolled), db=D
     value = row.value()
     for related_id in body.related_findings:
         other = own(db, related_id, "finding", who[0].id)
-        if other.id == id or other.value().get("campaign_id") != value.get("campaign_id"):
-            raise Denied("Related findings must differ and belong to the same owned campaign")
+        if other.id == id or other.value().get("campaign_id") != value.get(
+            "campaign_id"
+        ):
+            raise Denied(
+                "Related findings must differ and belong to the same owned campaign"
+            )
     if any(len(ref) > 2000 for ref in body.source_references):
         raise Denied("Source reference exceeds limit")
     value.update(json.loads(redact(canonical(body.model_dump()))))
     value["metadata_reviewed_by"] = who[0].id
-    value.setdefault("timeline", []).append({"at": now(), "actor": who[0].id, "event": "metadata_reviewed"})
+    value.setdefault("timeline", []).append(
+        {"at": now(), "actor": who[0].id, "event": "metadata_reviewed"}
+    )
     row.data = canonical(value)
-    append(db, value["run_id"], who[0].id, "finding_metadata_reviewed", {"finding_id": id, "verification_unchanged": True}, value.get("campaign_id"))
+    append(
+        db,
+        value["run_id"],
+        who[0].id,
+        "finding_metadata_reviewed",
+        {"finding_id": id, "verification_unchanged": True},
+        value.get("campaign_id"),
+    )
     db.commit()
     return expose(row)
 
@@ -2076,15 +2265,23 @@ def repository_read(
 @app.get("/api/v1/runs/{id}/objects/{kind}")
 def run_objects(
     id: str,
-    kind: Literal["hypotheses", "stages", "tools", "slices", "research-notes", "attack-chains"],
+    kind: Literal[
+        "hypotheses", "stages", "tools", "slices", "research-notes", "attack-chains"
+    ],
     who=Depends(enrolled),
     db=Depends(db_dep),
 ):
     own(db, id, "run", who[0].id)
     if kind in ("research-notes", "attack-chains"):
         artifact_kind = "research_note" if kind == "research-notes" else "attack_chain"
-        return [expose(d) for d in db.query(Document).filter_by(kind=artifact_kind, owner=who[0].id).order_by(Document.created.desc()).limit(500)
-                if d.value().get("run_id") == id]
+        return [
+            expose(d)
+            for d in db.query(Document)
+            .filter_by(kind=artifact_kind, owner=who[0].id)
+            .order_by(Document.created.desc())
+            .limit(500)
+            if d.value().get("run_id") == id
+        ]
     if kind == "stages":
         return [
             expose(d)
@@ -2154,7 +2351,15 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
                 "result": {
                     k: v
                     for k, v in json.loads(t.result).items()
-                    if k in ("summary", "status", "reason", "error_type", "diagnostic_code", "finding_id")
+                    if k
+                    in (
+                        "summary",
+                        "status",
+                        "reason",
+                        "error_type",
+                        "diagnostic_code",
+                        "finding_id",
+                    )
                 },
                 "updated_at": t.updated_at,
             }
@@ -2163,7 +2368,16 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
         "events": [
             e
             for e in reversed(events)
-            if e["type"].startswith(("swarm_", "knowledge_", "skill_", "model_route", "research_note", "attack_chain"))
+            if e["type"].startswith(
+                (
+                    "swarm_",
+                    "knowledge_",
+                    "skill_",
+                    "model_route",
+                    "research_note",
+                    "attack_chain",
+                )
+            )
         ],
         "usage": {
             "input_tokens": sum(u.get("input_tokens", 0) for u in usage),
@@ -2178,7 +2392,9 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
 
 
 @app.post("/api/v1/runs/{id}/research-notes")
-def research_note_create(id: str, body: ResearchNote, who=Depends(enrolled), db=Depends(db_dep)):
+def research_note_create(
+    id: str, body: ResearchNote, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .research_artifacts import store_note
 
     run = own(db, id, "run", who[0].id, True)
@@ -2188,7 +2404,9 @@ def research_note_create(id: str, body: ResearchNote, who=Depends(enrolled), db=
 
 
 @app.post("/api/v1/runs/{id}/attack-chains")
-def attack_chain_create(id: str, body: ChainLink, who=Depends(enrolled), db=Depends(db_dep)):
+def attack_chain_create(
+    id: str, body: ChainLink, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .research_artifacts import link_chain
 
     run = own(db, id, "run", who[0].id, True)
@@ -2206,7 +2424,9 @@ class TaskRequest(Strict):
 
 
 @app.post("/api/v1/runs/{id}/tasks")
-def swarm_task_create(id: str, body: TaskRequest, who=Depends(enrolled), db=Depends(db_dep)):
+def swarm_task_create(
+    id: str, body: TaskRequest, who=Depends(enrolled), db=Depends(db_dep)
+):
     from .swarm import active, enqueue
 
     run = own(db, id, "run", who[0].id, True)
@@ -2215,7 +2435,14 @@ def swarm_task_create(id: str, body: TaskRequest, who=Depends(enrolled), db=Depe
     active(db, run)
     if body.role == "proof-validation":
         raise Denied("Independent proof tasks require broker-captured evidence")
-    task = enqueue(db, run, body.role, body.model_dump(exclude={"role", "priority"}), digest(canonical(body.model_dump())), body.priority)
+    task = enqueue(
+        db,
+        run,
+        body.role,
+        body.model_dump(exclude={"role", "priority"}),
+        digest(canonical(body.model_dump())),
+        body.priority,
+    )
     db.commit()
     return {"task_id": task.id if task else None, "queued": bool(task)}
 
@@ -2225,6 +2452,69 @@ def tool_inventory(who=Depends(admin), db=Depends(db_dep)):
     from .tool_registry import inventory
 
     return inventory(db, who[0].id)
+
+
+from .scanner_templates import TemplateInput
+
+
+@app.get("/api/v1/tools/templates")
+def scanner_templates(who=Depends(admin), db=Depends(db_dep)):
+    return [
+        expose(row)
+        for row in db.query(Document).filter_by(
+            kind="scanner_template", owner=who[0].id
+        )
+    ]
+
+
+@app.post("/api/v1/tools/templates")
+def scanner_template_create(
+    body: TemplateInput, who=Depends(stepup), db=Depends(db_dep)
+):
+    from .scanner_templates import create
+
+    row = create(db, who[0].id, body)
+    db.commit()
+    return expose(row)
+
+
+from .tool_imports import ToolImport
+
+
+@app.post("/api/v1/tools/import-output")
+def tool_import_output(body: ToolImport, who=Depends(stepup), db=Depends(db_dep)):
+    from .tool_imports import import_output
+
+    run = own(db, body.run_id, "run", who[0].id)
+    result = import_output(db, run, body, who[0].id)
+    db.commit()
+    return result
+
+
+@app.get("/api/v1/runs/{id}/web-evidence")
+def web_evidence(id: str, offset: int = 0, who=Depends(enrolled), db=Depends(db_dep)):
+    own(db, id, "run", who[0].id)
+    rows = (
+        db.query(Document)
+        .filter(
+            Document.kind.in_(["http_observation", "network_observation"]),
+            Document.owner == who[0].id,
+            Document.data.contains('"run_id":"' + id + '"'),
+        )
+        .order_by(Document.created.desc())
+        .offset(max(0, offset))
+        .limit(50)
+        .all()
+    )
+    return {
+        "items": [
+            {"id": row.id, "kind": row.kind, **row.value()}
+            for row in rows
+            if row.value().get("run_id") == id
+        ],
+        "offset": max(0, offset),
+        "limit": 50,
+    }
 
 
 @app.post("/api/v1/tools/integrations")
@@ -2240,7 +2530,9 @@ def tool_create(body: IntegrationInput, who=Depends(stepup), db=Depends(db_dep))
 def tool_test(id: str, who=Depends(stepup), db=Depends(db_dep)):
     from .tool_registry import test_connection
 
-    result = test_connection(db, own(db, id, "tool_integration", who[0].id, True), who[0].id)
+    result = test_connection(
+        db, own(db, id, "tool_integration", who[0].id, True), who[0].id
+    )
     db.commit()
     return result
 
@@ -2249,8 +2541,85 @@ class ToolEnablement(Strict):
     enabled: bool
 
 
+class ToolProvenance(Strict):
+    source_url: str = Field(min_length=1, max_length=1000)
+    license: str = Field(min_length=1, max_length=300)
+    owner_permission_attested: bool
+
+
+@app.post("/api/v1/tools/binaries/{name}/provenance")
+def tool_binary_provenance(
+    name: str, body: ToolProvenance, who=Depends(stepup), db=Depends(db_dep)
+):
+    from .scanner_runtime import EXECUTABLE_TOOLS, tool_state
+
+    if name not in EXECUTABLE_TOOLS or not body.owner_permission_attested:
+        raise Denied("Authorized executable provenance is required")
+    id = digest("binary-tool:" + who[0].id + ":" + name)[:36]
+    row = db.get(Document, id) or document(db, "binary_tool", who[0].id, {}, id)
+    row.data = canonical(
+        {
+            **row.value(),
+            **body.model_dump(),
+            "enabled": False,
+            "health": "provenance_recorded",
+        }
+    )
+    append(
+        db,
+        who[0].id,
+        who[0].id,
+        "binary_provenance_recorded",
+        {"tool": name, "source_url": body.source_url, "license": body.license},
+    )
+    db.commit()
+    return tool_state(db, who[0].id, name)
+
+
+@app.post("/api/v1/tools/binaries/{name}/test")
+def binary_tool_test(name: str, who=Depends(stepup), db=Depends(db_dep)):
+    from .scanner_runtime import configure
+
+    result = configure(db, who[0].id, name, probe=True)
+    db.commit()
+    return result
+
+
+@app.post("/api/v1/tools/templates/{id}/enablement")
+def scanner_template_enablement(
+    id: str, body: ToolEnablement, who=Depends(stepup), db=Depends(db_dep)
+):
+    row = own(db, id, "scanner_template", who[0].id, lock=True)
+    value = row.value()
+    value["enabled"] = body.enabled
+    row.version += 1
+    row.data = canonical(value)
+    append(
+        db,
+        who[0].id,
+        who[0].id,
+        "scanner_template_enablement_changed",
+        {"id": id, "enabled": body.enabled},
+    )
+    db.commit()
+    return expose(row)
+
+
+@app.post("/api/v1/tools/binaries/{name}/enablement")
+def binary_tool_enable(
+    name: str, body: ToolEnablement, who=Depends(stepup), db=Depends(db_dep)
+):
+    from .scanner_runtime import configure
+
+    result = configure(db, who[0].id, name, enabled=body.enabled)
+    db.commit()
+    return result
+
+
 @app.post("/api/v1/tools/integrations/{id}/enablement")
-def tool_enablement(id: str, body: ToolEnablement, who=Depends(stepup), db=Depends(db_dep)):
+def tool_enablement(
+    id: str, body: ToolEnablement, who=Depends(stepup), db=Depends(db_dep)
+):
     from .tool_registry import enable, safe
 
     row = own(db, id, "tool_integration", who[0].id, True)

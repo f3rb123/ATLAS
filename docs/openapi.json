@@ -649,6 +649,134 @@
         }
       }
     },
+    "/api/v1/campaigns/{id}/target-identities": {
+      "get": {
+        "summary": "Target Identities",
+        "operationId": "target_identities_api_v1_campaigns__id__target_identities_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Target Identity Create",
+        "operationId": "target_identity_create_api_v1_campaigns__id__target_identities_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetIdentityInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{id}/target-identities/{identity_id}/disable": {
+      "post": {
+        "summary": "Target Identity Disable",
+        "operationId": "target_identity_disable_api_v1_campaigns__id__target_identities__identity_id__disable_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "identity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/engagements/{id}/preferences": {
       "put": {
         "summary": "Engagement Preferences",
@@ -2837,6 +2965,139 @@
         }
       }
     },
+    "/api/v1/tools/templates": {
+      "get": {
+        "summary": "Scanner Templates",
+        "operationId": "scanner_templates_api_v1_tools_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Scanner Template Create",
+        "operationId": "scanner_template_create_api_v1_tools_templates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/import-output": {
+      "post": {
+        "summary": "Tool Import Output",
+        "operationId": "tool_import_output_api_v1_tools_import_output_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/web-evidence": {
+      "get": {
+        "summary": "Web Evidence",
+        "operationId": "web_evidence_api_v1_runs__id__web_evidence_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tools/integrations": {
       "post": {
         "summary": "Tool Create",
@@ -2888,6 +3149,184 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/binaries/{name}/provenance": {
+      "post": {
+        "summary": "Tool Binary Provenance",
+        "operationId": "tool_binary_provenance_api_v1_tools_binaries__name__provenance_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolProvenance"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/binaries/{name}/test": {
+      "post": {
+        "summary": "Binary Tool Test",
+        "operationId": "binary_tool_test_api_v1_tools_binaries__name__test_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/templates/{id}/enablement": {
+      "post": {
+        "summary": "Scanner Template Enablement",
+        "operationId": "scanner_template_enablement_api_v1_tools_templates__id__enablement_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolEnablement"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/binaries/{name}/enablement": {
+      "post": {
+        "summary": "Binary Tool Enable",
+        "operationId": "binary_tool_enable_api_v1_tools_binaries__name__enablement_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolEnablement"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4181,6 +4620,62 @@
         ],
         "title": "ApprovalDecision"
       },
+      "AuthorizationCase": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,80}$",
+            "title": "Id"
+          },
+          "resource_url": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Resource Url"
+          },
+          "owner_identity_id": {
+            "type": "string",
+            "title": "Owner Identity Id"
+          },
+          "other_identity_id": {
+            "type": "string",
+            "title": "Other Identity Id"
+          },
+          "other_resource_url": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Other Resource Url"
+          },
+          "owner_marker": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Owner Marker"
+          },
+          "other_marker": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Other Marker"
+          },
+          "isolated_owned_resources": {
+            "type": "boolean",
+            "title": "Isolated Owned Resources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "resource_url",
+          "owner_identity_id",
+          "other_identity_id",
+          "other_resource_url",
+          "owner_marker",
+          "other_marker",
+          "isolated_owned_resources"
+        ],
+        "title": "AuthorizationCase"
+      },
       "Body_knowledge_import_api_v1_knowledge_ingest_post": {
         "properties": {
           "file": {
@@ -4853,6 +5348,10 @@
             "type": "string",
             "enum": [
               "securitytrails",
+              "shodan",
+              "censys",
+              "virustotal",
+              "fofa",
               "mcp_resources"
             ],
             "title": "Adapter"
@@ -4880,6 +5379,14 @@
             "type": "boolean",
             "title": "Readonly Contract Attested",
             "default": false
+          },
+          "reviewed_tool_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Reviewed Tool Names"
           }
         },
         "additionalProperties": false,
@@ -4927,6 +5434,119 @@
           "password"
         ],
         "title": "Login"
+      },
+      "LoginConfig": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Url"
+          },
+          "credentials": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 10,
+            "minProperties": 1,
+            "title": "Credentials"
+          },
+          "token_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Token Path",
+            "default": [
+              "access_token"
+            ]
+          },
+          "cookie_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Cookie Names",
+            "default": []
+          },
+          "max_session_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 30.0,
+            "title": "Max Session Seconds",
+            "default": 600
+          },
+          "max_refreshes": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Refreshes",
+            "default": 2
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "credentials"
+        ],
+        "title": "LoginConfig"
+      },
+      "Matcher": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "word",
+              "status"
+            ],
+            "title": "Type"
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "body",
+              "header"
+            ],
+            "title": "Part",
+            "default": "body"
+          },
+          "words": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Words",
+            "default": []
+          },
+          "status": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Status",
+            "default": []
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ],
+            "title": "Condition",
+            "default": "and"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Matcher"
       },
       "Message": {
         "properties": {
@@ -5127,6 +5747,9 @@
             "type": "boolean",
             "title": "Offline Execution Approved",
             "default": false
+          },
+          "web": {
+            "$ref": "#/components/schemas/WebPlan"
           }
         },
         "additionalProperties": false,
@@ -5522,6 +6145,9 @@
             "title": "Offline Execution Approved",
             "default": false
           },
+          "web": {
+            "$ref": "#/components/schemas/WebPlan"
+          },
           "knowledge_ids": {
             "items": {
               "type": "string"
@@ -5624,6 +6250,34 @@
             "minimum": 1.0,
             "title": "Max Seconds",
             "default": 15
+          },
+          "min_request_interval": {
+            "type": "number",
+            "maximum": 60.0,
+            "minimum": 0.01,
+            "title": "Min Request Interval",
+            "default": 1
+          },
+          "test_classes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Test Classes",
+            "default": [
+              "surface",
+              "headers"
+            ]
+          },
+          "post_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Post Paths",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -5901,6 +6555,75 @@
         ],
         "title": "SourceRead"
       },
+      "TargetIdentityInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "origin": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Origin"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Paths",
+            "default": [
+              "/"
+            ]
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 3,
+            "title": "Headers"
+          },
+          "login": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoginConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owned_test_account": {
+            "type": "boolean",
+            "title": "Owned Test Account"
+          },
+          "expires": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "origin",
+          "owned_test_account"
+        ],
+        "title": "TargetIdentityInput"
+      },
       "TaskRequest": {
         "properties": {
           "role": {
@@ -5944,6 +6667,83 @@
           "reason"
         ],
         "title": "TaskRequest"
+      },
+      "TemplateInput": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,99}$",
+            "title": "Template Id"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 30,
+            "title": "Version",
+            "default": "1.0.0"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "source_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Source Url"
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "License"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD",
+              "OPTIONS"
+            ],
+            "title": "Method",
+            "default": "GET"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Paths"
+          },
+          "matchers": {
+            "items": {
+              "$ref": "#/components/schemas/Matcher"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Matchers"
+          },
+          "readonly_contract_attested": {
+            "type": "boolean",
+            "title": "Readonly Contract Attested"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "template_id",
+          "name",
+          "source_url",
+          "license",
+          "paths",
+          "matchers",
+          "readonly_contract_attested"
+        ],
+        "title": "TemplateInput"
       },
       "TestInput": {
         "properties": {
@@ -6198,6 +6998,79 @@
         ],
         "title": "ToolEnablement"
       },
+      "ToolImport": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "tool": {
+            "type": "string",
+            "enum": [
+              "amass",
+              "masscan",
+              "subfinder",
+              "dnsx",
+              "naabu",
+              "httpx",
+              "katana",
+              "nuclei",
+              "ffuf",
+              "gau",
+              "waybackurls"
+            ],
+            "title": "Tool"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Version",
+            "default": "owner-supplied/unverified"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 1048576,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "tool",
+          "content"
+        ],
+        "title": "ToolImport"
+      },
+      "ToolProvenance": {
+        "properties": {
+          "source_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Source Url"
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "License"
+          },
+          "owner_permission_attested": {
+            "type": "boolean",
+            "title": "Owner Permission Attested"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_url",
+          "license",
+          "owner_permission_attested"
+        ],
+        "title": "ToolProvenance"
+      },
       "UploadInput": {
         "properties": {
           "sha256": {
@@ -6266,6 +7139,117 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WebPlan": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "scanner_tools": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "httpx",
+                "katana",
+                "ffuf",
+                "nuclei",
+                "subfinder",
+                "dnsx",
+                "naabu",
+                "gau",
+                "waybackurls"
+              ]
+            },
+            "type": "array",
+            "maxItems": 9,
+            "title": "Scanner Tools",
+            "default": [
+              "httpx",
+              "katana",
+              "nuclei",
+              "subfinder",
+              "dnsx",
+              "gau"
+            ]
+          },
+          "max_pages": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Pages",
+            "default": 12
+          },
+          "max_depth": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Max Depth",
+            "default": 3
+          },
+          "max_checks": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Checks",
+            "default": 12
+          },
+          "check_classes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "headers",
+                "redirect",
+                "cors",
+                "reflection",
+                "graphql",
+                "authorization"
+              ]
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Check Classes",
+            "default": [
+              "headers",
+              "redirect",
+              "cors",
+              "reflection",
+              "graphql",
+              "authorization"
+            ]
+          },
+          "seed_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Seed Urls",
+            "default": []
+          },
+          "identity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Identity Ids",
+            "default": []
+          },
+          "authorization_cases": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorizationCase"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Authorization Cases",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WebPlan"
       }
     }
   }

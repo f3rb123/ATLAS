@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     verify_token_file: str | None = None
     api_token_file: str | None = None
     provider_key_file: str | None = Field(default=None, repr=False)
+    target_key_file: str | None = Field(default=None, repr=False)
+    research_tools_dir: str | None = None
     global_token_cap: int = Field(default=50000000, ge=1, le=50000000)
     token_allocation: int = Field(default=2000000, ge=1, le=50000000)
     validation_token_reserve: int = Field(default=200000, ge=0, le=50000000)

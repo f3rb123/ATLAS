@@ -1,116 +1,68 @@
-# Current local release — 10 November 2026
+# ATLAS V3 private deployment
 
-The candidate passed actual local image/Compose/TLS/pgvector, encrypted backup/restore and browser validation. No owner VPS or public deployment occurred. The workspace already has the real corpus and HackerAI configuration; source delivery deliberately excludes all runtime data and credentials. [Current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) governs over older milestone text below.
+This guide installs the autonomous web build on a fresh owner-controlled Ubuntu
+22.04/24.04 x86-64 host. It is a manual procedure, not a record of a VPS operation.
+The current implementation is being completed before final verification at the
+owner's request. Do not transfer older test results to newer functionality.
 
-Use a separate `.env.production`, never the owner's raw `.env`. Production examples now declare the persistent 50M authority, 2M initial allocation, 200k validation protection, 90s provider and 150s gateway timeouts, and eight worker slots. Those defaults initialize a new ledger; they never reset or raise an existing one. If adopting an existing paid instance, transfer its complete database/ledger and matching keys, stop the old spending instance and verify totals before any new call.
+## Preserve an existing installation
 
-Password access is the private-operator default. Enrolled factors remain enforced; set `ATLAS_REQUIRE_MFA=true` for the stricter passkey/TOTP/recovery policy. Bootstrap tokens remain host-only and interactive. Configure and test both requested provider aliases explicitly; unknown prices remain flagged, and uncertain calls require verified billing reconciliation.
+Keep the full database, artifact store, original corpus/model files, provider
+master key, dedicated target key, provider configuration and token ledger.
+Never initialize a second spending copy. Stop the old spending instance before
+activating a restored installation. Defaults never reset an existing ledger.
+Do not extract source over populated stores, drop tables or remove data volumes.
 
-The following is a manual fresh-host procedure, not a record of commands run on an owner VPS.
+The owner's current `/workspace/ATLAS/.env` is a raw provider key, not dotenv.
+Use a separate `.env.production`. Source artifacts contain no live credentials,
+accounts, databases, corpus ZIP, model binaries, private screenshots or sessions.
 
-# ATLAS V3 manual Ubuntu installation
+## Fresh host and source
 
-This guide installs the locally packaged source on a new Ubuntu 22.04/24.04 LTS VPS for controlled testing. No VPS deployment has been performed. Keep access on Tailscale or WireGuard until authentication, recovery, TLS and backups pass the checks below. The delivery package has no `.env`, database, owner account, provider key, encryption key, SSH material or runtime volume.
+Use at least 4 vCPU, 8 GiB RAM and 80 GiB SSD, with encrypted storage and a private
+Tailscale/WireGuard administration path. Install Docker Engine and Compose from
+Docker's official Ubuntu repository. Use a named sudo account and keep Docker
+administration separate from normal application access. Review the supplied
+`infra/ubuntu` hardening configuration before applying it to your own host.
 
-## 1. Prepare the Ubuntu host
-
-Use an x86-64 host with at least 4 vCPU, 8 GiB RAM and 80 GiB SSD. Enable encrypted storage and unattended security updates. Create a named sudo user, install its SSH public key, and test a second SSH session before changing SSH or firewall rules. Do not use root for routine administration and do not add the user to the `docker` group because Docker access is root-equivalent.
-
-Install base utilities and Docker Engine with the Compose plugin from Docker's official Ubuntu repository:
-
-```sh
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl git openssl ufw unattended-upgrades python3 tar unzip
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo docker compose version
-```
-
-Install and enroll Tailscale using its official Ubuntu instructions, or configure WireGuard through your organization's approved process. Confirm the private interface address and private DNS name from the VPS itself:
+Transfer the release manifest, SHA256SUMS, source ZIP and complete Git bundle by
+SFTP. Verify the published hashes before and after transfer. From an empty
+owner-controlled installation directory, recover the exact source:
 
 ```sh
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-sudo tailscale ip -4
-sudo tailscale status
-```
-
-Use MagicDNS or private WireGuard DNS for the application hostname. Keep PostgreSQL, Redis and worker ports private. Docker port publishing can bypass UFW forwarding rules, so the private Compose override's bind to the VPN interface is an important boundary.
-
-## 2. Transfer and verify the package from Windows
-
-Download `atlas-v3-deployment.zip`, `atlas-v3.bundle`, `SHA256SUMS` and `RELEASE-MANIFEST.md` from the Codex artifact links. The corpus archive is intentionally absent from this delivery (see [Corpus status](#corpus-status)). On Windows, verify the two shipped binary artifacts in PowerShell before transfer; compare each output with the matching line in `SHA256SUMS`:
-
-```powershell
-Get-FileHash .\atlas-v3-deployment.zip -Algorithm SHA256
-Get-FileHash .\atlas-v3.bundle -Algorithm SHA256
-```
-
-In WinSCP, create a new SFTP session to the VPS's private VPN address on port 22, using the named non-root sudo account and its SSH key. Verify the SSH host-key fingerprint through a trusted channel. Upload the four files into `/home/<sudo-user>/atlas-release/`; do not upload passwords, private keys, `.env` files, databases or runtime directories. Set the remote directory to owner-only permissions in the VPS shell:
-
-```sh
-install -d -m 700 "$HOME/atlas-release"
-chmod 600 "$HOME"/atlas-release/*
-cd "$HOME/atlas-release"
 sha256sum -c SHA256SUMS
+git clone --branch work atlas-v3-complete.bundle ATLAS
+cd ATLAS
+git rev-parse HEAD
 ```
 
-The checksum command must report `OK` for the deployment ZIP and bundle. Read `RELEASE-MANIFEST.md` and confirm its commit and test results match the package you intend to install.
+Alternatively, the source ZIP extracts under `ATLAS/`. Compare the exact commit
+with RELEASE-MANIFEST.md. Keep the complete bundle independently of the cloud
+session: fresh-task restoration of local-only Git commits is not guaranteed.
 
-Extract into a fresh installation directory. Keep the uploaded bundle separately as the offline history backup:
-
-```sh
-sudo install -d -o "$USER" -g "$(id -gn)" -m 750 /opt/atlas-v3
-unzip -q "$HOME/atlas-release/atlas-v3-deployment.zip" -d /opt/atlas-v3
-cd /opt/atlas-v3
-```
-
-The ZIP extracts as `atlas-v3/` under `/opt/atlas-v3`. Alternatively, to recover the complete Git history from the separate bundle, use `git clone "$HOME/atlas-release/atlas-v3.bundle" /opt/atlas-v3-history`; this is an offline source-history copy, not the configured deployment directory. Compare the extracted source with the uploaded `RELEASE-MANIFEST.md` before installation.
-
-## 3. Configure production environment and host secrets
-
-Work from the extracted source directory:
+## Configuration and keys
 
 ```sh
-cd /opt/atlas-v3/atlas-v3
 cp .env.production.example .env.production
 chmod 600 .env.production
-sudoedit .env.production
-```
-
-Set `ATLAS_BIND_IP` to the VPS's Tailscale/WireGuard interface address, `ATLAS_HOST` to its private DNS name, and `ATLAS_EXTERNAL_URL` to `https://` plus that exact host. Preserve the other documented placeholders and use unique host-specific values for ordinary non-provider configuration. Do not enter provider API credentials in this file; register them later in the authenticated Settings UI. The app package contains only placeholder examples.
-
-Generate the encryption master key separately on the VPS. The script creates secret files with restrictive permissions, does not print their contents, and refuses to replace existing values:
-
-```sh
 python3 scripts/prepare-secrets.py
-chmod 700 .runtime/secrets
-chmod 600 .runtime/secrets/*
-stat -c 'master_key mode=%a bytes=%s' .runtime/secrets/master_key
 ```
 
-Confirm mode `600` and length `32`. Back up the master key through a protected offline process, separate from encrypted database backups. Losing it makes saved provider secrets unrecoverable. Never put it in shell history, source, chat, WinSCP transfer files, or a log. Preserve `.env.production` and `.runtime/secrets` across upgrades.
+Set `ATLAS_HOST` to the private DNS name, `ATLAS_BIND_IP` to the VPN interface
+address, and `ATLAS_EXTERNAL_URL` to the matching HTTPS origin. Keep the
+50,000,000-token global authority, 2,000,000 initial allocation and protected
+validation capacity. Configure optional strict MFA with `ATLAS_REQUIRE_MFA`.
+Provider and target credentials are entered through authenticated settings,
+not `.env.production`, command arguments, Git or logs.
 
-## 4. Configure firewall and start VPN-only HTTPS
+The init service prepares permissions and additive migrations. It also creates
+a separate target-only key under `/targetkeys`; the relay cannot decrypt
+provider envelopes. Research/verification workers receive neither key. Preserve
+both keys and the original host secret files across upgrades.
 
-Restrict the cloud firewall/security group to SSH from the VPN administrator path. For host UFW, first confirm your current SSH source and that a second session works. Then allow SSH and HTTPS only on the VPN interface (replace `tailscale0` with the actual interface):
+## Build and private startup
 
-```sh
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow in on tailscale0 to any port 22 proto tcp
-sudo ufw allow in on tailscale0 to any port 443 proto tcp
-sudo ufw enable
-sudo ufw status verbose
-```
-
-Do not expose ports 80/443 on a public interface for this initial private deployment. If SSH must remain available on a separate trusted management interface, add its narrowly scoped rule before enabling UFW. Review `infra/ubuntu/sshd-atlas.conf`; apply SSH hardening only after `sudo sshd -t` passes and a second key-authenticated session is open. Do not rely on UFW alone to restrict Docker-published ports.
-
-Validate Compose configuration and build/start the private production stack:
+Use the same explicit configuration and Compose files for every operation:
 
 ```sh
 sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml config --quiet
@@ -119,80 +71,142 @@ sudo docker compose --env-file .env.production -f compose.yaml -f compose.produc
 sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml ps
 ```
 
-The init service applies Alembic migrations and prepares restricted volumes. Confirm only the VPN address has a published HTTPS listener and that PostgreSQL, Redis and worker ports are not externally published:
+Only private HTTPS should be published. PostgreSQL, Redis, the model gateway,
+target relay and worker ports remain private. Docker-published ports need an
+explicit private bind; a host firewall alone is insufficient.
 
-```sh
-sudo ss -lntp
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml exec api atlas version
-```
+The private proxy uses its own CA. Export only its public certificate, verify
+its fingerprint through your trusted administration channel and trust it on the
+operator computer. Keep the CA private key in its protected volume. Preserve TLS
+verification for provider, corpus, tool downloads and target connections.
 
-Caddy uses its internal CA in this private mode. Export only the public root certificate, compare its SHA256 fingerprint over a separate trusted channel, and install it in the testing computer's trust store. Never export the CA private key:
+The API image installs eight release-pinned executables with archive and binary
+SHA256 verification. HTTPX/Katana/ffuf/Nuclei use an isolated HTTP bridge;
+subfinder/gau use fixed public-index queries; an owner-managed waybackurls profile uses the same boundary; dnsx/naabu use bounded
+DNS/connect bridges. Tools have no direct external network, host shell, provider
+key, database credentials or Docker socket. Do not grant SYS_ADMIN, privileged
+mode or host-network access to make a failed sandbox start. The worker seccomp
+profile supports the intended Linux namespace operations.
 
-```sh
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml exec -T proxy cat /data/caddy/pki/authorities/local/root.crt > "$HOME/atlas-caddy-root.crt"
-chmod 644 "$HOME/atlas-caddy-root.crt"
-sha256sum "$HOME/atlas-caddy-root.crt"
-```
+## Owner and providers
 
-Open `https://<private-hostname>` only after trusting the verified CA root. Do not bypass TLS warnings.
-
-## 5. Database, first owner and recovery setup
-
-The Compose init service performs schema migrations on first startup. Confirm it completed successfully before enrollment:
-
-```sh
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml ps
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml logs --tail 100 init api
-```
-
-Readiness remains setup-required until you create the first owner. Generate a short-lived, single-use bootstrap token on the VPS only after the private HTTPS site is reachable. Run this in a trusted interactive SSH terminal; do not pipe or record its output:
+Bootstrap the first owner in a trusted interactive terminal:
 
 ```sh
 sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml exec api atlas host bootstrap
 ```
 
-Enter the displayed token directly into the first-owner setup page. It expires after ten minutes and can be redeemed once. Choose a unique passphrase, enroll at least two passkeys on separate devices, enroll TOTP, and store the single-use recovery codes offline. Sign out and test passkey login and recovery while access is still VPN-only. Confirm only the intended owner exists and `/health/ready` becomes healthy. Never save a bootstrap token or recovery code in a log or ordinary note.
+Enter the one-use token directly into setup without logging it. Configure your
+password, passkeys/TOTP and recovery policy. Enrolled factors remain enforced;
+strict MFA is an explicit policy choice. Save recovery material offline.
 
-## 6. Corpus status and import procedure
+In Providers, configure HackerAI at `https://api.hackerai.sh/v1`, protocol
+`custom_openai_compatible`, primary `deepseek-v4.1-flash` and verifier/deep research
+`deepseek-v4-pro`. Discover/test exact model IDs and pin aliases. Do not silently
+substitute models. API keys are encrypted and write-only. Actual USD prices must
+be verified separately; unknown prices and billing remain flagged.
 
-**No corpus archive is included in this release package.** A fresh scan of the sanitized candidate produced 2,151 detections: 2,125 are classified as schema/model/hash false positives, while 26 content candidates remain unresolved across structured records, vectors and raw source documents. The findings may represent credentials or private-key material. The candidate was not included. Do not copy the local candidate archive to the VPS.
+For an existing paid deployment, restore its actual ledger and matching keys.
+The last pre-continuation counters were 744,368 consumed, 282,255 held and 973,377
+remaining in the initial allocation. The final release manifest governs later
+counters. Never release uncertain holds or reset usage without verified evidence.
 
-The application may be initialized and tested without the optional knowledge corpus. Wait for a future separately reviewed corpus package before importing corpus data. When an approved archive is provided, verify its separately supplied checksum, stage it in a new owner-only directory, and follow the importer commands supplied with that exact archive. Corpus imports are additive/idempotent; never reset the application database or remove Docker volumes to solve an import problem. The delivered source contains the acquisition, conversion, validation and import tools, but this does not make the unresolved candidate safe to distribute.
+## Preserve and restore the supplied corpus
 
-## 7. Add a custom model provider
+The separate owner-supplied review ZIP has SHA256
+`e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025`.
+It contains 21,012 advisory/reference identities and 34,229 real 384-dimensional
+MiniLM vectors, with original model assets and provenance. It has no full-text
+bounty reports. Supplied omissions and protected-view curation remain recorded.
+This input is authorized for private integration; it is not an approval to publish
+raw artifacts or the corpus publicly.
 
-After first-owner authentication, open Settings and register a provider that you control. Use a dedicated least-privilege API credential, narrow the provider hostname allowlist to the provider endpoint, select its protocol, and run the built-in connection probe. The credential is write-only in the UI and encrypted with the separately generated host master key. Assign and pin the model aliases required by the workflow, then run the built-in offline benchmark and doctor checks. Do not place API keys in `.env.production`, CLI arguments, URLs, or shell commands.
-
-## 8. Health, logs and troubleshooting
-
-Check services, logs and health from the VPS:
+Use the authenticated resumable import interface under Research Memory, or the
+same host service through bounded stdin in a fresh compatible corpus store:
 
 ```sh
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml ps
-sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml logs --tail 100 init api worker-research worker-verify proxy
-curl --fail --cacert "$HOME/atlas-caddy-root.crt" "https://<private-hostname>/health/live"
-curl --fail --cacert "$HOME/atlas-caddy-root.crt" "https://<private-hostname>/health/ready"
+sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml exec -T api atlas host corpus-inspect - --sha256 e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025 < /private/atlas-v3-public-corpus-review.zip
+sudo docker compose --env-file .env.production -f compose.yaml -f compose.production.yaml -f compose.private.yaml exec -T api atlas host corpus-restore - --sha256 e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025 < /private/atlas-v3-public-corpus-review.zip
 ```
 
-If Compose validation fails, inspect `.env.production` placeholder substitutions and use the same three Compose files on every command. If containers fail, inspect their logs before restarting. For TLS errors, compare the trusted root certificate fingerprint and confirm the private hostname resolves to the VPN address. For sandbox failures, check Ubuntu/AppArmor support for unprivileged user namespaces; do not add `SYS_ADMIN`, privileged mode or Docker-socket access. Keep the site private while debugging.
+The importer checks archive safety, hashes, schema, identity mapping, dimensions
+and model compatibility before writes. It restores an empty compatible corpus
+or verifies an identical completed fingerprint. It does not overwrite populated
+or changed stores, recreate identities, re-embed or fall back to hash retrieval.
 
-## 9. Backup and restoration
+## Autonomous engagement configuration
 
-Create an encrypted backup in a protected directory and copy it off-host. Keep the backup password and master-key recovery copy separately from the archive. A restore check is intended for a separate recovery host or maintenance clone; it creates and drops only a disposable `atlas_restore_check` database there, never run it against the only production database:
+1. Enter an authorized target, instructions, authorization reference and exact
+   scope. Select the permitted check classes, rates, ports and request limits.
+   Wildcards do not include the apex; redirects and additional assets need scope.
+2. Configure owned test identities, either static Authorization/Cookie/X-API-Key
+   bindings or explicit JSON login flows. Login POST endpoints and authentication
+   must be authorized. Credentials/session values never enter model contexts.
+3. Select enabled tool profiles, starting URLs, page/depth/check limits, optional
+   source snapshots, specialist concurrency and model mode. Owned resource
+   comparisons require two isolated accounts/resources and distinct markers.
+4. Start the engagement. Bounded discovery precedes specialist reasoning; new
+   scoped observations activate research, tool requests and follow-up specialists.
+5. Review persisted tasks, events and web/network evidence. Typed experiments
+   produce candidates. Separate verification repeats fresh proof/control requests
+   and requires an evidence-bound model review before confirmation.
+6. Pause/stop/resume and the emergency switch prevent new dispatch. Existing
+   runs keep their scope, identity, tool, template, skill and model pins.
+
+The minimal SBI acceptance profile is separate: at most two unauthenticated
+root HEADs. It does not limit capabilities of other explicitly authorized
+engagements. No SBI test is authorized until a specific verified hostname is
+available. The final product still has no database/server/file administration
+capability or destructive target method.
+
+Optional external intelligence uses fixed SecurityTrails/Shodan/Censys v2/
+VirusTotal/FOFA APIs and separately supplied account entitlements. MCP supports
+reviewed resource URIs and narrowly reviewed read-only hostname lookup tools.
+No arbitrary MCP command or server installation is model-accessible. Amass and
+masscan JSON output can be imported with explicit external/unverified provenance;
+their raw engines are not run by this worker. Nuclei supports bundled observation
+templates and owner-reviewed fixed HTTP templates, not arbitrary executable DSL.
+
+## Backup, recovery and operation
+
+Use a unique new backup directory and an explicit Compose selector:
 
 ```sh
-sudo env COMPOSE_FILE='compose.yaml:compose.production.yaml:compose.private.yaml' COMPOSE_ENV_FILES='.env.production' scripts/backup.sh /secure/local/atlas-backup-$(date -u +%Y%m%dT%H%M%SZ)
-sudo env COMPOSE_FILE='compose.yaml:compose.production.yaml:compose.private.yaml' COMPOSE_ENV_FILES='.env.production' scripts/restore-check.sh /secure/local/atlas-backup-REPLACE_WITH_REVIEWED_DIRECTORY
+sudo env ATLAS_COMPOSE_ENV_FILE=.env.production COMPOSE_FILE=compose.yaml:compose.production.yaml:compose.private.yaml scripts/backup.sh /private/backups/atlas-REVIEWED-UTC-TIMESTAMP
 ```
 
-Before production recovery, restore to an isolated host, validate migrations, records, attachments and owner login, then schedule a controlled cutover. Keep the original database intact until the restored copy is proven. Without the master-key recovery copy, encrypted provider credentials cannot be recovered.
+The backup encrypts the database, artifacts and dedicated target-key archive.
+Keep the backup password and provider master-key recovery copy separately and
+off-host. Restore testing belongs in a separate disposable database. A real
+restore must retain matching keys, the global ledger, uncertain reservations,
+model/corpus files, tasks/events and file permissions, with only one spending
+instance active. Never solve recovery failures with database reset or `down -v`.
 
-## 10. Updates and rollback
+Inspect `/health/live`, `/health/ready`, authenticated readiness, task failures,
+budgets and correlated logs. A completed run can be partial when tools/tasks
+failed. Scanner matches, reflected strings, schema availability and missing
+headers are observations; they do not prove exploitability by themselves.
+The release manifest distinguishes implementation, build checks, real-provider
+acceptance, synthetic fixtures and outstanding external dependencies.
 
-Keep the uploaded source ZIP and bundle as the offline deployment record. For an update, verify the new artifact checksums, make and verify an encrypted backup and off-host copy, record the running commit, inspect migration and Compose changes, then extract to a new version directory. Preserve `.env.production`, `.runtime/secrets`, Docker volumes and Caddy data. Switch to the new reviewed version only after validation; never run `down -v`, volume-prune, database reset or cleanup against production data.
+## Owner-managed Waybackurls profile
 
-Rollback code to the previously recorded source checkpoint and rebuild/restart. Database migrations may be forward-only. If older code cannot use the migrated schema, keep the current data intact and restore a verified backup to an isolated recovery host first; perform a planned restore only after validation. Do not test rollback by overwriting the only live database.
+Upstream repository/tag metadata declares no license, so this release does not
+bundle or automatically install its executable. Gau provides archive discovery
+in the default autonomous pipeline. If you separately have authorization to use
+a matching Waybackurls binary, supply its directory read-only through
+`compose.owner-tools.yaml` and `ATLAS_OWNER_TOOLS_DIR`, record its provenance in
+Recon Tools and enable it. Its hash/version and namespace/relay boundaries are
+still enforced. This is distinct from claiming an unlicensed binary was shipped.
 
-## Corpus status
+## Generated source experiments
 
-The validated live build corpus contains 21,012 public record identities and 34,229 vectors, but distribution is blocked by unresolved candidate scan findings. The deployment ZIP contains the source pipeline and validation tools, not corpus database files or the candidate archive. No VPS install, public exposure or external target test has been performed by this build process.
+With a pinned source snapshot and explicit offline execution enabled, agents can
+use `source.experiment` to generate bounded unittest proof and functional controls
+and an exact secure replacement. The original and patched copies run in the
+offline namespace; original uploads are never patched. The vulnerable assertion
+must pass originally and fail by assertion after the secure change, while
+legitimate functionality passes both. An independent worker repeats the phases
+and reviews the actual code, controls and fresh artifacts before confirmation.
+The current execution profile is Python unittest with the available sandbox
+runtime; missing project dependencies are reported, never simulated as success.

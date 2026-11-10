@@ -19,11 +19,13 @@ def readonly_target_request(url, method):
         raise Denied("State-changing target methods are unavailable")
     parsed = urlsplit(url)
     if re.search(
-        r"(?i)(?:^|/)_?(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:[/._-]|$)",
+        r"(?i)(?:^|/)_?(?:delete|remove|drop|truncate|destroy|purge|wipe|logout|signout|revoke|deactivate|shutdown|terminate|erase)(?:[/._-]|$)",
         unquote(parsed.path),
     ):
         raise Denied("Destructive target routes are unavailable")
-    forbidden = re.compile(r"(?i)\b(?:delete|drop|truncate|alter|shutdown|reboot|remove-item|rmdir|unlink|rm\s+-(?=[a-z]*r)[a-z]+)\b")
+    forbidden = re.compile(
+        r"(?i)\b(?:delete|drop|truncate|alter|shutdown|reboot|remove-item|rmdir|unlink|rm\s+-(?=[a-z]*r)[a-z]+)\b"
+    )
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
         if key.lower() in {"cmd", "command", "exec", "shell", "powershell"}:
             raise Denied("Remote command interfaces are unavailable")
@@ -58,6 +60,53 @@ class Scope(Strict):
     max_requests: int = Field(default=100, ge=1, le=100000)
     max_response_bytes: int = Field(default=1024 * 1024, ge=1, le=10 * 1024 * 1024)
     max_seconds: int = Field(default=15, ge=1, le=30)
+    min_request_interval: float = Field(default=1, ge=0.01, le=60, allow_inf_nan=False)
+    test_classes: list[str] = Field(default=["surface", "headers"], max_length=20)
+    post_paths: list[str] = Field(default=[], max_length=50)
+
+
+def nondestructive_target_request(scope, url, method, body=None, purpose="navigation"):
+    """A fixed execution boundary for web assessments, independent of model consent."""
+    import json
+
+    method = method.upper()
+    if method not in ("GET", "HEAD", "OPTIONS", "POST"):
+        raise Denied("Destructive or unregistered target method")
+    # Reuse the route/query guard for every allowed verb, including POST/OPTIONS.
+    readonly_target_request(url, "GET")
+    if body is not None:
+        if len(body.encode()) > 16384:
+            raise Denied("Target request body quota exceeded")
+        text = re.sub(r"/\*.*?\*/", " ", unquote(body), flags=re.S)
+        if re.search(
+            r"(?i)\b(?:drop|truncate|delete|shutdown|reboot|unlink|rmdir)\b|\brm\s+-[a-z]*r",
+            text,
+        ):
+            raise Denied("Destructive target body denied")
+    if method == "POST":
+        path = urlsplit(url).path or "/"
+        if path not in scope.post_paths:
+            raise Denied("POST endpoint was not explicitly authorized")
+        if purpose not in ("graphql_read", "authentication", "read_json"):
+            raise Denied("POST requires a registered non-destructive purpose")
+        if purpose == "graphql_read":
+            if "graphql" not in scope.test_classes:
+                raise Denied("GraphQL checks not authorized")
+            try:
+                query = json.loads(body or "{}").get("query", "")
+            except (ValueError, AttributeError):
+                raise Denied("GraphQL requires a JSON query") from None
+            # Reject alternate operations even when hidden in comments/strings.
+            if (
+                not isinstance(query, str)
+                or not query.strip()
+                or re.search(r"(?i)\b(?:mutation|subscription)\b", query)
+            ):
+                raise Denied("Only read-only GraphQL queries are registered")
+        elif purpose not in scope.test_classes:
+            raise Denied("Target POST purpose not authorized")
+    elif body is not None:
+        raise Denied("Request bodies require an explicitly authorized POST")
 
 
 def host(h):
@@ -222,6 +271,12 @@ def request(
         content = r.read(max_bytes + 1)
         if len(content) > max_bytes:
             raise Denied("Response size exceeded")
-        return r.status, dict(r.getheaders()), content
+        received = dict(r.getheaders())
+        cookies = [
+            value for key, value in r.getheaders() if key.lower() == "set-cookie"
+        ]
+        if cookies:
+            received["Set-Cookie"] = "\n".join(cookies)
+        return r.status, received, content
     finally:
         c.close()

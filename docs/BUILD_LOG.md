@@ -85,3 +85,69 @@ Completed primary-source research for every requested reference, including the o
 Actual local images/Compose/TLS/pgvector restore and encrypted backup/isolated restore passed. A long idle check exposed SQLite contention killing the development corpus process: idle heartbeats now publish once per process/engine every five seconds, SQLite waits up to 30s, and corpus polling retries only busy/locked errors with fresh sessions and existing leases. A real temporary writer-lock test verifies recovery. Final backend and browser/artifact evidence is recorded in the current acceptance report and release manifest. No GitHub push or public/VPS deployment.
 
 Final gate: 214 tests passed, two upstream warnings. Real nonroot Compose sandbox guards passed; final image recreation and verified TLS frontend/API readiness passed. Storage pressure from repeated VFS builds was resolved by reclaiming unused build cache, without deleting data volumes. Database counts, SQLite integrity, encrypted key binding and token ledger were rechecked unchanged.
+
+
+## Autonomous web continuation — 10 November 2026 (in progress)
+
+The owner clarified that the SBI smoke limitations apply to build acceptance,
+not the final product. Prior local-readiness wording overstated completion of
+the full autonomous web workflow. Work resumed from 486739d without changing
+original corpus/vector/model/key/budget identities.
+
+Implemented a separate target-identity key and encrypted origin/path-bound owned
+test accounts; extended frozen-policy transport for non-destructive requests,
+rate reservations, credential-free evidence and independent verifier access.
+Added crawling, schema/route analysis, typed checks and fresh differential web
+verification integrated with durable specialist dependencies and reports.
+
+Actual local HTTP tests and existing targeted regression: 79 passed. Actual
+pinned HTTPX, Katana, ffuf and Nuclei binaries executed behind the isolated Unix
+bridge against an authored local target: four tests passed. Model reviews in
+these unit tests are explicitly synthetic. No SBI requests or new paid model
+calls were performed. The complete new autonomous flow and production/container
+acceptance remain pending; see AUTONOMOUS_BUILD_CHECKLIST.md.
+
+
+### Build continuation after owner steering
+
+The owner requested implementation first and deferred further testing. Added
+passive public-index, DNS and TCP-connect namespace bridges; typed general HTTP
+proof/control experiments; run-bound encrypted JSON-login sessions; scoped
+external-output imports; evidence views and CLI controls; and persistent
+operational warning coverage in reports. These later changes do not yet inherit
+the earlier test evidence. Python/frontend packaging checks are build work.
+No new paid model calls, target traffic or SBI requests were performed.
+
+
+### Autonomous implementation checkpoint
+
+The implementation now includes nine pinned native-tool profiles, fixed external
+intelligence APIs, reviewed MCP hostname lookups, encrypted target identities and
+JSON-login sessions, general HTTP proof/control experiments, reviewed Nuclei
+templates, scoped external result imports, operator evidence views and CLI
+controls. The production deployment guide now matches the actual package layout
+and current corpus/budget preservation policy. Code is packaged as 3.0.0rc1
+pending final verification; no new tests or paid acceptance were run after the
+owner's build-first instruction. Amass/masscan raw engines remain external; their
+scoped output import path is explicitly labelled and not called native execution.
+
+
+### Generated source harness integration
+
+Added a gated source.experiment capability that copies the pinned source into a
+disposable location, generates concrete unittest proof/functional controls,
+applies exact secure replacements only to the copy, and captures original and
+patched behavior. A separate source-verification task repeats all four phases
+and requests an evidence-bound review through the shared knowledge/model/budget
+interface. Originals remain read-only; arbitrary shell is unavailable. This
+implementation is pending final runtime verification under build-first steering.
+
+
+### Tool distribution provenance
+
+Retained pinned-release upstream license notices for bundled executables.
+GitHub repository/tag metadata confirms Waybackurls has no declared license;
+it is not automatically bundled. Gau covers archive discovery. The typed
+Waybackurls profile remains available for an independently authorized owner
+executable with explicit provenance and exact hash verification. This is an
+external licensing dependency, not claimed native distribution or execution.

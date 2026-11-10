@@ -8,9 +8,16 @@ from .policy import Strict, Denied, Scope, request
 from .db import document, append, canonical, digest, uid, now
 from .config import settings
 from .vault import redact
-from .knowledge import CAPABILITIES as KNOWLEDGE_CAPABILITIES, execute as knowledge_execute
+from .knowledge import (
+    CAPABILITIES as KNOWLEDGE_CAPABILITIES,
+    execute as knowledge_execute,
+)
 from .research_artifacts import ResearchNote, ChainLink, store_note, link_chain
-from .tool_registry import IntelligenceLookup, MCPRead
+from .tool_registry import IntelligenceLookup, MCPRead, MCPToolLookup
+from .web_research import CAPABILITIES as WEB_CAPABILITIES, execute as web_execute
+from .scanner_runtime import ScannerInput
+from .web_experiments import HTTPExperiment
+from .source_experiments import SourceExperiment
 
 EXCLUDED = {
     ".git",
@@ -385,12 +392,16 @@ TOOLS = {
     "link_attack_chain": ("read_only", ChainLink),
     "external_intelligence_lookup": ("low_impact", IntelligenceLookup),
     "mcp_read_resource": ("read_only", MCPRead),
+    "mcp_intelligence_lookup": ("low_impact", MCPToolLookup),
     "link_finding_to_reference": ("read_only", LinkInput),
     "pause_run": ("read_only", ReasonInput),
     "request_more_budget": ("read_only", BudgetInput),
     "request_user_approval": ("read_only", ApprovalInput),
     "mark_hypothesis_status": ("read_only", HypothesisStatus),
     "http_request": ("low_impact", HttpInput),
+    "scanner.run": ("low_impact", ScannerInput),
+    "web.experiment": ("low_impact", HTTPExperiment),
+    "source.experiment": ("gated", SourceExperiment),
     "fetch_allowed_url": ("low_impact", HttpInput),
     "inspect_redirect_chain": ("low_impact", HttpInput),
     "list_repo_files": ("read_only", None),
@@ -407,7 +418,12 @@ TOOLS = {
     "run_approved_test_command": ("gated", ExecutionInput),
     "run_local_reproduction": ("gated", ExecutionInput),
 }
-TOOLS.update({name: ("read_only", schema) for name, schema in KNOWLEDGE_CAPABILITIES.items()})
+TOOLS.update(
+    {name: ("read_only", schema) for name, schema in KNOWLEDGE_CAPABILITIES.items()}
+)
+TOOLS.update(
+    {name: ("low_impact", schema) for name, schema in WEB_CAPABILITIES.items()}
+)
 
 
 def broker(db, run, repo, name, payload, actor):
@@ -447,20 +463,57 @@ def broker(db, run, repo, name, payload, actor):
         args = model.model_validate(payload) if model else None
         if risk == "gated" and not v.get("offline_execution_approved"):
             raise Denied("Explicit offline execution approval required")
-        if name in KNOWLEDGE_CAPABILITIES:
+        # Reserve the attempt before any external work. The relay/gateway must
+        # be able to lock this run independently while a tool is executing.
+        v["tool_calls"] = v.get("tool_calls", 0) + 1
+        run.data = canonical(v)
+        db.commit()
+        if name == "source.experiment":
+            from .source_experiments import execute as execute_source_experiment
+
+            result = execute_source_experiment(db, run, repo, args)
+        elif name == "web.experiment":
+            from .web_experiments import execute as execute_experiment
+
+            result = execute_experiment(db, run, args)
+        elif name == "scanner.run":
+            from .scanner_runtime import run as run_scanner
+
+            result = run_scanner(db, run, args)
+        elif name in WEB_CAPABILITIES:
+            result = web_execute(db, run, name, args)
+        elif name in KNOWLEDGE_CAPABILITIES:
             result = knowledge_execute(db, run, name, args, actor)
         elif name in KNOWLEDGE_CONTROLS:
             result = knowledge_control(db, run, name, args, actor)
-        elif name in ("external_intelligence_lookup", "mcp_read_resource"):
+        elif name in (
+            "external_intelligence_lookup",
+            "mcp_read_resource",
+            "mcp_intelligence_lookup",
+        ):
             if settings().gateway_url:
                 import httpx
 
                 claim = getattr(run, "_swarm_claim", (None, None))
                 with httpx.Client(timeout=55, trust_env=False) as client:
-                    response = client.post(settings().gateway_url + "/integration-read", headers={"Authorization": "Bearer " + Path(settings().service_token_file).read_text().strip()},
-                        json={"run_id": run.id, "capability": name, "input": args.model_dump(), "task_id": claim[0], "lease_token": claim[1]})
+                    response = client.post(
+                        settings().gateway_url + "/integration-read",
+                        headers={
+                            "Authorization": "Bearer "
+                            + Path(settings().service_token_file).read_text().strip()
+                        },
+                        json={
+                            "run_id": run.id,
+                            "capability": name,
+                            "input": args.model_dump(),
+                            "task_id": claim[0],
+                            "lease_token": claim[1],
+                        },
+                    )
                     if response.status_code != 200:
-                        raise Denied("Credential service denied or failed the integration read")
+                        raise Denied(
+                            "Credential service denied or failed the integration read"
+                        )
                     result = response.json()
             else:
                 from .tool_registry import execute
@@ -525,8 +578,20 @@ def broker(db, run, repo, name, payload, actor):
             )
         check_fence(db, run)
         v = run.value()
-        v["tool_calls"] = v.get("tool_calls", 0) + 1
-        run.data = canonical(v)
+        if isinstance(result, dict) and (
+            result.get("timed_out")
+            or ("exit_code" in result and result["exit_code"] != 0)
+        ):
+            warnings = v.get("tool_warnings", [])
+            warnings.append(
+                {
+                    "tool": name,
+                    "code": "timeout" if result.get("timed_out") else "nonzero_exit",
+                    "task_id": getattr(run, "_swarm_claim", (None, None))[0],
+                }
+            )
+            v["tool_warnings"] = warnings[-100:]
+            run.data = canonical(v)
         decision = "allow"
         artifact = document(
             db,

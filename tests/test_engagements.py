@@ -96,7 +96,14 @@ def test_chat_preferences_frozen_run_and_stop_survive_new_session(db):
     persisted = client.get("/api/v1/runs/" + run["id"]).json()
     assert "Future instructions" not in persisted["instructions"]
     db.expire_all()
-    assert db.query(SwarmTask).filter_by(run_id=run["id"]).count() == 8
+    initial = db.query(SwarmTask).filter_by(run_id=run["id"]).all()
+    assert len(initial) == 9
+    discovery = next(t for t in initial if t.role == "web-discovery")
+    assert all(
+        __import__("json").loads(t.payload)["depends_on"] == [discovery.id]
+        for t in initial
+        if t.id != discovery.id
+    )
     assert (
         client.post(f"/api/v1/runs/{run['id']}/control/cancel", json={}).status_code
         == 200

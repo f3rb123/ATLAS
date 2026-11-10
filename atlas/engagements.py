@@ -1,12 +1,14 @@
 """Durable operator conversation and execution preferences, without inferred scope."""
 
 from typing import Literal
+import re
 
 from pydantic import Field
 
 from .db import Document, append, canonical, document, now
 from .policy import Denied, Scope, Strict, match, normalize
 from .vault import redact
+from .web_research import WebPlan
 
 
 class EngagementInput(Strict):
@@ -28,6 +30,7 @@ class Preferences(Strict):
     max_tool_calls: int = Field(default=50, ge=1, le=500)
     repository_id: str | None = None
     offline_execution_approved: bool = False
+    web: WebPlan = Field(default_factory=lambda: WebPlan(enabled=True))
 
 
 class Message(Strict):
@@ -91,6 +94,15 @@ def run_instructions(db, campaign):
     # A bounded, visible snapshot. Chat messages cannot modify policy or budgets.
     parts = [row.value()["text"] for row in messages(db, campaign)]
     return "\n\n".join(parts)[-4000:]
+
+
+def source_only_instructions(text):
+    return bool(
+        re.search(
+            r"(?i)\b(?:no live (?:target )?(?:requests|traffic)|source[- ]only|offline[- ]only)\b",
+            text,
+        )
+    )
 
 
 def save_preferences(db, campaign, preferences, actor):

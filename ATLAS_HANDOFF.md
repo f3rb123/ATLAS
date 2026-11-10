@@ -1,5 +1,13 @@
 # ATLAS V3 operator handoff
 
+> Autonomous build continuation: the owner clarified that SBI smoke restrictions
+> apply to build-time acceptance only. The source now includes broader scoped
+> web/tool execution and generated source experiments. The 214-test report below
+> describes the prior release; newer changes remain pending final verification
+> while implementation-first steering is active. See
+> [the active checklist](docs/AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 Updated 10 November 2026. Current owner instructions supersede the inherited greenfield and mandatory-MFA wording. No push, public deployment, VPS change or SBI target request occurred.
 
 Start with the [current acceptance report](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) and [deployment guide](docs/DEPLOYMENT.md). The workspace application is at `http://localhost:3000`; API readiness is `http://localhost:8000/health/ready`. The ignored local development owner access file is `.runtime/cloud-dev/operator-access.json` (0600); it is not a production credential or part of delivery.

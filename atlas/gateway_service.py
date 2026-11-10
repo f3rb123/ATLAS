@@ -6,7 +6,13 @@ from fastapi import FastAPI, Request, HTTPException
 from .config import settings
 from .db import session, Document
 from .policy import Strict
-from .gateway import ModelRequest, generate_budgeted, RunInterrupted, CapacityWait, StructuredOutputError
+from .gateway import (
+    ModelRequest,
+    generate_budgeted,
+    RunInterrupted,
+    CapacityWait,
+    StructuredOutputError,
+)
 from .workflow import selected_model_binding
 
 app = FastAPI(docs_url=None, openapi_url=None)
@@ -33,10 +39,14 @@ class IntegrationRead(Strict):
 def integration_read(body: IntegrationRead, request: Request):
     from .db import SwarmTask
     from .swarm import active, check_fence
-    from .tool_registry import IntelligenceLookup, MCPRead, execute
+    from .tool_registry import IntelligenceLookup, MCPRead, MCPToolLookup, execute
 
     service = service_role(request)
-    schemas = {"external_intelligence_lookup": IntelligenceLookup, "mcp_read_resource": MCPRead}
+    schemas = {
+        "external_intelligence_lookup": IntelligenceLookup,
+        "mcp_read_resource": MCPRead,
+        "mcp_intelligence_lookup": MCPToolLookup,
+    }
     if body.capability not in schemas:
         raise HTTPException(403)
     with session() as db:
@@ -51,9 +61,14 @@ def integration_read(body: IntegrationRead, request: Request):
                     raise HTTPException(403)
                 run._swarm_claim = (task.id, body.lease_token)
                 check_fence(db, run)
-            if run.value().get("tool_calls", 0) >= run.value().get("max_tool_calls", 50):
+            if run.value().get("tool_calls", 0) > run.value().get("max_tool_calls", 50):
                 raise HTTPException(403)
-            return execute(db, run, body.capability, schemas[body.capability].model_validate(body.input))
+            return execute(
+                db,
+                run,
+                body.capability,
+                schemas[body.capability].model_validate(body.input),
+            )
         except Exception:
             raise HTTPException(403, "Integration read denied or failed") from None
 

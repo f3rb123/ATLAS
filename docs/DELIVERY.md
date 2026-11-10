@@ -1,5 +1,13 @@
 # ATLAS V3 private source delivery
 
+> Autonomous build continuation: the owner clarified that SBI smoke restrictions
+> apply to build-time acceptance only. The source now includes broader scoped
+> web/tool execution and generated source experiments. The 214-test report below
+> describes the prior release; newer changes remain pending final verification
+> while implementation-first steering is active. See
+> [the active checklist](AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 This is a locally validated private deployment candidate, delivered for owner review/manual installation. No GitHub push, public publication, real VPS change or live target scan occurred. See [current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) for actual versus synthetic evidence and remaining external inputs.
 
 ## Artifacts

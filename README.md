@@ -1,5 +1,13 @@
 # ATLAS V3
 
+The autonomous web/source continuation is packaged as **3.0.0rc1**, pending
+final runtime verification. It adds scoped executable tools, encrypted test
+identities/login sessions, discovery-driven specialists, typed web and generated
+source experiments, independent replay, evidence views and operator controls.
+The older 214-test acceptance below describes the preceding local milestone.
+See [the active build checklist](docs/AUTONOMOUS_BUILD_CHECKLIST.md).
+
+
 Private security research workspace with durable engagement chat, 1–16 concurrent specialist slots, model-independent semantic knowledge and skills, typed scoped tools, and independently reproduced findings.
 
 The actual application now contains **21,012 public advisory/reference records and 34,229 real MiniLM vectors**. Both requested HackerAI models passed real probes; all eight initial roles and dynamic GraphQL specialists completed actual tasks, followed by a successful independent source-lab replay. The corpus contains no full-text bounty reports. See the [dated acceptance report](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) for failures, exact token accounting and boundaries.

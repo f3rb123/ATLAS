@@ -1,0 +1,16 @@
+id: atlas-directory-observation
+info:
+  name: ATLAS directory listing observation
+  author: ATLAS
+  severity: info
+  description: A listing requires contextual impact and independent validation.
+http:
+  - method: GET
+    path: ["{{BaseURL}}"]
+    matchers-condition: and
+    matchers:
+      - type: status
+        status: [200]
+      - type: word
+        words: ["Index of /", "Parent Directory"]
+        condition: or

@@ -19,6 +19,19 @@ for name, target in [
     p.chmod(0o400)
 os.chown("/data", 10001, 10001)
 os.chmod("/data", 0o700)
+# Independent target-only key: the relay cannot decrypt provider envelopes.
+from .target_auth import derive_key
+target_dir=Path("/targetkeys")
+target_dir.mkdir(exist_ok=True)
+os.chown(target_dir,10001,10001)
+target_dir.chmod(0o700)
+target_key=target_dir/"target_key"
+expected=derive_key(Path("/master/master_key").read_bytes())
+if not target_key.exists():
+    fd=os.open(target_key,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o400)
+    with os.fdopen(fd,"wb") as output:output.write(expected)
+os.chown(target_key,10001,10001)
+target_key.chmod(0o400)
 os.setgid(10001)
 os.setuid(10001)
 from alembic import command

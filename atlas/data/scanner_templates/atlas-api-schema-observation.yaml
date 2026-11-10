@@ -1,0 +1,18 @@
+id: atlas-api-schema-observation
+info:
+  name: ATLAS API schema surface observation
+  author: ATLAS
+  severity: info
+  description: API documentation is context, not proof of a vulnerability.
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/openapi.json"
+      - "{{BaseURL}}/swagger.json"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status: [200]
+      - type: word
+        words: ['"openapi"', '"swagger"']
+        condition: or

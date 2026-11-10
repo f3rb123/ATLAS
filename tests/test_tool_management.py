@@ -54,6 +54,11 @@ def mcp_server(db):
                         {"uri": "fixture://reviewed", "name": "Reviewed fixture"}
                     ]
                 }
+            elif method == "tools/list":
+                result = {"tools":[{"name":"lookup_host","inputSchema":{"type":"object","properties":{"hostname":{"type":"string"}},"required":["hostname"],"additionalProperties":False}}]}
+            elif method == "tools/call":
+                assert value["params"]=={"name":"lookup_host","arguments":{"hostname":"example.invalid"}}
+                result={"content":[{"type":"text","text":"Scoped read-only fixture-tool-key lookup"}]}
             else:
                 assert (
                     method == "resources/read"

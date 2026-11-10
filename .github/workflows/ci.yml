@@ -17,6 +17,7 @@ jobs:
           node-version: '24'
       - run: sudo apt-get update && sudo apt-get install -y bubblewrap
       - run: uv sync --frozen
+      - run: python3 scripts/install-research-tools.py --destination .runtime/research-tools --tools httpx katana nuclei ffuf subfinder dnsx naabu gau waybackurls
       - run: uv run atlas host embeddings-prepare
       - run: uv run pytest -q --junitxml=docs/test-results/pytest.xml
       - run: npm ci --prefix apps/web

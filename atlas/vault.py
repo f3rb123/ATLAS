@@ -141,9 +141,41 @@ def rotate_database_keys(db, new_key, old_key=None):
     for row in db.query(Document).filter_by(kind="tool_integration").with_for_update():
         value = row.value()
         if value.get("secret"):
-            value["secret"] = rewrap(value["secret"], integration_identity(row), old_key, new_key)
+            value["secret"] = rewrap(
+                value["secret"], integration_identity(row), old_key, new_key
+            )
             row.data = canonical(value)
             count += 1
+    if not settings().target_key_file:
+        from .target_auth import derive_key, identity as target_identity
+
+        for row in (
+            db.query(Document).filter_by(kind="target_identity").with_for_update()
+        ):
+            value = row.value()
+            value["secret"] = rewrap(
+                value["secret"],
+                target_identity(row),
+                derive_key(old_key),
+                derive_key(new_key),
+            )
+            row.data = canonical(value)
+            count += 1
+        from .target_sessions import session_identity
+
+        for row in (
+            db.query(Document).filter_by(kind="target_session").with_for_update()
+        ):
+            value = row.value()
+            if value.get("secret"):
+                value["secret"] = rewrap(
+                    value["secret"],
+                    session_identity(row),
+                    derive_key(old_key),
+                    derive_key(new_key),
+                )
+                row.data = canonical(value)
+                count += 1
     for d in db.query(Document).filter_by(kind="totp_pending").with_for_update():
         s = db.get(__import__("atlas.db", fromlist=["Session"]).Session, d.owner)
         if not s:
