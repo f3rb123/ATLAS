@@ -1,6 +1,8 @@
 """DB-authoritative workers; Redis hints improve wakeups but never own run state."""
 
 import sys, time, signal, logging
+import threading
+from weakref import WeakKeyDictionary
 from .db import session, Document, canonical, document, now
 from .workflow import execute_stage, blocked
 from .config import settings
@@ -8,6 +10,8 @@ from .gateway import ProviderError
 from .policy import Denied
 
 alive = True
+_heartbeat_lock = threading.Lock()
+_last_heartbeat = WeakKeyDictionary()
 
 
 def stop(*_):
@@ -89,6 +93,15 @@ def tick(role):
                 )
                 job.data = canonical(value)
                 db.commit()
+        heartbeat(db, role)
+
+
+def heartbeat(db, role):
+    # A process publishes one heartbeat, not one write per idle pool slot.
+    with _heartbeat_lock:
+        last = _last_heartbeat.setdefault(db.bind, {})
+        if time.monotonic() - last.get(role, 0) < 5:
+            return
         id = "heartbeat-" + role
         from .db import transaction_lock
 
@@ -97,10 +110,9 @@ def tick(role):
         if d:
             d.data = canonical({"role": role, "timestamp": time.time()})
         else:
-            document(
-                db, "heartbeat", "system", {"role": role, "timestamp": time.time()}, id
-            )
+            document(db, "heartbeat", "system", {"role": role, "timestamp": time.time()}, id)
         db.commit()
+        last[role] = time.monotonic()
 
 
 def main(role=None):

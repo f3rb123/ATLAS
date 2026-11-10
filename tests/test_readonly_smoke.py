@@ -21,6 +21,8 @@ from atlas.relay import TargetRequest, execute
         ("GET", "https://example.invalid/?q=DROP%20TABLE%20customers"),
         ("GET", "https://example.invalid/?q=DELETE%20FROM%20customers"),
         ("GET", "https://example.invalid/?cmd=rm%20-rf%20%2Fdata"),
+        ("GET", "https://example.invalid/?q=DROP/**/TABLE%20customers"),
+        ("GET", "https://example.invalid/?cmd=ls"),
     ],
 )
 def test_destructive_target_actions_are_unavailable(method, url):

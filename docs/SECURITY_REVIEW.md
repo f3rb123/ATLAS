@@ -1,3 +1,11 @@
+# Current review — 10 November 2026
+
+The complete final suite passed 213 tests. Current audits found zero known advisories across 75 Python dependencies and production npm, and no high Bandit findings. Five medium patterns were reviewed: two fixed official-source URL opens; a full Hugging Face commit supplied through a verified manifest (B615 cannot infer the dictionary value); and two paths that refer to private sandbox tmpfs, not host temporary files. Current history/source scans use exact reviewed fingerprints only, including one public unsigned `alg=none` JWT teaching heading with an empty signature. No directory-wide or whole-rule suppression was added.
+
+Actual HackerAI usage is metered and uncertain calls retain reservations. Raw credentials stay outside Git/build/reports and workers have no master key. JSON wire envelopes are parsed before data scrubbing, invalid completed outputs retain billing evidence, schema corrections are separately reserved and uncertain transports are never replayed. Destructive target paths/query keywords and remote command interfaces are denied; minimal smoke is root HEAD only with two requests. Finding metadata and unverified chain links cannot promote confirmation. The real source lab and local deployment are distinct from public-target effectiveness.
+
+Original data/ZIP/vectors were preserved. Known content candidates are masked on model/UI views; private backups remain encrypted. Previous-account private storage, real owner host security and unprovided assets are not asserted recovered or tested. The older review below is historical.
+
 # Build security review
 
 This is an implementation review and automated/local validation record, not an external penetration-test certification. No owner VPS or live assessment target was accessed.

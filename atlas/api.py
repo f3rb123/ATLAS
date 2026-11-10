@@ -116,6 +116,8 @@ def identity(request: Request, db=Depends(db_dep)):
             if request.method == "GET"
             else {
                 "campaigns": "campaign",
+                "engagements": "run" if request.url.path.endswith("/start") else "campaign",
+                "tools": "tool",
                 "runs": "run",
                 "providers": "provider",
                 "skills": "skill",
@@ -598,6 +600,7 @@ class TokenInput(Strict):
             "finding",
             "repo",
             "report",
+            "tool",
         ]
     ] = ["read"]
     expires_hours: int = Field(default=24, ge=1, le=168)
@@ -616,6 +619,7 @@ def cli_token(body: TokenInput, who=Depends(stepup), db=Depends(db_dep)):
             "model-config",
             "benchmark",
             "report",
+            "tool",
         }
     )
     s, t, c = auth.issue(
@@ -2009,6 +2013,44 @@ def finding_evidence(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     ]
 
 
+class FindingMetadata(Strict):
+    title: str = Field(min_length=1, max_length=500)
+    vulnerability_class: str = Field(default="unclassified", max_length=150)
+    asset: str | None = Field(default=None, max_length=1000)
+    endpoint: str | None = Field(default=None, max_length=2000)
+    parameter_or_component: str | None = Field(default=None, max_length=500)
+    severity: Literal["unscored", "informational", "low", "medium", "high", "critical"] = "unscored"
+    confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    technical_explanation: str = Field(default="", max_length=8000)
+    impact: str = Field(default="", max_length=4000)
+    operator_reproduction_notes: str = Field(default="", max_length=6000)
+    source_references: list[str] = Field(default_factory=list, max_length=30)
+    related_findings: list[str] = Field(default_factory=list, max_length=20)
+
+
+@app.patch("/api/v1/findings/{id}/metadata")
+def finding_metadata(id: str, body: FindingMetadata, who=Depends(enrolled), db=Depends(db_dep)):
+    from .vault import redact
+
+    if who[0].role not in ("owner_admin", "reviewer"):
+        raise HTTPException(403)
+    row = own(db, id, "finding", who[0].id, True)
+    value = row.value()
+    for related_id in body.related_findings:
+        other = own(db, related_id, "finding", who[0].id)
+        if other.id == id or other.value().get("campaign_id") != value.get("campaign_id"):
+            raise Denied("Related findings must differ and belong to the same owned campaign")
+    if any(len(ref) > 2000 for ref in body.source_references):
+        raise Denied("Source reference exceeds limit")
+    value.update(json.loads(redact(canonical(body.model_dump()))))
+    value["metadata_reviewed_by"] = who[0].id
+    value.setdefault("timeline", []).append({"at": now(), "actor": who[0].id, "event": "metadata_reviewed"})
+    row.data = canonical(value)
+    append(db, value["run_id"], who[0].id, "finding_metadata_reviewed", {"finding_id": id, "verification_unchanged": True}, value.get("campaign_id"))
+    db.commit()
+    return expose(row)
+
+
 @app.get("/api/v1/repositories/{id}/inventory")
 def repository_inventory(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     d = own(db, id, "repository", who[0].id)
@@ -2112,7 +2154,7 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
                 "result": {
                     k: v
                     for k, v in json.loads(t.result).items()
-                    if k in ("summary", "status", "reason", "error_type", "finding_id")
+                    if k in ("summary", "status", "reason", "error_type", "diagnostic_code", "finding_id")
                 },
                 "updated_at": t.updated_at,
             }

@@ -165,7 +165,24 @@ def tick():
             part.unlink(missing_ok=True)
 
 
-if __name__ == "__main__":
+def main():
+    from sqlalchemy.exc import OperationalError
+    from .logging import configure
+    import logging
+
+    configure()
     while True:
-        tick()
+        try:
+            tick()
+        except OperationalError as exc:
+            # SQLite import transactions can temporarily hold the writer lock.
+            # Retry only that contention, with fresh sessions and existing leases;
+            # programming/schema/authentication failures must still surface.
+            if getattr(exc.orig, "sqlite_errorcode", None) not in (5, 6):
+                raise
+            logging.getLogger("atlas").warning("corpus_database_busy_wait")
         time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()

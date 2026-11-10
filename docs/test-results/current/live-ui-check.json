@@ -1,0 +1,20 @@
+{
+  "screens": [
+    {
+      "screen": "Engagements",
+      "serious_or_critical": 0
+    },
+    {
+      "screen": "Recon Tools",
+      "serious_or_critical": 0
+    },
+    {
+      "screen": "Budgets",
+      "serious_or_critical": 0
+    }
+  ],
+  "provider_reported_tokens": 744368,
+  "held": 282255,
+  "remaining": 973377,
+  "paid_inference_performed": false
+}

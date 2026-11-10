@@ -1,37 +1,24 @@
-# ATLAS continuation checkpoint
+# ATLAS V3 operator handoff
 
-## 10 November 2026 — current deployment work
+Updated 10 November 2026. Current owner instructions supersede the inherited greenfield and mandatory-MFA wording. No push, public deployment, VPS change or SBI target request occurred.
 
-[Verified through actual execution, 10 November 2026] Deployment completion is now authorized and in progress. The real public candidate was restored into the previously empty development corpus through the new identity-preserving package service: 21,012 records, 34,229 384-dimensional MiniLM vectors, 39,985 aliases, 21,359 hash-verified raw files and 150 explicitly withheld artifacts. A consistent pre-import DB backup was retained. Repeat restore verified the persisted fingerprint without replacing rows. All five existing labelled hybrid queries found the expected record in the top five through the application's own corpus service. The real pinned-model semantic test now passes. No corpus re-embedding or original-archive modification occurred.
+Start with the [current acceptance report](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) and [deployment guide](docs/DEPLOYMENT.md). The workspace application is at `http://localhost:3000`; API readiness is `http://localhost:8000/health/ready`. The ignored local development owner access file is `.runtime/cloud-dev/operator-access.json` (0600); it is not a production credential or part of delivery.
 
-[Verified through actual execution] Corpus package rejection/atomicity, resumable API upload and restore jobs are covered by 17 focused tests; the combined corpus/knowledge/auth regression set passed 61 tests. Frontend TypeScript passed. Skill retrieval/search events now include direct task IDs; password-only authorized scope configuration no longer mandates optional MFA. A real provider, complete web-reference access, remaining features and full release/Compose acceptance are still pending. See docs/DEPLOYMENT_READINESS.md for the live checklist; prior missing-corpus/model statements below describe earlier milestones.
+```sh
+cd /workspace/ATLAS
+bash scripts/cloud-start.sh
+```
 
+The launcher refuses occupied ports, preserves the existing database/key/corpus and records its owned child PIDs. Do not kill unknown processes by port or reset a store to make startup pass. Reusable environment setup uses `scripts/cloud-install.sh`; source checkpoints newer than remote main must be preserved through the accompanying complete Git bundle.
 
-Owner goal: evolve the supplied release into a concurrent, event-driven, knowledge-aware research swarm. Latest steering adds AntiFox as the eighth mandatory reference. Owner instructions supersede old greenfield/mandatory-factor wording in docs/SPECIFICATION.md.
+The owner's `.env` contains only a raw HackerAI key and must remain unchanged, ignored and mode 0600. `ATLAS_PROVIDER_KEY_FILE` selects it; `atlas host configure-provider-file` loads the raw content into the encrypted `ProviderInput.api_key` binding. `ATLAS_CONFIG_FILE` is a different optional dotenv configuration selector. Compose uses `scripts/compose.sh` or explicit `--env-file .env.production`; never overwrite the raw key with an example config.
 
-Use existing /workspace/ATLAS, branch work; no worktrees unless requested. Supplied base: 2a7a348c49ae3d3994d7cf2e7de1f3dcc925475f; ZIP matches all 153 files, complete bundle verified, original tags preserved. GitHub was empty; no push or VPS operation. Local-only commit restoration in a fresh task is not guaranteed. Retain checkout/bundle; do not reset or push without authorization.
+Use Engagements to enter a verified target, instructions and explicit authorization/scope, select 1–16 agents and capability/automatic/single-model mode, attach source if relevant and start. Messages apply to the next run. Start/pause/stop/resume and live tasks use persisted backend state. Unsupported scanners and unreviewed executable skills are visibly disabled. No model can grant scope or destructive actions.
 
-## Implemented and validated
+Actual HackerAI usage is 744,368 tokens, with 282,255 held for five uncertain calls and 973,377 allocation remaining. Global authority is 50M, initial allocation 2M, with no reset or increase. Prices remain unverified. Stop new calls when budgets require review; reconcile only with verified billing evidence. Do not clone the paid ledger into independently spending installations.
 
-- Shared knowledge harness (knowledge.py, workflow.role, broker), eleven typed tools, actual availability/status, bounded retrieval, source/skill provenance and owner-reviewed feedback. Same interface for initial roles/providers/dynamic specialists/verifiers; no vendor memory dependency or automatic fallback masquerading as semantic search.
-- SQL tasks (swarm.py, SwarmTask, frozen additive migration 0005), eight default responsibilities, 1–16 slots, event activation/dedupe, follow-up review, fenced leases/heartbeat, cancellation/recovery/dead letters, capacity waits and persisted reports. Legacy FSM supported.
-- Independent real sandbox replay for swarm experiments; genuine/false lab fixtures tested. Gateway budgets/concurrency/accounting improved; unknown billing remains reserved pending reconciliation.
-- Two immutable, pinned/licensed research-only skill references. No wholesale executable upstream library activation.
-- Password-only ordinary operator access, optional enrolled factors/strict mode, password changes/session revocation and retained CSRF/cookie/RBAC/encryption controls.
-- Agent/model/execution selection, instructions and persisted live task/event/retrieval/usage UI. Conversational engagement chat and advanced recon console remain incomplete.
+The delivered public review archive restored 21,012 records and 34,229 real 384-dimensional vectors in development and isolated PostgreSQL. It contains advisories/reference material, not 20,000 full-text bounty reports. Preserve its SHA256, raw assets, supplied IDs and pinned model; never silently fall back to hash embeddings.
 
-Evidence: 138 backend tests passed, one semantic test deselected, including five actual sandbox cases and disposable PG migration/concurrency/fresh-connection checks. Frontend/TypeScript passed. Final browser flow passed with eight completed tasks, optional WebAuthn, pause/resume, provider settings, usage, reports, corpus/CLI and limited axe checks. Models/corpus are synthetic fixtures. No live provider or target efficacy claim. New-file lint, targeted undefined names, wheel contents, shell checks and Compose parsing passed; legacy full lint cleanliness not claimed.
+The source ZIP and complete offline Git bundle exclude runtime data, keys, sessions and private scope evidence. The separately supplied corpus ZIP stays immutable and private unless separately approved for publication. Existing release tags are preserved. Verify SHA256SUMS before transfer and use a fresh installation directory. Do not extract over a populated application or automatically resume target work after restore.
 
-## Startup and configuration
-
-Complete install/start instructions and four domain additions are saved in the environment draft, not applied/published. Run bash scripts/cloud-start.sh from the repo root and retain its execution session. It uses isolated .runtime/cloud-dev, checks ports, preserves keys, migrates additively and validates local API/web. Processes do not survive snapshot restoration. Logs/PIDs are under that ignored directory. Interactive bootstrap: source scripts/cloud-dev-env.sh, then uv run atlas host bootstrap; never put tokens/keys in chat. Current developer instance has no owner/provider/original corpus.
-
-Default semantic assets are missing; startup does not silently switch to hash mode. Tests explicitly set lexical hash mode. PG validation used a separate atlas-build-pg container/database atlas_test with a private generated selector under .runtime; never point those tests at application data.
-
-## External blockers and next work
-
-Current policy still denies chat.deepseek.com, blog.zsec.uk, runmaestro.ai and huggingface.co; additions await environment settings save/application. Five GitHub reference sources inspected: Armur, PiRanha, BugBountySkills, Claude-Red, AntiFox. Research dependency caches are under /workspace/atlas-reference, not selected application repositories. Three websites remain unread; exhaustive semantic review of every upstream skill is not claimed.
-
-Original runtime DB/corpus/model assets were withheld, not lost here. Historical inventory: 21,012 records/34,229 vectors, zero full-text bounty reports. Current instance does not verify those counts. Manifest reports 26 unresolved corpus secret candidates. Do not reconstruct, wipe, migrate or re-embed original intelligence. Historical resource manifest, owner keys and VPS access/authorization are absent.
-
-Next: apply access additions and finish references; obtain cleared original assets, verify schema/counts/hash/dimensions without mutation; run real semantic/provider lab acceptance; continue fairness/priority decay, automatic routing/fallback, reviewed recon/MCP adapters, richer research/attack chains and operator chat. Full rebuild, publication, fresh-task restoration and VPS deployment remain incomplete. Consult audit/ledger/roadmap for exact evidence.
+Remaining external inputs: verified prices/billing, one specific in-scope SBI hostname, original full-text/private assets/resource manifest, and a real owner-approved deployment destination. No public deployment is implied by this local acceptance.

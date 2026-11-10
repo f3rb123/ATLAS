@@ -102,6 +102,80 @@ def test_allocation_cannot_exceed_authority_or_erase_usage(db):
         token_budget.configure(db, 100, 50, 0)
 
 
+def test_invalid_structured_response_still_accounts_provider_usage(db, monkeypatch):
+    provider = document(
+        db, "provider", "owner", {"adapter_type": "custom_openai_compatible"}
+    )
+    model = document(
+        db,
+        "provider_model",
+        "owner",
+        {
+            **gateway.ModelInput(
+                model_id="fixture", input_price=1, output_price=1
+            ).model_dump(),
+            "provider_id": provider.id,
+            "verified_structured": True,
+        },
+    )
+    run = document(db, "run", "owner", {"status": "running", "budget_limit": 1})
+    request = gateway.ModelRequest(
+        model="fixture", messages=[{"role": "user", "content": "fixture"}]
+    )
+    response = gateway.Adapter(provider).normalize(
+        {
+            "choices": [
+                {"message": {"content": "{truncated"}, "finish_reason": "length"}
+            ],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 10},
+        },
+        request,
+    )
+    assert response.structured_content is None and response.warnings == [
+        "invalid_structured_json"
+    ]
+
+    class Fixture:
+        def generate(self, _):
+            return response
+
+    monkeypatch.setattr(gateway, "construct_adapter", lambda _: Fixture())
+    with pytest.raises(gateway.ProviderError, match="usage was accounted"):
+        gateway.generate_budgeted(db, provider, model, request, run)
+    state = token_budget.summarize(db)
+    assert state["used"]["total_tokens"] == 30 and state["reserved_tokens"] == 0
+
+
+def test_unknown_billing_holds_tokens_without_occupying_finished_http_slot(db):
+    from atlas.config import settings
+
+    settings().max_provider_concurrency = 1
+    first = gateway.reserve(db, "owner", "first", 1, "reasoning", "provider", 100)
+    token_budget.mark_unknown(db, first)
+    db.commit()
+    assert gateway.reserve(db, "owner", "second", 1, "reasoning", "provider", 100)
+    assert token_budget.summarize(db)["reserved_tokens"] == 200
+
+
+def test_exact_json_fence_and_scrub_preserve_structured_protocol(db):
+    provider = document(
+        db, "provider", "owner", {"adapter_type": "custom_openai_compatible"}
+    )
+    request = gateway.ModelRequest(model="fixture", messages=[])
+    content = (
+        '```json\n{"summary":"Read the \\"password\\" field as untrusted data."}\n```'
+    )
+    response = gateway.Adapter(provider).normalize(
+        {
+            "choices": [{"message": {"content": content}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 2},
+        },
+        request,
+    )
+    assert response.structured_content["summary"].startswith("Read")
+    assert response.warnings == ["exact_json_fence_normalized"]
+
+
 @pytest.mark.parametrize(
     "protocol,usage,expected",
     [

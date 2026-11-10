@@ -21,6 +21,8 @@ for name in [
     "repo",
     "host",
     "benchmark",
+    "engagement",
+    "tools",
 ]:
     g = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
     app.add_typer(g, name=name)
@@ -58,6 +60,41 @@ def version():
 @app.command()
 def doctor():
     out(client_request("doctor"))
+
+
+@groups["engagement"].command("list")
+def engagement_list():
+    out(client_request("engagements"))
+
+
+@groups["engagement"].command("create")
+def engagement_create(file: Path):
+    out(client_request("engagements", "POST", json.loads(file.read_text())))
+
+
+@groups["engagement"].command("messages")
+def engagement_messages(id: str):
+    out(client_request("engagements/" + id + "/messages"))
+
+
+@groups["engagement"].command("message")
+def engagement_message(id: str, file: Path):
+    out(client_request("engagements/" + id + "/messages", "POST", {"text": file.read_text()}))
+
+
+@groups["engagement"].command("configure")
+def engagement_configure(id: str, file: Path):
+    out(client_request("engagements/" + id + "/preferences", "PUT", json.loads(file.read_text())))
+
+
+@groups["engagement"].command("start")
+def engagement_start(id: str):
+    out(client_request("engagements/" + id + "/start", "POST", {}))
+
+
+@groups["tools"].command("list")
+def tools_list():
+    out(client_request("tools"))
 
 
 @groups["campaign"].command("list")

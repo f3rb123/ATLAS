@@ -1,6 +1,6 @@
 """Provider-neutral typed adapters, identity-bound credentials and budget reservations."""
 
-import json, time, threading
+import json, time, threading, re
 from typing import Literal, Protocol, AsyncIterator
 from urllib.parse import urlsplit, urlunsplit
 from pydantic import Field, field_validator, model_validator
@@ -121,6 +121,14 @@ class ModelProvider(Protocol):
 
 class ProviderError(ValueError):
     pass
+
+
+class StructuredOutputError(ProviderError):
+    def __init__(self, response):
+        super().__init__(
+            "Provider returned invalid structured output; reported usage was accounted"
+        )
+        self.response = response
 
 
 class RunInterrupted(ProviderError):
@@ -513,17 +521,27 @@ class Adapter:
         if cached + created > inp:
             raise ProviderError("Cached usage exceeds input usage")
         structured = None
+        warnings = []
         if r.structured:
+            candidate = content
+            fenced = re.fullmatch(
+                r"\s*```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```\s*", content
+            )
+            if fenced:
+                candidate = fenced.group(1)
+                warnings.append("exact_json_fence_normalized")
             try:
-                structured = json.loads(content)
+                structured = json.loads(candidate)
             except (TypeError, json.JSONDecodeError):
-                raise ProviderError("Provider did not return valid JSON")
+                warnings.append("invalid_structured_json")
             if not isinstance(structured, dict):
-                raise ProviderError("Structured object required")
+                structured = None
+                if not warnings:
+                    warnings.append("structured_object_required")
         return ModelResponse(
-            content=content,
-            structured_content=structured,
-            tool_calls=calls,
+            content=self.scrub(content),
+            structured_content=self.scrub_data(structured),
+            tool_calls=self.scrub_data(calls),
             finish_reason=finish,
             input_tokens=inp,
             output_tokens=out,
@@ -534,6 +552,7 @@ class Adapter:
             usage_estimated=est,
             model_id=r.model,
             request_id=p.get("id"),
+            warnings=warnings,
         )
 
     def capabilities(self, model_id):
@@ -570,6 +589,15 @@ class Adapter:
                 text = text.replace(value, "[REDACTED]")
         return redact(text)
 
+    def scrub_data(self, value):
+        if isinstance(value, str):
+            return self.scrub(value)
+        if isinstance(value, list):
+            return [self.scrub_data(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.scrub_data(v) for k, v in value.items()}
+        return value
+
     def generate(self, r):
         url = self.path("generate", r.model)
         scope = provider_scope(url)
@@ -582,7 +610,7 @@ class Adapter:
                 canonical(self.serialize(r)).encode(),
                 scope,
                 2 * 1024 * 1024,
-                30,
+                settings().provider_timeout_seconds,
             )
             if status != 200:
                 raise ProviderError(
@@ -592,7 +620,7 @@ class Adapter:
                         429: "rate_limited",
                     }.get(status, "provider_http_error")
                 )
-            result = self.normalize(json.loads(self.scrub(body.decode())), r)
+            result = self.normalize(json.loads(body.decode()), r)
             result.latency_ms = (time.monotonic() - t) * 1000
             return result
         except __import__("ssl").SSLError:
@@ -772,7 +800,7 @@ class Adapter:
             raise ProviderError(
                 "Model discovery unavailable; manual entry is supported"
             )
-        p = json.loads(self.scrub(body.decode()))
+        p = self.scrub_data(json.loads(body.decode()))
         return p.get("data", p.get("models", []))
 
     def health_check(self):
@@ -794,9 +822,17 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
             "budget-global",
         )
     v = d.value()
+    token_ledger = db.get(Document, "token-budget-global")
+    token_reservations = (
+        token_ledger.value().get("reserved", {}) if token_ledger else {}
+    )
     if (
         provider_id
-        and sum(r.get("provider_id") == provider_id for r in v["reserved"].values())
+        and sum(
+            r.get("provider_id") == provider_id
+            and token_reservations.get(id, {}).get("state") != "unknown_billing"
+            for id, r in v["reserved"].items()
+        )
         >= settings().max_provider_concurrency
     ):
         raise CapacityWait("Provider concurrency reserved by in-flight requests")
@@ -1025,6 +1061,9 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             or m.get("pricing_status") != "verified",
             "token_usage_estimated": response.usage_estimated,
             "reservation_id": reservation,
+            "latency_ms": response.latency_ms,
+            "finish_reason": response.finish_reason,
+            "warnings": response.warnings,
         },
     )
     db.refresh(run, with_for_update=True)
@@ -1035,6 +1074,8 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     db.commit()
     if rv["status"] not in ("running", "queued"):
         raise RunInterrupted("Run was paused or cancelled during provider request")
+    if req.structured and response.structured_content is None:
+        raise StructuredOutputError(response)
     return response
 
 

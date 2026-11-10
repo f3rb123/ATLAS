@@ -1,11 +1,19 @@
+# Current skills integration — 10 November 2026
+
+Six pinned MIT methodology texts are now installed idempotently in the actual application: source review, evidence reporting, OAuth boundaries, object authorization, GraphQL boundaries and business logic. New texts retain their original upstream bytes, full commit/source, SHA256, license notice, dependencies and explicit limitations in `atlas/data/skill_references/catalog.json`. OAuth discovery/retrieval was actually exercised against persisted application state.
+
+These are untrusted research references, not automatically enabled executable procedures. Their command, exploitation, severity and example-chain claims are not ATLAS authority. No upstream installer ran. Native executable skill versions still require explicit review and independently bound fixture validation. Models and dynamic agents use the same discovery/retrieval interface.
+
+| Added reference | Pinned origin | Runtime status |
+|---|---|---|
+| OAuth boundary methodology | BugBountySkills `oauth_misconfig.md` | Reference only; no live OAuth actions |
+| Object authorization methodology | BugBountySkills `idor_bola_bfla.md` | Reference only; no customer-object access |
+| GraphQL boundary methodology | BugBountySkills `graphql_attacks.md` | Reference only; mutations/amplification unavailable |
+| Business logic methodology | Claude-Red `offensive-business-logic/SKILL.md` | Reference only; no payment/state-changing tests |
+
+Earlier inventory and original two references follow as historical provenance. Full semantic approval of hundreds of upstream procedures is not claimed.
+
 # ATLAS skills inventory
-
-## 10 November 2026 — current deployment work
-
-[Verified through actual execution, 10 November 2026] Deployment completion is now authorized and in progress. The real public candidate was restored into the previously empty development corpus through the new identity-preserving package service: 21,012 records, 34,229 384-dimensional MiniLM vectors, 39,985 aliases, 21,359 hash-verified raw files and 150 explicitly withheld artifacts. A consistent pre-import DB backup was retained. Repeat restore verified the persisted fingerprint without replacing rows. All five existing labelled hybrid queries found the expected record in the top five through the application's own corpus service. The real pinned-model semantic test now passes. No corpus re-embedding or original-archive modification occurred.
-
-[Verified through actual execution] Corpus package rejection/atomicity, resumable API upload and restore jobs are covered by 17 focused tests; the combined corpus/knowledge/auth regression set passed 61 tests. Frontend TypeScript passed. Skill retrieval/search events now include direct task IDs; password-only authorized scope configuration no longer mandates optional MFA. A real provider, complete web-reference access, remaining features and full release/Compose acceptance are still pending. See docs/DEPLOYMENT_READINESS.md for the live checklist; prior missing-corpus/model statements below describe earlier milestones.
-
 
 Inventory date: 2026-11-09. No installed historical skill database supplied.
 

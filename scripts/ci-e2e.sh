@@ -34,11 +34,11 @@ uv run python scripts/prepare-e2e.py
 export ATLAS_DATABASE_URL=sqlite:///.runtime/e2e.db
 export ATLAS_DATA_DIR=.runtime/e2e-data
 pids=()
-trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT
-uv run uvicorn atlas.api:app --host 127.0.0.1 --port 8000 --no-access-log > .runtime/ci-api.log 2>&1 & pids+=("$!")
-uv run python tests/e2e_provider.py > .runtime/ci-provider.log 2>&1 & pids+=("$!")
-uv run python -m atlas.worker research > .runtime/ci-research.log 2>&1 & pids+=("$!")
-uv run python -m atlas.worker verify > .runtime/ci-verify.log 2>&1 & pids+=("$!")
+trap 'kill "${pids[@]}" 2>/dev/null || true; wait 2>/dev/null || true' EXIT
+.venv/bin/python -m uvicorn atlas.api:app --host 127.0.0.1 --port 8000 --no-access-log > .runtime/ci-api.log 2>&1 & pids+=("$!")
+.venv/bin/python tests/e2e_provider.py > .runtime/ci-provider.log 2>&1 & pids+=("$!")
+.venv/bin/python -m atlas.worker research > .runtime/ci-research.log 2>&1 & pids+=("$!")
+.venv/bin/python -m atlas.worker verify > .runtime/ci-verify.log 2>&1 & pids+=("$!")
 (cd apps/web && exec node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000) > .runtime/ci-web.log 2>&1 & pids+=("$!")
 ready=0
 for attempt in $(seq 1 30); do

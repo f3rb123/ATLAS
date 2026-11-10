@@ -1,23 +1,28 @@
-# ATLAS V3 local deployment delivery
+# ATLAS V3 private source delivery
 
-This release package is for manual installation by the owner. Nothing has been deployed to a VPS or published to GitHub. The source ZIP and offline Git bundle contain no application database, corpus database volume, user/session data, provider credentials, master key, private certificate, SSH key, bootstrap token, recovery code or campaign finding.
+This is a locally validated private deployment candidate, delivered for owner review/manual installation. No GitHub push, public publication, real VPS change or live target scan occurred. See [current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) for actual versus synthetic evidence and remaining external inputs.
 
-## Package contents and provenance
+## Artifacts
 
-The deployment ZIP is a source-only archive of the final committed tree: backend, frontend, migrations, Compose/Docker configuration, gateway/provider integrations, owner authentication and encrypted secret handling, orchestration/verifier/sandbox, ingestion/conversion tools, tests, deployment scripts and documentation. `.env.example` and `.env.production.example` are placeholders. The separate Git bundle preserves all available refs/history and the existing `v3.0.0-rc1-local` tag. The working release package is based on the verified `12e4bbc` checkpoint plus the narrow kill-switch shadowing fix and regression test; the tag itself is preserved at its existing commit and was not moved.
+The ignored `.runtime/delivery/` directory contains:
 
-The ZIP, bundle, `SHA256SUMS` and `RELEASE-MANIFEST.md` are generated under ignored `.runtime/delivery/` and linked as downloadable artifacts in the handoff. SHA256SUMS covers the ZIP and bundle. The manifest includes their hashes, exact commit, retained tag, validation evidence, package inventory, corpus counts and limitations.
+- `atlas-v3-deployment-source.zip`: the final committed tree under `ATLAS/`.
+- `atlas-v3-complete.bundle`: complete available Git history/refs, including branch `work` and preserved original tags.
+- `SHA256SUMS`: hashes for the source ZIP and Git bundle.
+- `RELEASE-MANIFEST.md`: exact commit, artifact inventory, validation and operational boundaries.
 
-## Corpus gate
+No runtime database, corpus ZIP, model binary, user/session data, provider credential, master key, private certificate, SSH key, bootstrap/recovery code or private program screenshot is included. The `.env.example` and `.env.production.example` files contain placeholders. The owner's raw `.env` is ignored and unchanged. The bundle was verified and round-tripped into a fresh temporary clone; the ZIP is checked against the final tracked tree. Full history/source secret scans and exact credential exclusion checks accompany packaging.
 
-The validated local corpus inventory is 21,012 unique public record identities and 34,229 finite MiniLM 384-dimensional vectors. The sanitized candidate inventory is 21,012 records, 34,229 vectors, 994 governance documents and 21,636 archive members; 220 text fields were sanitized, 130 vectors re-embedded, and 150 raw artifacts withheld. No application database or Docker volume is distributable.
+## Preserve intelligence and budgets
 
-The expanded Gitleaks scan produced 2,151 detections. The safe finding-by-finding classification is recorded in [corpus-secret-audit.json](test-results/corpus-secret-audit.json), without reproducing any matched values. It classifies 2,125 as detector false positives: 2,067 canonical-key property names, two schema version values, 53 pinned model-revision occurrences, and three verified public model SHA256 values. **Twenty-six content candidates remain unresolved:** 13 in record content/summary fields, nine in vector text fields and four in three raw artifacts. They include generic credential-pattern, Sourcegraph-token-pattern and private-key-pattern detections. Because these values have not been resolved as harmless, the public-corpus tarball is deliberately omitted. Do not transfer the ignored local candidate archive. The source ingestion and validation pipeline remains included.
+The supplied corpus archive is separate and immutable, SHA256 `e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025`. It was actually restored into development and isolated PostgreSQL: 21,012 records, 34,229 384-dimensional vectors, 39,985 aliases and 21,359 raw artifacts. It contains advisories/reference material and no full-text bounty reports. Preserve its explicit omissions, review masks and pinned model. A public corpus publication requires its own review; no such publication occurred.
 
-## Install
+Existing paid deployments must migrate their complete database, artifacts and matching key material through the verified private backup procedure. Retain the global token ledger and every uncertain reservation. Never create two independently spending copies of the paid ledger. Current recorded usage is 744,368 tokens, held capacity 282,255, initial allocation remaining 973,377; USD pricing/billing remains unverified. A fresh development fixture database is not a substitute for that history.
 
-Follow [DEPLOYMENT.md](DEPLOYMENT.md) for a clean Ubuntu installation. In brief: verify the downloaded SHA256 values on Windows, transfer the ZIP and bundle with WinSCP over SFTP through the private VPN, verify checksums again on Ubuntu, extract into a new directory, configure `.env.production`, create the host-only master key with `scripts/prepare-secrets.py`, start the VPN-bound Compose stack, enroll the first owner interactively, configure two passkeys/TOTP/recovery, then register a provider through Settings. Do not enable public ingress before those checks pass. Corpus import is unavailable from this delivery until the candidate scan blocker is cleared and a new archive is separately reviewed.
+## Install and restore
 
-## Validation and limitations
+Verify SHA256SUMS before and after SFTP transfer. Extract into a new directory; do not overwrite a populated checkout or application store. To restore source from the offline history, use `git clone --branch work atlas-v3-complete.bundle ATLAS` in a fresh destination. Preserve existing release tags rather than moving them.
 
-The current backend regression suite is rerun as part of this packaging task; see [test-results/VALIDATION.md](test-results/VALIDATION.md) and `RELEASE-MANIFEST.md` for final results. Existing evidence covers the real local database/corpus, browser/WebAuthn, sandbox, Docker TLS, backup/restore and provider-contract workflows. A full-project Ruff run has pre-existing style findings; Bandit has reviewed medium pattern findings. No external target, GitHub publication or owner VPS operation occurred. Provider credentials, host master key, TLS enrollment, first-owner bootstrap and VPN/firewall configuration must be supplied or performed by the operator on the VPS.
+Follow [DEPLOYMENT.md](DEPLOYMENT.md). Use an explicit `.env.production` configuration file or `ATLAS_COMPOSE_ENV_FILE`; `scripts/compose.sh` never parses the owner's raw `.env`. Generate new host secrets only for a fresh installation, bootstrap the owner interactively, configure the desired optional/strict MFA policy, restore the separately verified corpus and test provider aliases. Original/production database migration, DNS/VPN/ACME and public ingress remain owner-controlled deployment operations.
+
+The next external inputs are verified model pricing and five billing outcomes, a specific verified SBI hostname, missing original private/full-text assets/resource manifest, and an actual authorized deployment destination. Optional scanner/unsupported API adapters and unreviewed executable skills remain visibly disabled with harness/fixture requirements. Their presence in the registry is not a claim of operational scanning capability.

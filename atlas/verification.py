@@ -1,7 +1,8 @@
 """Independent replay and counterfactual evidence gate. No model-only promotion."""
 
 import re
-from .db import Document, document, canonical, digest, now, SwarmTask
+from .db import Document, document, canonical, digest, now, SwarmTask, append
+from .vault import redact
 from .tools import broker
 
 
@@ -86,14 +87,21 @@ def verify_candidates(db, run, repo, done):
             "proof": proof,
             "secure_control": control,
             "snapshot": repo.inventory()["snapshot_hash"],
+            "expected_evidence_ids": [proof["artifact_id"], control["artifact_id"]],
+            "evidence_instruction": "Copy both expected_evidence_ids exactly into evidence_ids if classifying confirmed. Knowledge record IDs and earlier research artifact IDs do not substitute for these fresh independent artifacts.",
         },
         "verifier",
     )
     allowed = {proof["artifact_id"], control["artifact_id"]}
+    review = document(db, "verification_review", run.owner, {"run_id": run.id,
+        "task_id": getattr(run, "_swarm_claim", (None, None))[0], "hypothesis_id": h.id,
+        "model_review": __import__("json").loads(redact(canonical(response.model_dump()))),
+        "expected_evidence_ids": sorted(allowed), "finding_confirmed": False})
     if response.status == "confirmed" and (
         set(response.evidence_ids) != allowed or not response.counterfactual
     ):
-        raise ValueError("Verifier must cite both independent proof and secure control")
+        append(db, run.id, "independent_verifier", "verification_rejected", {"review_id": review.id, "code": "independent_evidence_binding_failed"}, run.value()["campaign_id"])
+        return {"status": "inconclusive", "review_id": review.id, "reason": "Independent review did not bind both fresh proof/control artifacts; no finding confirmed"}
     key = digest(
         canonical(
             {"claim": h.value()["claim"], "snapshot": repo.inventory()["snapshot_hash"]}

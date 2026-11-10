@@ -86,7 +86,9 @@ def generate_report(db, run, format):
     findings = [
         f.value()
         for f in db.query(Document).filter_by(kind="finding", owner=run.owner)
-        if f.value()["run_id"] == run.id and f.value()["status"] == "confirmed"
+        if f.value()["run_id"] == run.id
+        and f.value()["status"] in ("confirmed", "report_ready", "reported", "fixed", "closed")
+        and f.value().get("verification", {}).get("status") == "confirmed"
     ]
     return document(
         db,

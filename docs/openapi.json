@@ -517,6 +517,259 @@
         }
       }
     },
+    "/api/v1/engagements": {
+      "get": {
+        "summary": "Engagement List",
+        "operationId": "engagement_list_api_v1_engagements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Engagement Create",
+        "operationId": "engagement_create_api_v1_engagements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngagementInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engagements/{id}/messages": {
+      "get": {
+        "summary": "Engagement Messages",
+        "operationId": "engagement_messages_api_v1_engagements__id__messages_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Engagement Message",
+        "operationId": "engagement_message_api_v1_engagements__id__messages_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Message"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engagements/{id}/preferences": {
+      "put": {
+        "summary": "Engagement Preferences",
+        "operationId": "engagement_preferences_api_v1_engagements__id__preferences_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engagements/{id}/start": {
+      "post": {
+        "summary": "Engagement Start",
+        "operationId": "engagement_start_api_v1_engagements__id__start_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engagements/{id}/readiness": {
+      "get": {
+        "summary": "Engagement Readiness",
+        "operationId": "engagement_readiness_api_v1_engagements__id__readiness_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/campaigns/{id}/scope/validate": {
       "post": {
         "summary": "Scope Validate",
@@ -1197,6 +1450,58 @@
         }
       }
     },
+    "/api/v1/model-routing": {
+      "get": {
+        "summary": "Model Routing Status",
+        "operationId": "model_routing_status_api_v1_model_routing_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/model-routing/preview": {
+      "post": {
+        "summary": "Model Routing Preview",
+        "operationId": "model_routing_preview_api_v1_model_routing_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutePreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/corpus/sources": {
       "get": {
         "summary": "Corpus Sources",
@@ -1377,6 +1682,211 @@
         }
       }
     },
+    "/api/v1/corpus/transfers": {
+      "get": {
+        "summary": "Corpus Transfers",
+        "operationId": "corpus_transfers_api_v1_corpus_transfers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Corpus Transfer Start",
+        "operationId": "corpus_transfer_start_api_v1_corpus_transfers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corpus/transfers/{id}": {
+      "get": {
+        "summary": "Corpus Transfer Status",
+        "operationId": "corpus_transfer_status_api_v1_corpus_transfers__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Corpus Transfer Cancel",
+        "operationId": "corpus_transfer_cancel_api_v1_corpus_transfers__id__delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corpus/transfers/{id}/parts/{index}": {
+      "put": {
+        "summary": "Corpus Transfer Part",
+        "operationId": "corpus_transfer_part_api_v1_corpus_transfers__id__parts__index__put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corpus/transfers/{id}/complete": {
+      "post": {
+        "summary": "Corpus Transfer Complete",
+        "operationId": "corpus_transfer_complete_api_v1_corpus_transfers__id__complete_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/runs/{id}/reports": {
       "post": {
         "summary": "Report",
@@ -1458,6 +1968,103 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/budgets/tokens": {
+      "get": {
+        "summary": "Token Budget Status",
+        "operationId": "token_budget_status_api_v1_budgets_tokens_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Token Budget Configure",
+        "operationId": "token_budget_configure_api_v1_budgets_tokens_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenBudgetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/budgets/tokens/reservations/{id}/reconcile": {
+      "post": {
+        "summary": "Token Budget Reconcile",
+        "operationId": "token_budget_reconcile_api_v1_budgets_tokens_reservations__id__reconcile_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenReconciliation"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -1851,6 +2458,53 @@
         }
       }
     },
+    "/api/v1/findings/{id}/metadata": {
+      "patch": {
+        "summary": "Finding Metadata",
+        "operationId": "finding_metadata_api_v1_findings__id__metadata_patch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingMetadata"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/repositories/{id}/inventory": {
       "get": {
         "summary": "Repository Inventory",
@@ -1958,7 +2612,9 @@
                 "hypotheses",
                 "stages",
                 "tools",
-                "slices"
+                "slices",
+                "research-notes",
+                "attack-chains"
               ],
               "type": "string",
               "title": "Kind"
@@ -2002,6 +2658,283 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/research-notes": {
+      "post": {
+        "summary": "Research Note Create",
+        "operationId": "research_note_create_api_v1_runs__id__research_notes_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchNote"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/attack-chains": {
+      "post": {
+        "summary": "Attack Chain Create",
+        "operationId": "attack_chain_create_api_v1_runs__id__attack_chains_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChainLink"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/tasks": {
+      "post": {
+        "summary": "Swarm Task Create",
+        "operationId": "swarm_task_create_api_v1_runs__id__tasks_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools": {
+      "get": {
+        "summary": "Tool Inventory",
+        "operationId": "tool_inventory_api_v1_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/integrations": {
+      "post": {
+        "summary": "Tool Create",
+        "operationId": "tool_create_api_v1_tools_integrations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/integrations/{id}/test": {
+      "post": {
+        "summary": "Tool Test",
+        "operationId": "tool_test_api_v1_tools_integrations__id__test_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/integrations/{id}/enablement": {
+      "post": {
+        "summary": "Tool Enablement",
+        "operationId": "tool_enablement_api_v1_tools_integrations__id__enablement_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolEnablement"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3204,6 +4137,7 @@
             "enum": [
               "fast",
               "reasoning",
+              "deep_research",
               "verifier",
               "embedding",
               "vision",
@@ -3450,6 +4384,15 @@
             "title": "Policy Notes",
             "default": ""
           },
+          "assessment_profile": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "smoke_readonly"
+            ],
+            "title": "Assessment Profile",
+            "default": "standard"
+          },
           "budget_limit": {
             "type": "number",
             "maximum": 1000.0,
@@ -3466,6 +4409,61 @@
           "authorization_attested"
         ],
         "title": "CampaignInput"
+      },
+      "ChainLink": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "maxLength": 36,
+            "title": "Source Id"
+          },
+          "target_id": {
+            "type": "string",
+            "maxLength": 36,
+            "title": "Target Id"
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "enables",
+              "depends_on",
+              "shares_root_cause",
+              "contradicts"
+            ],
+            "title": "Relationship"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Rationale"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Citations"
+          },
+          "preconditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Preconditions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "target_id",
+          "relationship",
+          "rationale"
+        ],
+        "title": "ChainLink"
       },
       "CloneRepository": {
         "properties": {
@@ -3571,6 +4569,68 @@
         ],
         "title": "Curation"
       },
+      "EngagementInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "target_url": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Target Url"
+          },
+          "authorization_ref": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Authorization Ref"
+          },
+          "authorization_attested": {
+            "type": "boolean",
+            "title": "Authorization Attested"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Instructions"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "assessment_profile": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "smoke_readonly"
+            ],
+            "title": "Assessment Profile",
+            "default": "standard"
+          },
+          "budget_limit": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Budget Limit",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "target_url",
+          "authorization_ref",
+          "authorization_attested",
+          "instructions",
+          "scope"
+        ],
+        "title": "EngagementInput"
+      },
       "FeedbackReview": {
         "properties": {
           "decision": {
@@ -3596,11 +4656,130 @@
         ],
         "title": "FeedbackReview"
       },
+      "FindingMetadata": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "vulnerability_class": {
+            "type": "string",
+            "maxLength": 150,
+            "title": "Vulnerability Class",
+            "default": "unclassified"
+          },
+          "asset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "parameter_or_component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameter Or Component"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "unscored",
+              "informational",
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "default": "unscored"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "technical_explanation": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Technical Explanation",
+            "default": ""
+          },
+          "impact": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Impact",
+            "default": ""
+          },
+          "operator_reproduction_notes": {
+            "type": "string",
+            "maxLength": 6000,
+            "title": "Operator Reproduction Notes",
+            "default": ""
+          },
+          "source_references": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Source References"
+          },
+          "related_findings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Related Findings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "FindingMetadata"
+      },
       "FindingUpdate": {
         "properties": {
           "status": {
             "type": "string",
             "enum": [
+              "report_ready",
               "reported",
               "fixed",
               "closed"
@@ -3662,6 +4841,56 @@
         ],
         "title": "HypothesisEdit"
       },
+      "IntegrationInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "adapter": {
+            "type": "string",
+            "enum": [
+              "securitytrails",
+              "mcp_resources"
+            ],
+            "title": "Adapter"
+          },
+          "base_url": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Base Url"
+          },
+          "api_key": {
+            "type": "string",
+            "maxLength": 8192,
+            "title": "Api Key",
+            "default": ""
+          },
+          "reviewed_resource_uris": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Reviewed Resource Uris"
+          },
+          "readonly_contract_attested": {
+            "type": "boolean",
+            "title": "Readonly Contract Attested",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "adapter",
+          "base_url"
+        ],
+        "title": "IntegrationInput"
+      },
       "KeyInput": {
         "properties": {
           "api_key": {
@@ -3698,6 +4927,22 @@
           "password"
         ],
         "title": "Login"
+      },
+      "Message": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "Message"
       },
       "ModelBenchmarkInput": {
         "properties": {
@@ -3774,6 +5019,27 @@
             "minimum": 0.0,
             "title": "Output Price",
             "default": 30
+          },
+          "pricing_status": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "verified"
+            ],
+            "title": "Pricing Status",
+            "default": "unverified"
+          },
+          "pricing_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricing Source"
           }
         },
         "additionalProperties": false,
@@ -3805,6 +5071,67 @@
           "new_password"
         ],
         "title": "PasswordChange"
+      },
+      "Preferences": {
+        "properties": {
+          "agent_count": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Agent Count",
+            "default": 8
+          },
+          "model_mode": {
+            "type": "string",
+            "enum": [
+              "single",
+              "capability",
+              "auto"
+            ],
+            "title": "Model Mode",
+            "default": "capability"
+          },
+          "max_seconds": {
+            "type": "integer",
+            "maximum": 86400.0,
+            "minimum": 30.0,
+            "title": "Max Seconds",
+            "default": 1800
+          },
+          "max_model_calls": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Model Calls",
+            "default": 30
+          },
+          "max_tool_calls": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Max Tool Calls",
+            "default": 50
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "offline_execution_approved": {
+            "type": "boolean",
+            "title": "Offline Execution Approved",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Preferences"
       },
       "ProviderEnable": {
         "properties": {
@@ -3920,6 +5247,70 @@
         ],
         "title": "ProviderInput"
       },
+      "ResearchNote": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 12000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "refuted"
+            ],
+            "title": "Status",
+            "default": "proposed"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Citations"
+          },
+          "competing_explanations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Competing Explanations"
+          },
+          "missing_information": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Missing Information"
+          },
+          "next_steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Next Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "text"
+        ],
+        "title": "ResearchNote"
+      },
       "ReservationReconciliation": {
         "properties": {
           "actual_cost": {
@@ -3963,6 +5354,45 @@
           "job_id"
         ],
         "title": "ResumeCorpus"
+      },
+      "RoutePreview": {
+        "properties": {
+          "alias": {
+            "type": "string",
+            "enum": [
+              "reasoning",
+              "fast",
+              "coding",
+              "deep_research",
+              "verifier"
+            ],
+            "title": "Alias",
+            "default": "reasoning"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Question",
+            "default": ""
+          },
+          "input_bytes": {
+            "type": "integer",
+            "maximum": 2000000.0,
+            "minimum": 1.0,
+            "title": "Input Bytes",
+            "default": 4000
+          },
+          "output_tokens": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 32.0,
+            "title": "Output Tokens",
+            "default": 1024
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RoutePreview"
       },
       "Rule": {
         "properties": {
@@ -4049,7 +5479,8 @@
             "type": "string",
             "enum": [
               "single",
-              "capability"
+              "capability",
+              "auto"
             ],
             "title": "Model Mode",
             "default": "single"
@@ -4470,6 +5901,50 @@
         ],
         "title": "SourceRead"
       },
+      "TaskRequest": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Role"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Instructions"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Depends On"
+          },
+          "priority": {
+            "type": "number",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Priority",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role",
+          "instructions",
+          "reason"
+        ],
+        "title": "TaskRequest"
+      },
       "TestInput": {
         "properties": {
           "model_id": {
@@ -4482,6 +5957,15 @@
               }
             ],
             "title": "Model Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "structured",
+              "tools"
+            ],
+            "title": "Mode",
+            "default": "structured"
           }
         },
         "additionalProperties": false,
@@ -4574,6 +6058,34 @@
         ],
         "title": "ThreatModel"
       },
+      "TokenBudgetInput": {
+        "properties": {
+          "cap": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 1.0,
+            "title": "Cap",
+            "default": 50000000
+          },
+          "allocation": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 1.0,
+            "title": "Allocation",
+            "default": 2000000
+          },
+          "validation_reserve": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Validation Reserve",
+            "default": 200000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TokenBudgetInput"
+      },
       "TokenInput": {
         "properties": {
           "scopes": {
@@ -4592,7 +6104,8 @@
                 "benchmark",
                 "finding",
                 "repo",
-                "report"
+                "report",
+                "tool"
               ]
             },
             "type": "array",
@@ -4612,6 +6125,107 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TokenInput"
+      },
+      "TokenReconciliation": {
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Output Tokens"
+          },
+          "cached_input_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Cached Input Tokens",
+            "default": 0
+          },
+          "cache_creation_input_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Cache Creation Input Tokens",
+            "default": 0
+          },
+          "reasoning_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Reasoning Tokens",
+            "default": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "maximum": 50000000.0,
+            "minimum": 0.0,
+            "title": "Total Tokens"
+          },
+          "billing_reference": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Billing Reference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens",
+          "billing_reference"
+        ],
+        "title": "TokenReconciliation"
+      },
+      "ToolEnablement": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "ToolEnablement"
+      },
+      "UploadInput": {
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Sha256"
+          },
+          "byte_size": {
+            "type": "integer",
+            "maximum": 1073741824.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Byte Size"
+          },
+          "filename": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename",
+            "default": "corpus.zip"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sha256",
+          "byte_size"
+        ],
+        "title": "UploadInput"
       },
       "ValidationError": {
         "properties": {

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, HTTPException
 from .config import settings
 from .db import session, Document
 from .policy import Strict
-from .gateway import ModelRequest, generate_budgeted, RunInterrupted, CapacityWait
+from .gateway import ModelRequest, generate_budgeted, RunInterrupted, CapacityWait, StructuredOutputError
 from .workflow import selected_model_binding
 
 app = FastAPI(docs_url=None, openapi_url=None)
@@ -115,6 +115,10 @@ def generate(body: Generate, request: Request):
         except CapacityWait:
             db.rollback()
             raise HTTPException(409, detail={"code": "capacity_wait"}) from None
+        except StructuredOutputError as exc:
+            # The completed response is already charged. The worker may make
+            # one separately budgeted schema correction; never replay timeouts.
+            return exc.response.model_dump()
         except Exception:
             db.commit()
             raise HTTPException(409, "Provider request blocked or failed") from None

@@ -6,6 +6,11 @@ from atlas.config import settings
 
 @pytest.fixture
 def db(tmp_path, monkeypatch):
+    # Unit tests must not inherit a running cloud/production origin or key file.
+    monkeypatch.setenv("ATLAS_ENV", "development")
+    monkeypatch.setenv("ATLAS_EXTERNAL_URL", "http://localhost:8000")
+    monkeypatch.delenv("ATLAS_CONFIG_FILE", raising=False)
+    monkeypatch.delenv("ATLAS_PROVIDER_KEY_FILE", raising=False)
     monkeypatch.setenv("ATLAS_DATABASE_URL", "sqlite:///" + str(tmp_path / "test.db"))
     monkeypatch.setenv("ATLAS_DATA_DIR", str(tmp_path / "data"))
     p = tmp_path / "master"

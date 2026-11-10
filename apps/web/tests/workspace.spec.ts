@@ -14,7 +14,7 @@ test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search
  await expect(page.getByRole('heading',{name:'Welcome to ATLAS'})).toBeVisible();
  const setup=page.locator('section').filter({has:page.getByRole('heading',{name:'First owner setup'})});
  await setup.getByLabel('One-time bootstrap token').fill(boot.token);await setup.getByLabel('Owner email').fill(boot.email);await setup.getByLabel('Unique passphrase').fill(boot.password);await setup.getByRole('button',{name:'Create owner'}).click();
- await expect(page.getByRole('heading',{name:'System readiness'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Engagements',exact:true,level:1})).toBeVisible();
  await page.getByRole('button',{name:'Security',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Passkeys & step-up'})).toBeVisible();await page.getByRole('button',{name:'Enroll passkey'}).click();
  await expect(page.getByText('1 passkeys enrolled.',{exact:false})).toBeVisible();await page.getByRole('button',{name:'Authenticate / step-up'}).click();
@@ -55,5 +55,35 @@ test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search
  await page.getByRole('button',{name:'Security',exact:true}).click();await expect(page.getByRole('heading',{name:'Sessions and CLI tokens',exact:true})).toBeVisible();
  const tokens=page.locator('section').filter({has:page.getByRole('heading',{name:'Scoped CLI token'})}).last();const issued=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/auth/cli-tokens'));await tokens.getByRole('button',{name:'Create token'}).click();const token=await(await issued).json();expect(token.token).toBeTruthy();
  const cli=execFileSync('../../.venv/bin/atlas',['corpus','stats'],{env:{...process.env,ATLAS_CLI_TOKEN:token.token,ATLAS_API_URL:'http://localhost:8000'},encoding:'utf8'});expect(JSON.parse(cli).unique_normalized_records).toBeGreaterThanOrEqual(Number(process.env.ATLAS_E2E_MIN_RECORDS||20000));
+
+ await page.getByRole('button',{name:'Engagements',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).fill('Engagement conversation fixture');
+ await page.getByLabel('Exact target URL').fill('https://fixture.example.invalid/');
+ await page.getByLabel('Research instructions',{exact:true}).fill('Review only the uploaded authored source. No live target requests.');
+ await page.getByLabel('Authorization reference',{exact:true}).fill('ATLAS-authored browser fixture');
+ await page.getByLabel('I am authorized to research this target within the stated scope').check();
+ const engagementResponse=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/engagements'));
+ await page.getByRole('button',{name:'Create engagement',exact:true}).click();
+ const engagement=await(await engagementResponse).json();expect(engagement.id).toBeTruthy();
+ await page.getByLabel('Follow-up instructions').fill('Preserve sources and challenge assumptions.');
+ const savedMessage=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/messages'));
+ await page.getByRole('button',{name:'Save message',exact:true}).click();expect((await savedMessage).status()).toBe(200);
+ await expect(page.getByRole('log',{name:'Engagement conversation'})).toContainText('Preserve sources');
+ await page.getByLabel('Concurrent agents (1–16)').fill('8');
+ const preferences=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith('/preferences'));
+ await page.getByRole('button',{name:'Save settings',exact:true}).click();expect((await preferences).status()).toBe(200);
+ const engagementStarted=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/start'));
+ await page.getByRole('button',{name:'Start engagement',exact:true}).click();const engagementRun=await(await engagementStarted).json();expect(engagementRun.id).toBeTruthy();
+ await expect.poll(async()=>{const r=await page.request.get('/api/v1/runs/'+engagementRun.id);return(await r.json()).status},{timeout:65000}).toBe('completed');
+ await page.reload();await page.getByRole('button',{name:'Engagement conversation fixture',exact:true}).click();
+ await expect(page.getByRole('log',{name:'Engagement conversation'})).toContainText('Preserve sources');
+ const persistedSwarm=await(await page.request.get('/api/v1/runs/'+engagementRun.id+'/swarm')).json();expect(persistedSwarm.tasks).toHaveLength(8);expect(persistedSwarm.tasks.every((t:any)=>t.status==='completed')).toBe(true);
+ for(const screen of ['Engagements','Recon Tools','Budgets']){
+  await page.getByRole('button',{name:screen,exact:true}).click();
+  await expect(page.getByRole('heading',{level:1})).toHaveText(screen);
+  const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+  fs.writeFileSync(results+'/accessibility-'+screen.toLowerCase().replaceAll(' ','-')+'.json',JSON.stringify(audit.violations,null,2));
+  expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact||''))).toEqual([]);
+ }
  await page.getByRole('button',{name:'Sign out'}).click();await expect(page.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
 });

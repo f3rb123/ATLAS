@@ -149,7 +149,7 @@ def engine():
         Path(settings().data_dir).mkdir(mode=0o700, parents=True, exist_ok=True)
         _engine = create_engine(
             settings().database_url,
-            connect_args={"check_same_thread": False}
+            connect_args={"check_same_thread": False, "timeout": 30}
             if settings().database_url.startswith("sqlite")
             else {},
             pool_pre_ping=True,

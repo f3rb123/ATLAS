@@ -7,7 +7,7 @@ python_bin=.venv/bin/python
 if [ ! -x "$python_bin" ]; then python_bin=python; fi
 mkdir -p "$(dirname "$destination")"
 mkdir -m700 "$destination"
-docker compose exec -T postgres pg_dump -U atlas -d atlas -Fc | "$python_bin" -m atlas.backup encrypt --password-file .runtime/secrets/backup_password > "$destination/database.atlasenc"
-docker compose exec -T api tar -C /data -cf - . | "$python_bin" -m atlas.backup encrypt --password-file .runtime/secrets/backup_password > "$destination/artifacts.atlasenc"
+scripts/compose.sh exec -T postgres pg_dump -U atlas -d atlas -Fc | "$python_bin" -m atlas.backup encrypt --password-file .runtime/secrets/backup_password > "$destination/database.atlasenc"
+scripts/compose.sh exec -T api tar -C /data -cf - . | "$python_bin" -m atlas.backup encrypt --password-file .runtime/secrets/backup_password > "$destination/artifacts.atlasenc"
 git rev-parse HEAD > "$destination/commit.txt"
 printf '%s\n' 'Encrypted backup completed. Keep backup password and KEK separately/off-host.'

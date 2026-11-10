@@ -19,14 +19,14 @@ def readonly_target_request(url, method):
         raise Denied("State-changing target methods are unavailable")
     parsed = urlsplit(url)
     if re.search(
-        r"(?i)(?:^|/)(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:[/._-]|$)",
+        r"(?i)(?:^|/)_?(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:[/._-]|$)",
         unquote(parsed.path),
     ):
         raise Denied("Destructive target routes are unavailable")
-    forbidden = re.compile(
-        r"(?i)\b(?:delete\s+from|drop\s+(?:table|database|schema)|truncate\s+table|alter\s+table|shutdown|reboot|rm\s+-(?=[a-z]*r)[a-z]+)\b"
-    )
+    forbidden = re.compile(r"(?i)\b(?:delete|drop|truncate|alter|shutdown|reboot|remove-item|rmdir|unlink|rm\s+-(?=[a-z]*r)[a-z]+)\b")
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key.lower() in {"cmd", "command", "exec", "shell", "powershell"}:
+            raise Denied("Remote command interfaces are unavailable")
         if forbidden.search(value) or (
             key.lower()
             in {"action", "operation", "op", "cmd", "command", "method", "_method"}

@@ -204,13 +204,14 @@ def test_missing_and_failed_retrieval_are_explicit_without_stopping_run(
 
 def test_references_install_idempotently_and_are_selectively_discoverable(db):
     first = install_references(db, "owner")
-    assert install_references(db, "owner") == first and len(first) == 2
+    assert install_references(db, "owner") == first and len(first) == 6
     db.commit()
     run = make_run(db)
     found = broker(
         db, run, None, "knowledge.search_skills", {"query": "reporting"}, "specialist"
     )["result"]["results"]
-    assert len(found) == 1 and found[0]["reference_only"]
+    assert all(item["reference_only"] for item in found)
+    assert any(item["skill_id"] == "evidence-reporting-methodology" for item in found)
     content = broker(
         db,
         run,

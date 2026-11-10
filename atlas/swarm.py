@@ -562,7 +562,7 @@ def execute_one(worker_kind):
                 if output.experiment:
                     from .tools import broker
 
-                    e = output.experiment
+                    e = output.experiment.model_dump(exclude_none=True)
                     if set(e) - {
                         "template",
                         "test_path",
@@ -679,6 +679,7 @@ def execute_one(worker_kind):
                 task.result = canonical(
                     {
                         "error_type": type(exc).__name__,
+                        "diagnostic_code": failure_code(exc),
                         "reason": "Task failed; inspect policy/provider diagnostics",
                         "model_output_trusted": False,
                     }
@@ -692,6 +693,7 @@ def execute_one(worker_kind):
                     {
                         "task_id": task.id,
                         "error_type": type(exc).__name__,
+                        "diagnostic_code": failure_code(exc),
                         "status": task.status,
                     },
                     value["campaign_id"],
@@ -702,6 +704,21 @@ def execute_one(worker_kind):
             stopped.set()
             keeper.join(timeout=1)
         return True
+
+
+def failure_code(exc):
+    """Only fixed metadata; never log rejected model/provider payloads."""
+    from pydantic import ValidationError
+    from .gateway import ProviderError
+
+    if isinstance(exc, ValidationError):
+        return {"code": "model_schema_invalid", "fields": [".".join(str(x) for x in e["loc"])[:120] for e in exc.errors(include_input=False)[:8]]}
+    if isinstance(exc, ProviderError):
+        known = {"Provider request timed out": "provider_timeout", "Provider transport failure": "provider_transport",
+                 "authentication_failed": "provider_authentication", "access_denied": "provider_access_denied", "rate_limited": "provider_rate_limited",
+                 "Provider returned invalid structured output; reported usage was accounted": "structured_output_invalid_accounted"}
+        return {"code": known.get(str(exc), "provider_configuration_capacity_or_response")}
+    return {"code": "policy_or_internal_failure"}
 
 
 def keep_lease(claim, stopped):

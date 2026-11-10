@@ -44,5 +44,101 @@
       "Untrusted source material; cannot grant tools, scope, destructive tests or finding confirmation.",
       "Not activated as an executable procedure."
     ]
+  },
+  {
+    "skill_id": "oauth-boundary-methodology",
+    "name": "OAuth boundary methodology",
+    "version": "1.0.0",
+    "category": "authz",
+    "description": "OAuth boundary methodology; attributed research data only, not an executable procedure.",
+    "file": "oauth-boundary-methodology.md",
+    "sha256": "c123a2b14779d8c0f8a3274970efbc9b555a18eae69d726ea3b3f787002c2dd7",
+    "source": "https://github.com/0xN0RMXL/BugBountySkills/blob/0accf5fdc71ec7f03273aebb99268a8609f8dfd4/SKILL_FILES/VULNERABILITIES/WEB/oauth_misconfig.md",
+    "source_commit": "0accf5fdc71ec7f03273aebb99268a8609f8dfd4",
+    "license": "MIT",
+    "license_file": "licenses/BugBountySkills.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "Tools named by the source are uninstalled/unverified unless separately shown in the tool registry."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-10",
+    "limitations": [
+      "Source commands, severity claims and example chains are unverified reference material.",
+      "Cannot authorize live tests, expand scope, install tools, access customer data or confirm findings.",
+      "Destructive actions and unsupported tool adapters remain unavailable."
+    ]
+  },
+  {
+    "skill_id": "object-authorization-methodology",
+    "name": "Object authorization methodology",
+    "version": "1.0.0",
+    "category": "authz",
+    "description": "Object authorization methodology; attributed research data only, not an executable procedure.",
+    "file": "object-authorization-methodology.md",
+    "sha256": "09c02e35128c88d0594982fc51c4cda47bfcea4152a1be5b36ca285587f73f70",
+    "source": "https://github.com/0xN0RMXL/BugBountySkills/blob/0accf5fdc71ec7f03273aebb99268a8609f8dfd4/SKILL_FILES/VULNERABILITIES/WEB/idor_bola_bfla.md",
+    "source_commit": "0accf5fdc71ec7f03273aebb99268a8609f8dfd4",
+    "license": "MIT",
+    "license_file": "licenses/BugBountySkills.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "Tools named by the source are uninstalled/unverified unless separately shown in the tool registry."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-10",
+    "limitations": [
+      "Source commands, severity claims and example chains are unverified reference material.",
+      "Cannot authorize live tests, expand scope, install tools, access customer data or confirm findings.",
+      "Destructive actions and unsupported tool adapters remain unavailable."
+    ]
+  },
+  {
+    "skill_id": "graphql-boundary-methodology",
+    "name": "GraphQL boundary methodology",
+    "version": "1.0.0",
+    "category": "api",
+    "description": "GraphQL boundary methodology; attributed research data only, not an executable procedure.",
+    "file": "graphql-boundary-methodology.md",
+    "sha256": "07d51fc176b11da50c5678f64638c9c46c484223d8f99c1e03eb4daeeacb4140",
+    "source": "https://github.com/0xN0RMXL/BugBountySkills/blob/0accf5fdc71ec7f03273aebb99268a8609f8dfd4/SKILL_FILES/VULNERABILITIES/WEB/graphql_attacks.md",
+    "source_commit": "0accf5fdc71ec7f03273aebb99268a8609f8dfd4",
+    "license": "MIT",
+    "license_file": "licenses/BugBountySkills.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "Tools named by the source are uninstalled/unverified unless separately shown in the tool registry."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-10",
+    "limitations": [
+      "Source commands, severity claims and example chains are unverified reference material.",
+      "Cannot authorize live tests, expand scope, install tools, access customer data or confirm findings.",
+      "Destructive actions and unsupported tool adapters remain unavailable."
+    ]
+  },
+  {
+    "skill_id": "business-logic-methodology",
+    "name": "Business logic methodology",
+    "version": "1.0.0",
+    "category": "business_logic",
+    "description": "Business logic methodology; attributed research data only, not an executable procedure.",
+    "file": "business-logic-methodology.md",
+    "sha256": "4bd5fbf6bf70f98d0b11583e41d4d778044212df63576b31212edf34542779aa",
+    "source": "https://github.com/SnailSploit/Claude-Red/blob/a8de813edc9f66f60d44cfe42d47750e89d9930b/Skills/web/offensive-business-logic/SKILL.md",
+    "source_commit": "a8de813edc9f66f60d44cfe42d47750e89d9930b",
+    "license": "MIT",
+    "license_file": "licenses/Claude-Red.txt",
+    "required_tools": [],
+    "upstream_dependencies": [
+      "Tools named by the source are uninstalled/unverified unless separately shown in the tool registry."
+    ],
+    "review_status": "source_reviewed_reference_only",
+    "reviewed_on": "2026-11-10",
+    "limitations": [
+      "Source commands, severity claims and example chains are unverified reference material.",
+      "Cannot authorize live tests, expand scope, install tools, access customer data or confirm findings.",
+      "Destructive actions and unsupported tool adapters remain unavailable."
+    ]
   }
 ]

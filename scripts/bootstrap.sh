@@ -2,6 +2,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 scripts/prepare-secrets.py
-docker compose run --rm init
-docker compose up -d
-docker compose exec api atlas host bootstrap
+scripts/compose.sh run --rm init
+scripts/compose.sh up -d
+scripts/compose.sh exec api atlas host bootstrap

@@ -1,3 +1,13 @@
+# Current local release — 10 November 2026
+
+The candidate passed actual local image/Compose/TLS/pgvector, encrypted backup/restore and browser validation. No owner VPS or public deployment occurred. The workspace already has the real corpus and HackerAI configuration; source delivery deliberately excludes all runtime data and credentials. [Current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md) governs over older milestone text below.
+
+Use a separate `.env.production`, never the owner's raw `.env`. Production examples now declare the persistent 50M authority, 2M initial allocation, 200k validation protection, 90s provider and 150s gateway timeouts, and eight worker slots. Those defaults initialize a new ledger; they never reset or raise an existing one. If adopting an existing paid instance, transfer its complete database/ledger and matching keys, stop the old spending instance and verify totals before any new call.
+
+Password access is the private-operator default. Enrolled factors remain enforced; set `ATLAS_REQUIRE_MFA=true` for the stricter passkey/TOTP/recovery policy. Bootstrap tokens remain host-only and interactive. Configure and test both requested provider aliases explicitly; unknown prices remain flagged, and uncertain calls require verified billing reconciliation.
+
+The following is a manual fresh-host procedure, not a record of commands run on an owner VPS.
+
 # ATLAS V3 manual Ubuntu installation
 
 This guide installs the locally packaged source on a new Ubuntu 22.04/24.04 LTS VPS for controlled testing. No VPS deployment has been performed. Keep access on Tailscale or WireGuard until authentication, recovery, TLS and backups pass the checks below. The delivery package has no `.env`, database, owner account, provider key, encryption key, SSH material or runtime volume.

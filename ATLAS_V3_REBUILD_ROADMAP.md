@@ -1,24 +1,21 @@
-# ATLAS rebuild roadmap
+# ATLAS V3 completion roadmap
 
-## 10 November 2026 — current deployment work
+Updated 10 November 2026. Current owner instructions supersede the inherited greenfield and mandatory-MFA wording. No push, public deployment, VPS change or SBI target request occurred.
 
-[Verified through actual execution, 10 November 2026] Deployment completion is now authorized and in progress. The real public candidate was restored into the previously empty development corpus through the new identity-preserving package service: 21,012 records, 34,229 384-dimensional MiniLM vectors, 39,985 aliases, 21,359 hash-verified raw files and 150 explicitly withheld artifacts. A consistent pre-import DB backup was retained. Repeat restore verified the persisted fingerprint without replacing rows. All five existing labelled hybrid queries found the expected record in the top five through the application's own corpus service. The real pinned-model semantic test now passes. No corpus re-embedding or original-archive modification occurred.
+The authorized local implementation packages are complete: corpus restore/transfer, universal knowledge and skill interface, concurrent specialists, explainable dependencies/priorities, routing/circuits/budgets, tool management, research/chain artifacts, engagement chat and deployment assets. Evidence is consolidated in the [current acceptance report](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md).
 
-[Verified through actual execution] Corpus package rejection/atomicity, resumable API upload and restore jobs are covered by 17 focused tests; the combined corpus/knowledge/auth regression set passed 61 tests. Frontend TypeScript passed. Skill retrieval/search events now include direct task IDs; password-only authorized scope configuration no longer mandates optional MFA. A real provider, complete web-reference access, remaining features and full release/Compose acceptance are still pending. See docs/DEPLOYMENT_READINESS.md for the live checklist; prior missing-corpus/model statements below describe earlier milestones.
+| Milestone | Result / next acceptance |
+|---|---|
+| Corpus integration | Actual development and Docker PostgreSQL restore; original identities/model/vectors retained; no destructive migration |
+| Real provider | Both exact HackerAI models and JSON/tool probes; all eight initial roles, dynamic GraphQL tasks, corrected independent proof/control confirmation |
+| Budget/recovery | Persistent 50M cap and 2M allocation; 744,368 consumed, 282,255 held; no unknown-cost retry or automatic reset |
+| Web/CLI | Durable engagement flow, real API actions, persisted live state; production build and expanded browser/accessibility acceptance |
+| Deployment rehearsal | Actual local images/Compose/TLS/pgvector plus encrypted backup and isolated restore; final restart evidence accompanies delivery |
+| Owner private VPS | Requires actual destination/domain/VPN settings and explicit authorization; no remote infrastructure was changed |
+| Billing | Obtain verified model-specific pricing and billing evidence for five uncertain calls; reconcile explicitly without erasing history |
+| SBI smoke | Supply one observed, verified hostname under the authorized wildcard; then at most two root HEADs, no scans/fuzzing/exploitation |
+| Full-text intelligence | Recover original private/full-text assets or acquire permitted sources; current advisory count cannot stand in for full reports |
+| Optional scanner breadth | Implement one version-pinned typed scoped harness at a time, with rate/timeout/parser/fixture/verifier coverage before activation |
+| Skills | Continue selective source/version/dependency review; six MIT research references ship, executable procedures retain review/fixture gates |
 
-
-| Package | Status | Acceptance |
-|---|---|---|
-| Restore release, preserve refs, audit source/data | Complete for delivered files | Hashes/bundle/ZIP comparison; no original runtime DB supplied |
-| Mandatory eight-reference study | Partial | Five GitHub repositories inspected; three websites blocked; exhaustive skill content review not claimed |
-| Shared knowledge harness | Implemented and locally tested | Shared policy/tools/retrieval/feedback; real historical semantic acceptance remains blocked |
-| Reviewed skill references | Two installed as research-only references | Pinned hashes/licenses and selective retrieval; full libraries/executable adapters remain unapproved |
-| Durable event-driven swarm | Core implemented and locally tested | Independent concurrency, fenced claims, idempotent events, activation, recovery/cancellation/dead letters; needs production/scale evaluation |
-| Provider and tool management | Partial baseline | Central settings exist; routing/timeout/concurrency improvements and reviewed adapters need tests |
-| Optional-factor operator authentication | Implemented and tested | Password sessions, change/rotation/logout and optional/strict-factor policy; host-only recovery preserved |
-| Deep research, independent validation, chains | Partial baseline | Local proof/control replay preserved; connect swarm candidates without model-only confirmation |
-| Live swarm/operator UX | Partial, tested | Persisted task/discovery/retrieval/usage panel, instructions, agent count/model mode; conversational chat/recon console still pending |
-| Corpus restoration and real semantic acceptance | Externally blocked | Original sanitized corpus/model assets or permitted model download; validate counts/hashes without replacing or rebuilding original intelligence |
-| End-to-end lab and deployment | Pending | Label mock providers; real models require owner settings; VPS requires separate approval |
-
-Follow current source/tests, not historical green checkmarks. Full rebuild is not complete. Work checkpoints and exact commands/results belong in the implementation ledger and handoff.
+The exact historical 64-resource manifest remains unavailable. A current candidate registry is not a fabricated recovery of that manifest. Different-account uncommitted workspace storage has no supported restore/export mechanism exposed by this account's tools. Available Git history and supplied archives are preserved in the local source bundle. No GitHub push is authorized.
