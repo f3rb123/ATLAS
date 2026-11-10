@@ -166,6 +166,7 @@ def prepare(body, url, actor):
                 purpose="authentication",
                 task_id=body.task_id,
                 lease_token=body.lease_token,
+                request_deadline=body.request_deadline,
             ),
             actor,
             transport=request,

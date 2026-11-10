@@ -151,3 +151,35 @@ it is not automatically bundled. Gau covers archive discovery. The typed
 Waybackurls profile remains available for an independently authorized owner
 executable with explicit provenance and exact hash verification. This is an
 external licensing dependency, not claimed native distribution or execution.
+
+
+### Build checkpoint 3ecc792
+
+Python wheel, generated OpenAPI and production frontend compile succeeded.
+The API image built as sha256:3150982bf16499126057ecce98b4523906a1e81329ad7be77b8b8aeb63e1428b.
+Unused Docker build cache was reclaimed to preserve workspace capacity; database,
+corpus/model/key files and every data volume were retained. No new functional
+tests were run during build-first construction. Follow-up UI work makes notes/
+chains refresh, exposes independent review status and labels partial runs.
+
+
+### Integration context and configuration pins
+
+Exposed only safe, tested integration IDs and reviewed resource/tool names to
+agent contexts. Runs now pin integration versions; retesting or changing
+enablement invalidates stale bindings. Read-only metadata lookups use hostname
+policy matching without treating a wildcard apex as an authorized target.
+Source-only instructions are enforced by readiness before automatic target
+discovery. These changes remain under build-first steering.
+
+### Final integration and build handoff
+
+Propagated tool deadlines into target login, added cancellation/fence checks
+throughout rate-slot waits, and persist cancelled observations and audit events.
+Independent reviews now serialize root-cause deduplication, retain every fresh
+review and link related inconclusive results instead of suppressing a later
+confirmation. Backup restore verification covers the target-only encryption key
+without extracting or displaying it. Updated requirement/readiness documents to
+separate this release candidate from historical acceptance. Compilation,
+undefined-name and shell syntax checks passed; runtime acceptance is deferred
+under the owner's build-first instruction.

@@ -69,6 +69,9 @@ test('real owner bootstrap, passkey MFA, campaign, provider UI and corpus search
  const savedMessage=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/messages'));
  await page.getByRole('button',{name:'Save message',exact:true}).click();expect((await savedMessage).status()).toBe(200);
  await expect(page.getByRole('log',{name:'Engagement conversation'})).toContainText('Preserve sources');
+ await page.getByLabel('Enable autonomous web discovery and investigation').uncheck();
+ const webPreferences=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith('/preferences'));
+ await page.getByRole('button',{name:'Save web research settings',exact:true}).click();expect((await webPreferences).status()).toBe(200);
  await page.getByLabel('Concurrent agents (1–16)').fill('8');
  const preferences=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith('/preferences'));
  await page.getByRole('button',{name:'Save settings',exact:true}).click();expect((await preferences).status()).toBe(200);

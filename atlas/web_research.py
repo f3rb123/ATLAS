@@ -116,13 +116,17 @@ def scope_for(db, run):
     return Scope.model_validate(row.value()["scope"])
 
 
-def send(db, run, args, actor="web-research"):
+def send(db, run, args, actor="web-research", request_deadline=None):
     from .swarm import check_fence
 
     check_fence(db, run)
     claim = getattr(run, "_swarm_claim", (None, None))
     body = TargetRequest(
-        run_id=run.id, task_id=claim[0], lease_token=claim[1], **args.model_dump()
+        run_id=run.id,
+        task_id=claim[0],
+        lease_token=claim[1],
+        request_deadline=request_deadline,
+        **args.model_dump(),
     )
     # Commit before calling the relay: it independently reserves a rate slot and
     # checks current run state. Never hold a worker row lock across network I/O.
@@ -467,6 +471,24 @@ def check(db, run, args, record=True):
                 },
                 digest("web-verify:" + row.id),
             )
+            from .swarm import Discovery, publish_current
+
+            publish_current(
+                db,
+                run,
+                Discovery(
+                    kind="hypothesis",
+                    topic="idor" if args.kind == "authorization" else "general",
+                    title="Observed " + args.kind + " differential",
+                    text=(
+                        "Candidate behavior at "
+                        + args.url
+                        + "; independent confirmation is pending"
+                    )[:2000],
+                    citations=result["proof_ids"] + result["control_ids"],
+                    confidence=0.8,
+                ),
+            )
         result["candidate_id"] = row.id
     return result
 
@@ -767,7 +789,7 @@ def verify(db, run, task):
         set(review.evidence_ids) != set(evidence) or not review.counterfactual
     ):
         status = "inconclusive"
-    document(
+    review_row = document(
         db,
         "verification_review",
         run.owner,
@@ -791,16 +813,14 @@ def verify(db, run, task):
             }
         )
     )
-    existing = next(
-        (
-            f
-            for f in db.query(Document).filter_by(kind="finding", owner=run.owner)
-            if f.value().get("root_cause_key") == key
-        ),
-        None,
-    )
-    if existing:
-        return {"status": "duplicate", "finding_id": existing.id}
+    from .finding_reviews import matching_findings, record_duplicate
+
+    prior = matching_findings(db, run, key)
+    existing = next((f for f in prior if f.value().get("status") == "confirmed"), None)
+    if status == "confirmed" and existing:
+        return record_duplicate(
+            db, run, existing, candidate, fresh, review_row, "independent-web-verifier"
+        )
     title = metadata["title"]
     finding = document(
         db,
@@ -827,7 +847,8 @@ def verify(db, run, task):
             "discovery_agent": "web-research",
             "validation_agent": "independent-web-verifier",
             "source_references": candidate.value()["research_result"]["proof_ids"],
-            "related_findings": [],
+            "related_findings": [f.id for f in prior],
+            "independent_review_ids": [review_row.id],
             "timeline": [
                 {"at": now(), "actor": "independent-web-verifier", "status": status}
             ],
@@ -847,7 +868,12 @@ def verify(db, run, task):
         },
     )
     value = candidate.value()
-    value.update(status=status, finding_id=finding.id, independent_result=fresh)
+    value.update(
+        status=status,
+        finding_id=finding.id,
+        independent_result=fresh,
+        review_id=review_row.id,
+    )
     candidate.data = canonical(value)
     append(
         db,
@@ -856,5 +882,19 @@ def verify(db, run, task):
         "web_finding_reviewed",
         {"candidate_id": candidate.id, "finding_id": finding.id, "status": status},
         run.value()["campaign_id"],
+    )
+    from .swarm import Discovery, publish_current
+
+    publish_current(
+        db,
+        run,
+        Discovery(
+            kind="observation",
+            topic="general",
+            title="Independent review: " + status,
+            text=(title + "; finding " + finding.id)[:2000],
+            citations=evidence,
+            confidence=1,
+        ),
     )
     return {"status": status, "finding_id": finding.id, "candidate_id": candidate.id}

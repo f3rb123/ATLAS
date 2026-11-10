@@ -1069,6 +1069,13 @@ def run_start(
         "scanner_template_pins": __import__(
             "atlas.scanner_templates", fromlist=["pins"]
         ).pins(db, who[0].id),
+        "integration_pins": {
+            row.id: row.version
+            for row in db.query(Document).filter_by(
+                kind="tool_integration", owner=who[0].id
+            )
+            if row.value().get("enabled") and row.value().get("health") == "tested"
+        },
         "target_identities": {
             row.id: row.version
             for row in db.query(Document).filter_by(

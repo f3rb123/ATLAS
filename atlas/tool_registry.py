@@ -113,6 +113,10 @@ class MCPRead(Strict):
     uri: str = Field(min_length=1, max_length=2000)
 
 
+class MCPResourceList(Strict):
+    integration_id: str = Field(max_length=36)
+
+
 class MCPToolLookup(IntelligenceLookup):
     tool_name: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_.-]+$")
 
@@ -339,6 +343,7 @@ def test_connection(db, row, actor):
         )
         metadata = {"error_type": type(exc).__name__}
     row.data = canonical(value)
+    row.version += 1
     append(
         db,
         row.owner,
@@ -355,6 +360,7 @@ def enable(db, row, enabled, actor):
         raise Denied("Test the integration before enabling it")
     value["enabled"] = enabled
     row.data = canonical(value)
+    row.version += 1
     append(
         db,
         row.owner,
@@ -378,6 +384,25 @@ def execute(db, run, capability, args):
         raise Denied(
             "External intelligence and MCP collection are disabled in minimal target smoke tests"
         )
+    if (
+        "integration_pins" in run.value()
+        and run.value()["integration_pins"].get(row.id) != row.version
+    ):
+        raise Denied(
+            "Integration was not pinned to this run or its configuration changed"
+        )
+    if (
+        capability == "mcp_list_reviewed_resources"
+        and row.value()["adapter"] == "mcp_resources"
+    ):
+        return {
+            "integration_id": row.id,
+            "resources": row.value().get("reviewed_resource_uris", []),
+            "hostname_tools": [
+                t["name"] for t in row.value().get("verified_tools", [])
+            ],
+            "trust": "operator-reviewed metadata; no new authority",
+        }
     from .db import transaction_lock
 
     transaction_lock(db, "integration-quota:" + run.id)
@@ -415,7 +440,15 @@ def execute(db, run, capability, args):
             or digest(canonical(policy.value()["scope"])) != run.value()["policy_hash"]
         ):
             raise Denied("Frozen target policy integrity failed")
-        authorize(policy.value()["scope"], "https://" + hostname + "/", "HEAD")
+        from .network_research import scoped_origin
+
+        scoped_origin(
+            __import__("atlas.policy", fromlist=["Scope"]).Scope.model_validate(
+                policy.value()["scope"]
+            ),
+            hostname,
+            metadata=True,
+        )
         data = intelligence_read(row, hostname)
     elif (
         capability == "mcp_read_resource" and row.value()["adapter"] == "mcp_resources"
@@ -437,7 +470,15 @@ def execute(db, run, capability, args):
             or digest(canonical(policy.value()["scope"])) != run.value()["policy_hash"]
         ):
             raise Denied("Frozen target policy integrity failed")
-        authorize(policy.value()["scope"], "https://" + hostname + "/", "HEAD")
+        from .network_research import scoped_origin
+
+        scoped_origin(
+            __import__("atlas.policy", fromlist=["Scope"]).Scope.model_validate(
+                policy.value()["scope"]
+            ),
+            hostname,
+            metadata=True,
+        )
         if args.tool_name not in [
             t["name"] for t in row.value().get("verified_tools", [])
         ]:

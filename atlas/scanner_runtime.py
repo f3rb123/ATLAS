@@ -376,6 +376,7 @@ def _run(db, run, args):
     denials = []
     request_count = 0
     lock = threading.Lock()
+    job_deadline = min(time.time() + args.timeout_seconds, run.value()["deadline"])
     db.commit()
     with tempfile.TemporaryDirectory(prefix="atlas-scanner-") as temp:
         work = Path(temp) / "work"
@@ -432,7 +433,9 @@ def _run(db, run, args):
                                             "SOCKS destination is outside the pinned hostname"
                                         )
                                 value["hostname"] = hostname
-                            result = network_send(other, current, value)
+                            result = network_send(
+                                other, current, value, request_deadline=job_deadline
+                            )
                         elif args.tool in PASSIVE_TOOLS:
                             if value.get("method") != "GET" or value.get("body"):
                                 raise Denied(
@@ -446,6 +449,7 @@ def _run(db, run, args):
                                     "hostname": hostname,
                                     "url": value["url"],
                                 },
+                                request_deadline=job_deadline,
                             )
                         else:
                             request = WebRequest.model_validate(
@@ -456,7 +460,11 @@ def _run(db, run, args):
                                 }
                             )
                             result = send(
-                                other, current, request, "scanner:" + args.tool
+                                other,
+                                current,
+                                request,
+                                "scanner:" + args.tool,
+                                request_deadline=job_deadline,
                             )
                     with lock:
                         observations.append(result["observation_id"])

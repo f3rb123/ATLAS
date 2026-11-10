@@ -13,7 +13,7 @@ from .knowledge import (
     execute as knowledge_execute,
 )
 from .research_artifacts import ResearchNote, ChainLink, store_note, link_chain
-from .tool_registry import IntelligenceLookup, MCPRead, MCPToolLookup
+from .tool_registry import IntelligenceLookup, MCPRead, MCPToolLookup, MCPResourceList
 from .web_research import CAPABILITIES as WEB_CAPABILITIES, execute as web_execute
 from .scanner_runtime import ScannerInput
 from .web_experiments import HTTPExperiment
@@ -392,6 +392,7 @@ TOOLS = {
     "link_attack_chain": ("read_only", ChainLink),
     "external_intelligence_lookup": ("low_impact", IntelligenceLookup),
     "mcp_read_resource": ("read_only", MCPRead),
+    "mcp_list_reviewed_resources": ("read_only", MCPResourceList),
     "mcp_intelligence_lookup": ("low_impact", MCPToolLookup),
     "link_finding_to_reference": ("read_only", LinkInput),
     "pause_run": ("read_only", ReasonInput),
@@ -490,6 +491,7 @@ def broker(db, run, repo, name, payload, actor):
             "external_intelligence_lookup",
             "mcp_read_resource",
             "mcp_intelligence_lookup",
+            "mcp_list_reviewed_resources",
         ):
             if settings().gateway_url:
                 import httpx

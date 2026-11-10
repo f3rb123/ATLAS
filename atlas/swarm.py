@@ -432,19 +432,89 @@ def publish(db, run, task, discovery):
 def task_context(db, run, task):
     value = run.value()
     payload = json.loads(task.payload)
+    campaign = db.get(Document, value["campaign_id"]).value()
     context = {
         "task": {"id": task.id, "role": task.role, **payload},
         "operator_instructions": value.get("instructions", ""),
-        "campaign": db.get(Document, value["campaign_id"]).value(),
+        "campaign": {
+            key: campaign.get(key)
+            for key in (
+                "name",
+                "mode",
+                "target_url",
+                "assessment_profile",
+                "authorization_ref",
+            )
+        },
         "policy": db.get(Document, value["policy_id"]).value(),
         "constraint": "Research only. Return cited discoveries; no self-confirmed findings. Each task has an independent context.",
     }
+    context["available_integrations"] = [
+        {
+            "id": row.id,
+            "name": row.value()["name"],
+            "adapter": row.value()["adapter"],
+            "version": row.version,
+            "reviewed_resource_count": len(
+                row.value().get("reviewed_resource_uris", [])
+            ),
+            "reviewed_hostname_tools": [
+                item["name"] for item in row.value().get("verified_tools", [])
+            ][:5],
+        }
+        for id, version in value.get("integration_pins", {}).items()
+        if (row := db.get(Document, id))
+        and row.owner == run.owner
+        and row.version == version
+        and row.value().get("enabled")
+        and row.value().get("health") == "tested"
+    ][:6]
+    context["known_findings"] = [
+        {
+            "id": row.id,
+            "title": row.value()["title"],
+            "status": row.value()["status"],
+            "evidence_ids": row.value().get("evidence_ids", [])[:6],
+        }
+        for row in db.query(Document)
+        .filter_by(kind="finding", owner=run.owner)
+        .filter(Document.data.contains('"run_id":"' + run.id + '"'))
+        .order_by(Document.created.desc())
+        .limit(5)
+        if row.value().get("run_id") == run.id
+    ]
+    context["pending_candidates"] = [
+        {
+            "id": row.id,
+            "kind": row.kind,
+            "status": row.value().get("status"),
+            "claim": row.value().get("specification", {}).get("claim")
+            or row.value().get("research_result", {}).get("claim")
+            or row.value().get("research_result", {}).get("kind"),
+        }
+        for row in db.query(Document)
+        .filter(
+            Document.kind.in_(["web_candidate", "source_candidate"]),
+            Document.owner == run.owner,
+            Document.data.contains('"run_id":"' + run.id + '"'),
+        )
+        .order_by(Document.created.desc())
+        .limit(5)
+        if row.value().get("run_id") == run.id
+    ]
     if value.get("web", {}).get("enabled"):
         from .target_auth import safe as safe_target_identity
 
         context["web_assessment"] = {
             "target_url": value.get("target_url"),
-            "plan": value["web"],
+            "plan": {
+                key: item
+                for key, item in value["web"].items()
+                if key not in ("seed_urls", "authorization_cases")
+            },
+            "authorization_case_ids": [
+                case["id"] for case in value["web"].get("authorization_cases", [])
+            ],
             "identities": [
                 safe_target_identity(row)
                 for id in value.get("target_identities", {})
@@ -524,7 +594,61 @@ def task_context(db, run, task):
             if len(source["text"]) > 4000:
                 source["text"] = source["text"][:4000]
                 source["truncated"] = True
+    raw_policy = context["policy"]
+    raw_scope = raw_policy.get("scope", {})
+    from urllib.parse import urlsplit
+
+    focus_hosts = {
+        urlsplit(url).hostname
+        for url in [
+            value.get("target_url") or "",
+            *[row.get("url", "") for row in context.get("web_observations", [])],
+        ]
+        if url
+    }
+
+    def relevant(rule):
+        pattern = rule.get("host", "")
+        return any(
+            host == pattern
+            or (pattern.startswith("*.") and host and host.endswith("." + pattern[2:]))
+            for host in focus_hosts
+        )
+
+    view = {**raw_scope}
+    for key in ("allow", "deny"):
+        rules = raw_scope.get(key, [])
+        ordered = sorted(rules, key=lambda rule: not relevant(rule))
+        selected = []
+        for rule in ordered[:6]:
+            paths = [path for path in rule.get("paths", ["/"]) if len(path) <= 250][:4]
+            selected.append(
+                {
+                    **rule,
+                    "paths": paths,
+                    "ports": rule.get("ports", [443])[:20],
+                    "methods": rule.get("methods", ["GET", "HEAD"])[:8],
+                    "paths_omitted": max(0, len(rule.get("paths", ["/"])) - len(paths)),
+                }
+            )
+        view[key] = selected
+        view[key + "_omitted"] = max(0, len(rules) - len(selected))
+    context["policy"] = {
+        **raw_policy,
+        "scope": view,
+        "view": "Relevant excerpt only; the complete immutable policy is enforced by the relay, not by model text",
+    }
     return context, repo
+
+
+def publish_current(db, run, discovery):
+    claim = getattr(run, "_swarm_claim", None)
+    if not claim:
+        return None
+    task = db.get(SwarmTask, claim[0])
+    if not task or task.run_id != run.id or task.owner != run.owner:
+        raise Denied("No valid task for discovery publication")
+    return publish(db, run, task, discovery)
 
 
 def finish_run(db, run):

@@ -227,6 +227,23 @@ def execute(db, run, repo, spec, record=True):
                 },
                 digest("source-verify:" + id),
             )
+            from .swarm import Discovery, publish_current
+
+            publish_current(
+                db,
+                run,
+                Discovery(
+                    kind="hypothesis",
+                    topic="general",
+                    title=spec.claim[:200],
+                    text=(
+                        spec.claim
+                        + "; source experiment requires independent validation"
+                    )[:2000],
+                    citations=result["proof_ids"] + result["control_ids"],
+                    confidence=0.8,
+                ),
+            )
         result["candidate_id"] = id
     return result
 
@@ -308,17 +325,15 @@ def verify(db, run, repo, task):
         set(response.evidence_ids) != set(evidence) or not response.counterfactual
     ):
         status = "inconclusive"
-    key = digest(canonical({"snapshot": fresh["snapshot"], "claim": spec.claim}))
-    old = next(
-        (
-            f
-            for f in db.query(Document).filter_by(kind="finding", owner=run.owner)
-            if f.value().get("root_cause_key") == key
-        ),
-        None,
+    key = digest(
+        canonical(
+            {
+                "campaign": run.value()["campaign_id"],
+                "snapshot": fresh["snapshot"],
+                "claim": spec.claim,
+            }
+        )
     )
-    if old:
-        return {"status": "duplicate", "finding_id": old.id}
     review = document(
         db,
         "verification_review",
@@ -332,6 +347,14 @@ def verify(db, run, repo, task):
             "finding_confirmed": status == "confirmed",
         },
     )
+    from .finding_reviews import matching_findings, record_duplicate
+
+    prior = matching_findings(db, run, key)
+    old = next((f for f in prior if f.value().get("status") == "confirmed"), None)
+    if status == "confirmed" and old:
+        return record_duplicate(
+            db, run, old, row, fresh, review, "independent-source-verifier"
+        )
     finding = document(
         db,
         "finding",
@@ -363,7 +386,8 @@ def verify(db, run, repo, task):
             "source_references": spec.citations,
             "discovery_agent": "source-research",
             "validation_agent": "independent-source-verifier",
-            "related_findings": [],
+            "related_findings": [f.id for f in prior],
+            "independent_review_ids": [review.id],
             "timeline": [
                 {"at": now(), "actor": "independent-source-verifier", "status": status}
             ],
@@ -372,7 +396,12 @@ def verify(db, run, repo, task):
         },
     )
     value = row.value()
-    value.update(status=status, finding_id=finding.id, independent_result=fresh)
+    value.update(
+        status=status,
+        finding_id=finding.id,
+        independent_result=fresh,
+        review_id=review.id,
+    )
     row.data = canonical(value)
     append(
         db,

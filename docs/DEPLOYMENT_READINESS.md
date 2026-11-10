@@ -8,7 +8,7 @@
 > [the active checklist](AUTONOMOUS_BUILD_CHECKLIST.md).
 
 
-The implementation is a locally validated private deployment candidate. The final gate is documented in [current acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md). No remote/public deployment or GitHub push occurred.
+The current autonomous implementation is a private release candidate under build-first steering. It is not yet production-verified. [Current build status](AUTONOMOUS_BUILD_2026-11-10.md) records its deliverables. The table below describes the historical 486739d milestone in [prior acceptance](test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md); its results must not be transferred to newer code. No remote/public deployment or GitHub push occurred.
 
 | Work package | Evidence |
 |---|---|
@@ -22,6 +22,15 @@ The implementation is a locally validated private deployment candidate. The fina
 | Containers/operations | Actual local images, Compose/TLS, pgvector corpus, encrypted backup/isolated restore; final restart invariants and manifest accompany release |
 | Audits | Zero known Python/production npm advisories; source/history scans reviewed; no high Bandit finding |
 
-Remaining external inputs: verified prices and five billing outcomes; one specific verified SBI hostname; original private/full-text assets and exact historical manifest; actual owner-approved VPS/domain/VPN settings. Those inputs are not simulated. Current corpus is advisory/reference material, not 20,000 full-text bounty reports. No paid calls are planned after controlled acceptance.
+Current-code acceptance remains pending: authenticated login/session handling,
+native DNS/passive/connect bridges, source/general HTTP experiments, integration
+pins, full regression/UI flow, and container restart/backup/restore. The owner
+asked to build before further testing; no paid calls are being made in this phase.
+
+External inputs remain: verified prices and five billing outcomes; one specific
+verified SBI hostname for the optional restricted smoke test; original
+private/full-text assets and exact historical manifest; actual owner-approved
+VPS/domain/VPN settings. Those inputs are not simulated. Current corpus is
+advisory/reference material, not 20,000 full-text bounty reports.
 
 Preserve `.env`, the original corpus ZIP, model files, master key, application database, global consumption and held reservations. Never reset the ledger or create independently spending paid clones. No destructive original-data migration is authorized. Refer to the dated report for actual versus synthetic evidence and early failed attempts.

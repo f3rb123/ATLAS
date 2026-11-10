@@ -1,6 +1,7 @@
 """Canonical URLs and connection-time pinned DNS. Deny wins; no model authority."""
 
 import http.client, ipaddress, socket, ssl, os, re
+import time, threading
 from urllib.parse import urlsplit, urlunsplit, unquote
 from urllib.request import getproxies, proxy_bypass
 from pydantic import BaseModel, ConfigDict, Field
@@ -234,11 +235,18 @@ class PinnedConnection(http.client.HTTPConnection):
             relay = http.client.HTTPConnection(
                 u.hostname, u.port or 80, timeout=self.timeout
             )
+            self.proxy_connection = relay
             relay.set_tunnel(self.ip, self.port)
             relay.connect()
             self.sock = relay.sock
         else:
             self.sock = socket.create_connection((self.ip, self.port), self.timeout)
+        if getattr(self, "deadline_monotonic", None) is not None:
+            left = self.deadline_monotonic - time.monotonic()
+            if left <= 0:
+                self.sock.close()
+                raise TimeoutError("HTTP request deadline exceeded")
+            self.sock.settimeout(left)
         if self.tls:
             self.sock = ssl.create_default_context().wrap_socket(
                 self.sock, server_hostname=self.host
@@ -254,21 +262,60 @@ def request(
     max_bytes=1048576,
     timeout=15,
     return_redirect=False,
+    deadline=None,
 ):
     n, h, p, ips = authorize(scope, url, method)
+    if deadline is not None:
+        timeout = min(timeout, deadline - time.time())
+    if timeout <= 0:
+        raise TimeoutError("HTTP request deadline exceeded before dispatch")
     c = PinnedConnection(h, ips[0], p, n.startswith("https:"), timeout)
+    c.deadline_monotonic = time.monotonic() + timeout
+    expired = threading.Event()
+    response_sockets = []
+
+    def abort():
+        expired.set()
+        for connection in [
+            getattr(c, "sock", None),
+            getattr(getattr(c, "proxy_connection", None), "sock", None),
+            *response_sockets,
+        ]:
+            if connection:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except (OSError, AttributeError):
+                    pass
+
+    timer = threading.Timer(timeout, abort)
+    timer.daemon = True
+    timer.start()
     u = urlsplit(n)
     target = u.path + ("?" + u.query if u.query else "")
     try:
         c.request(method, target, body=body, headers=headers or {})
         r = c.getresponse()
+        reader_socket = getattr(
+            getattr(getattr(r, "fp", None), "raw", None), "_sock", None
+        )
+        if reader_socket:
+            response_sockets.append(reader_socket)
         if 300 <= r.status < 400 and not return_redirect:
             raise Denied(
                 "Redirect disabled; destination must be independently approved"
             )
         if r.getheader("Content-Encoding", "identity") != "identity":
             raise Denied("Compressed responses not accepted")
-        content = r.read(max_bytes + 1)
+        content = bytearray()
+        reader = getattr(r, "read1", r.read)
+        while len(content) <= max_bytes:
+            if expired.is_set():
+                raise TimeoutError("HTTP response deadline exceeded")
+            chunk = reader(min(65536, max_bytes + 1 - len(content)))
+            if not chunk:
+                break
+            content.extend(chunk)
+        content = bytes(content)
         if len(content) > max_bytes:
             raise Denied("Response size exceeded")
         received = dict(r.getheaders())
@@ -277,6 +324,13 @@ def request(
         ]
         if cookies:
             received["Set-Cookie"] = "\n".join(cookies)
+        if expired.is_set():
+            raise TimeoutError("HTTP response deadline exceeded")
         return r.status, received, content
+    except Exception:
+        if expired.is_set():
+            raise TimeoutError("HTTP request deadline exceeded") from None
+        raise
     finally:
+        timer.cancel()
         c.close()

@@ -20,7 +20,12 @@ from .policy import (
     match,
     request,
 )
-from .target_transport import TargetRequest, validate_run
+from .target_transport import (
+    TargetRequest,
+    fail_observation,
+    validate_run,
+    wait_for_dispatch,
+)
 from .vault import redact
 
 
@@ -36,6 +41,7 @@ class NetworkRequest(Strict):
     url: str | None = Field(default=None, max_length=4096)
     task_id: str | None = None
     lease_token: str | None = Field(default=None, repr=False)
+    request_deadline: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
 def scoped_origin(scope, hostname, port=None, metadata=False):
@@ -127,6 +133,7 @@ def execute(body, actor="network-relay"):
                 url="https://" + hostname + "/",
                 task_id=body.task_id,
                 lease_token=body.lease_token,
+                request_deadline=body.request_deadline,
             ),
         )
         if value.get("assessment_profile") == "smoke_readonly":
@@ -152,6 +159,8 @@ def execute(body, actor="network-relay"):
         slot = max(timestamp, value.get("next_request_at", 0))
         if slot + 5 > value["deadline"]:
             raise Denied("Run deadline prevents network dispatch")
+        if body.request_deadline is not None and slot >= body.request_deadline:
+            raise Denied("Tool deadline prevents reserved network request")
         value.update(
             http_requests=value.get("http_requests", 0) + 1,
             next_request_at=slot + scope.min_request_interval,
@@ -186,20 +195,20 @@ def execute(body, actor="network-relay"):
             value["campaign_id"],
         )
         db.commit()
-    while (remaining := slot - time.time()) > 0:
-        time.sleep(min(remaining, 0.25))
-    with session() as db:
-        run = db.get(Document, body.run_id, populate_existing=True)
-        validate_run(
-            db,
-            run,
+    try:
+        wait_for_dispatch(
             TargetRequest(
                 run_id=body.run_id,
                 url="https://" + hostname + "/",
                 task_id=body.task_id,
                 lease_token=body.lease_token,
+                request_deadline=body.request_deadline,
             ),
+            slot,
         )
+    except Exception as exc:
+        fail_observation(id, exc, actor, state="cancelled")
+        raise
     try:
         if body.kind == "metadata":
             destination = urlsplit(body.url).hostname
@@ -215,6 +224,9 @@ def execute(body, actor="network-relay"):
                 scope=transport_scope,
                 max_bytes=min(scope.max_response_bytes, 1024 * 1024),
                 timeout=10,
+                deadline=min(
+                    value["deadline"], body.request_deadline or value["deadline"]
+                ),
             )
             result = {
                 "status": status,
@@ -244,7 +256,10 @@ def execute(body, actor="network-relay"):
             connection = socket.socket(
                 socket.AF_INET6 if ":" in ips[0] else socket.AF_INET, socket.SOCK_STREAM
             )
-            connection.settimeout(2)
+            left = min(2, (body.request_deadline or value["deadline"]) - time.time())
+            if left <= 0:
+                raise Denied("Network tool deadline exhausted before connect")
+            connection.settimeout(left)
             try:
                 opened = connection.connect_ex((ips[0], port)) == 0
             finally:
@@ -261,16 +276,11 @@ def execute(body, actor="network-relay"):
             db.commit()
         return result
     except Exception as exc:
-        with session() as db:
-            row = db.get(Document, id)
-            value = row.value()
-            value.update(state="failed", error_type=type(exc).__name__)
-            row.data = canonical(value)
-            db.commit()
+        fail_observation(id, exc, actor)
         raise
 
 
-def send(db, run, body):
+def send(db, run, body, request_deadline=None):
     from .config import settings
     from .swarm import check_fence
     from pathlib import Path
@@ -278,7 +288,11 @@ def send(db, run, body):
     check_fence(db, run)
     claim = getattr(run, "_swarm_claim", (None, None))
     request = NetworkRequest(
-        run_id=run.id, task_id=claim[0], lease_token=claim[1], **body
+        run_id=run.id,
+        task_id=claim[0],
+        lease_token=claim[1],
+        request_deadline=request_deadline,
+        **body,
     )
     db.commit()
     if settings().relay_url:

@@ -30,7 +30,7 @@ def body():
     return {
         "name": "Controlled engagement",
         "target_url": "https://fixture.example.invalid/",
-        "instructions": "Review supplied evidence only; no live traffic.",
+        "instructions": "Review authorized fixture URLs and supplied evidence within scope.",
         "authorization_ref": "ATLAS-authored local fixture",
         "authorization_attested": True,
         "scope": {"allow": [{"host": "fixture.example.invalid"}]},

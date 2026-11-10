@@ -30,10 +30,15 @@ class TargetRequest(Strict):
     identity_id: str | None = None
     task_id: str | None = None
     lease_token: str | None = Field(default=None, repr=False)
+    request_deadline: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
 def validate_run(db, run, body):
+    if run is None:
+        raise Denied("Run unavailable")
     value = run.value()
+    if body.request_deadline is not None and body.request_deadline <= time.time():
+        raise Denied("Tool request deadline exhausted")
     kill = db.get(Document, "kill-switch", populate_existing=True)
     if kill and kill.value().get("enabled"):
         raise Denied("Emergency stop active")
@@ -63,6 +68,37 @@ def validate_run(db, run, body):
         raise Denied("Frozen policy integrity failure")
     scope = Scope.model_validate(policy.value()["scope"])
     return value, scope, campaign
+
+
+def wait_for_dispatch(body, slot):
+    """Recheck cancellation and fencing while a durable rate slot is queued."""
+    while True:
+        with session() as db:
+            validate_run(db, db.get(Document, body.run_id), body)
+        remaining = slot - time.time()
+        if remaining <= 0:
+            return
+        time.sleep(min(remaining, 0.25))
+
+
+def fail_observation(observation_id, exc, actor, state="failed"):
+    # Error messages can contain target data; persist only the exception class.
+    with session() as db:
+        row = db.get(Document, observation_id)
+        value = row.value()
+        value.update(
+            state=state, error_type=type(exc).__name__, finished_at=time.time()
+        )
+        row.data = canonical(value)
+        append(
+            db,
+            value["run_id"],
+            actor,
+            "target_request_" + state,
+            {"observation_id": observation_id, "error_type": type(exc).__name__},
+            value["campaign_id"],
+        )
+        db.commit()
 
 
 def execute(body, actor, transport, private_capture=None):
@@ -153,6 +189,8 @@ def execute(body, actor, transport, private_capture=None):
                 )
                 if slot + min(scope.max_seconds, 15) > value["deadline"]:
                     raise Denied("Insufficient run time for reserved request")
+                if body.request_deadline is not None and slot >= body.request_deadline:
+                    raise Denied("Tool deadline prevents reserved request")
                 value.update(
                     http_requests=value.get("http_requests", 0) + 1,
                     last_request=slot,
@@ -193,13 +231,16 @@ def execute(body, actor, transport, private_capture=None):
                 )
                 db.commit()
         # No SQL lock is held while waiting for a rate slot or doing network I/O.
-        while (remaining := slot - time.time()) > 0:
-            time.sleep(min(remaining, 0.25))
-        with session() as db:
-            current = db.get(Document, body.run_id, populate_existing=True)
-            validate_run(db, current, body)
-            # Re-check credential revocation/version immediately before dispatch.
-            credentials = resolve_headers(db, current, body.identity_id, url)
+        try:
+            wait_for_dispatch(body, slot)
+            with session() as db:
+                current = db.get(Document, body.run_id, populate_existing=True)
+                validate_run(db, current, body)
+                # Re-check credential revocation/version immediately before dispatch.
+                credentials = resolve_headers(db, current, body.identity_id, url)
+        except Exception as exc:
+            fail_observation(observation_id, exc, actor, state="cancelled")
+            raise
         try:
             status, headers, content = transport(
                 url,
@@ -210,14 +251,12 @@ def execute(body, actor, transport, private_capture=None):
                 max_bytes=scope.max_response_bytes,
                 timeout=min(scope.max_seconds, 15),
                 return_redirect=True,
+                deadline=min(
+                    value["deadline"], body.request_deadline or value["deadline"]
+                ),
             )
         except Exception as exc:
-            with session() as db:
-                row = db.get(Document, observation_id)
-                v = row.value()
-                v.update(state="failed", error_type=type(exc).__name__)
-                row.data = canonical(v)
-                db.commit()
+            fail_observation(observation_id, exc, actor)
             raise
         try:
             private_fragments = (

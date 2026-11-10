@@ -159,5 +159,22 @@ def execute(db, run, experiment, record=True):
                 },
                 digest("web-verify:" + id),
             )
+            from .swarm import Discovery, publish_current
+
+            publish_current(
+                db,
+                run,
+                Discovery(
+                    kind="hypothesis",
+                    topic="api",
+                    title=experiment.claim[:200],
+                    text=(
+                        experiment.claim
+                        + "; HTTP differential requires independent validation"
+                    )[:2000],
+                    citations=result["proof_ids"] + result["control_ids"],
+                    confidence=0.8,
+                ),
+            )
         result["candidate_id"] = id
     return result

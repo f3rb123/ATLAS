@@ -15,6 +15,8 @@ export default function Swarm({runId,load}:{runId:string,load:(path:string)=>Pro
   <p>{state.agent_count} concurrent task slots · {state.tasks.filter(t=>t.status==='running').length} running · {state.tasks.filter(t=>t.status==='completed').length} completed · {state.tasks.filter(t=>t.status==='dead_letter').length} need attention</p>
   <p>{state.usage.requests} recorded model responses · {state.usage.input_tokens} input / {state.usage.output_tokens} output tokens · ${state.usage.cost.toFixed(4)}{state.usage.includes_estimates?' (includes estimates)':''}</p>
   <p>Knowledge sources and discoveries below are research evidence. Confirmation requires independent reproduction.</p>
+  <h3>Independent validation</h3>
+  {state.tasks.filter(t=>['proof-validation','web-verification','source-verification'].includes(t.role)).map(t=><article className="card" key={t.id}><strong>{t.role} · {String(t.result.status||t.status)}</strong>{t.result.finding_id&&<p>Finding: {String(t.result.finding_id)}</p>}{t.result.reason&&<p>{String(t.result.reason)}</p>}</article>)}
   <h3>Agent responsibilities and tasks</h3>
   {state.tasks.map(t=><details key={t.id}><summary>{t.role} · {t.status} · attempt {t.attempts}</summary><p>{t.reason}</p><p>Dependencies: {t.dependency_state} · priority {t.priority_explanation?.score}</p><details><summary>Why this priority</summary><pre>{JSON.stringify(t.priority_explanation?.terms,null,2)}</pre></details>{t.parent_event&&<p>Triggered by discovery {t.parent_event}</p>}<pre>{JSON.stringify(t.result,null,2)}</pre></details>)}
   <h3>Discoveries, knowledge and skills</h3>

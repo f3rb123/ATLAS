@@ -39,13 +39,20 @@ class IntegrationRead(Strict):
 def integration_read(body: IntegrationRead, request: Request):
     from .db import SwarmTask
     from .swarm import active, check_fence
-    from .tool_registry import IntelligenceLookup, MCPRead, MCPToolLookup, execute
+    from .tool_registry import (
+        IntelligenceLookup,
+        MCPRead,
+        MCPToolLookup,
+        MCPResourceList,
+        execute,
+    )
 
     service = service_role(request)
     schemas = {
         "external_intelligence_lookup": IntelligenceLookup,
         "mcp_read_resource": MCPRead,
         "mcp_intelligence_lookup": MCPToolLookup,
+        "mcp_list_reviewed_resources": MCPResourceList,
     }
     if body.capability not in schemas:
         raise HTTPException(403)

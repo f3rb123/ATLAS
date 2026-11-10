@@ -284,6 +284,35 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             }
         )
         if len(prompt) > 64000:
+            for item in context.get("source", []):
+                if isinstance(item, dict) and isinstance(item.get("text"), str):
+                    item["text"] = item["text"][:1000]
+                    item["truncated"] = True
+            for item in context.get("web_observations", []):
+                if isinstance(item.get("response"), dict):
+                    item["response"]["body"] = item["response"].get("body", "")[:500]
+            prompt = canonical(
+                {
+                    "stage": stage,
+                    "context": context,
+                    "response_schema": schema.model_json_schema(),
+                }
+            )
+        while (
+            len(prompt) > 64000 and len(context.get("knowledge_tool_results", [])) > 1
+        ):
+            context["knowledge_tool_results"].pop(0)
+            context["context_note"] = (
+                "Earlier raw tool results remain in immutable evidence artifacts; use focused follow-ups."
+            )
+            prompt = canonical(
+                {
+                    "stage": stage,
+                    "context": context,
+                    "response_schema": schema.model_json_schema(),
+                }
+            )
+        if len(prompt) > 64000:
             raise ProviderError("Context size limit exceeded")
         if automatic:
             from .model_routing import rank

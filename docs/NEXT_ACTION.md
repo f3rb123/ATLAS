@@ -6,12 +6,11 @@ Continue docs/AUTONOMOUS_BUILD_CHECKLIST.md. Preserve the raw .env, all original
 data/models/keys and the single global ledger (744,368 used, 282,255 held before
 this continuation; no reset/increase or uncertain-call replay).
 
-Current implementation adds native web discovery/checks, target identities, fresh
-web verification and an isolated HTTP scanner bridge. 79 targeted regressions
-and four actual upstream-binary local-target tests passed. Remaining work:
-additional tool profiles, API/MCP fixture coverage, CLI/UI full flow, bounded
-real-model web-lab acceptance, complete regression/browser/container deployment
-validation, accurate docs and a new exact-source delivery package.
+Implementation includes native web discovery/checks, target identities and JSON
+login, independent HTTP/source experiments, isolated pinned scanner bridges,
+external intelligence/MCP, and the UI/CLI engagement-to-report flow. The earlier
+79 targeted regressions and four upstream-binary local-target checks cover only
+their recorded checkpoints. The current source is not covered by those counts.
 
 No broad SBI testing, GitHub push, publication, public/VPS deployment or destructive
 operation is authorized. The SBI smoke restriction is specific to our acceptance
@@ -24,3 +23,9 @@ operator evidence/UI/CLI and the current deployment guide are implemented.
 Continue code/build integration; do not start new tests or paid model calls yet.
 The prior 486739d artifacts are historical and must not be relabelled as this
 autonomous build. New exact artifacts follow the final source checkpoint.
+
+Finish the current wheel, frontend and both container images, record exact
+digests, package a source ZIP/Git bundle/checksums and save the reusable cloud
+draft. Final runtime/regression/real-provider acceptance is a subsequent gate;
+do not label this release candidate production-verified. Do not replay the five
+uncertain billed calls or start SBI traffic.
