@@ -114,8 +114,32 @@ with session() as db:
         if row.value().get("run_id") == run.id
         and row.value().get("tool_name") == "knowledge.search"
     ]
+    for item in db.query(SwarmTask).filter_by(run_id=run.id):
+        result = json.loads(item.result or "{}")
+        print(
+            json.dumps(
+                {
+                    "task": item.role,
+                    "status": item.status,
+                    "error_type": result.get("error_type"),
+                    "diagnostic_code": result.get("diagnostic_code"),
+                }
+            )
+        )
     for task in (
-        db.query(SwarmTask).filter_by(run_id=run.id, status="dead_letter").limit(3)
+        db.query(SwarmTask)
+        .filter_by(run_id=run.id, status="dead_letter")
+        .filter(
+            SwarmTask.role.notin_(
+                [
+                    "web-discovery",
+                    "web-verification",
+                    "source-verification",
+                    "proof-validation",
+                ]
+            )
+        )
+        .limit(3)
     ):
         current["cache"] = next(
             (row["payload"] for row in artifacts if row.get("task_id") == task.id), None
