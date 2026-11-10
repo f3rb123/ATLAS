@@ -7,7 +7,7 @@ from .config import settings
 from .db import session, Document
 from .policy import Strict
 from .gateway import ModelRequest, generate_budgeted, RunInterrupted, CapacityWait
-from .workflow import model_binding
+from .workflow import selected_model_binding
 
 app = FastAPI(docs_url=None, openapi_url=None)
 
@@ -18,6 +18,7 @@ class Generate(Strict):
     request: ModelRequest
     task_id: str | None = None
     lease_token: str | None = None
+    model_record_id: str | None = None
 
 
 def service_role(request):
@@ -54,7 +55,7 @@ def generate(body: Generate, request: Request):
         kill = db.get(Document, "kill-switch")
         if kill and kill.value()["enabled"]:
             raise HTTPException(403)
-        p, m = model_binding(db, run, body.alias)
+        p, m = selected_model_binding(db, run, body.alias, body.model_record_id)
         if body.task_id or body.lease_token:
             from .swarm import check_fence
 

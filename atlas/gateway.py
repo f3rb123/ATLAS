@@ -3,7 +3,7 @@
 import json, time, threading
 from typing import Literal, Protocol, AsyncIterator
 from urllib.parse import urlsplit, urlunsplit
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from .policy import Strict, Scope, Rule, normalize, addresses, request, Denied
 from .config import settings
 from .db import Document, document, canonical, append, uid, digest, now
@@ -74,6 +74,15 @@ class ModelInput(Strict):
     output_price: float = Field(default=30, ge=0, le=1000)
     pricing_status: Literal["unverified", "verified"] = "unverified"
     pricing_source: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def require_pricing_evidence(self):
+        if (
+            self.pricing_status == "verified"
+            and not (self.pricing_source or "").strip()
+        ):
+            raise ValueError("Verified pricing requires an attributable pricing source")
+        return self
 
 
 class ModelRequest(Strict):
@@ -178,7 +187,11 @@ def validate_provider_configuration(url):
     local = exact in settings().provider_local_allowlist
     if scheme != "https" and not local:
         raise Denied("HTTPS required; local inference requires operator allowlist")
-    if settings().provider_allowlist and exact not in settings().provider_allowlist and not local:
+    if (
+        settings().provider_allowlist
+        and exact not in settings().provider_allowlist
+        and not local
+    ):
         raise Denied("Provider not in operator egress allowlist")
     try:
         literal = ipaddress.ip_address(hostname)
@@ -459,9 +472,20 @@ class Adapter:
         for count in (inp, out):
             if count is not None and (type(count) is not int or count < 0):
                 raise ProviderError("Malformed usage counters")
-        cached = usage.get("prompt_cache_hit_tokens", usage.get("prompt_tokens_details", {}).get("cached_tokens", usage.get("input_tokens_details", {}).get("cached_tokens", 0)))
+        cached = usage.get(
+            "prompt_cache_hit_tokens",
+            usage.get("prompt_tokens_details", {}).get(
+                "cached_tokens",
+                usage.get("input_tokens_details", {}).get("cached_tokens", 0),
+            ),
+        )
         created = 0
-        reasoning = usage.get("completion_tokens_details", {}).get("reasoning_tokens", usage.get("output_tokens_details", {}).get("reasoning_tokens", usage.get("reasoning_tokens", 0)))
+        reasoning = usage.get("completion_tokens_details", {}).get(
+            "reasoning_tokens",
+            usage.get("output_tokens_details", {}).get(
+                "reasoning_tokens", usage.get("reasoning_tokens", 0)
+            ),
+        )
         reported_total = usage.get("total_tokens")
         if protocol == "anthropic_messages":
             cached = usage.get("cache_read_input_tokens", 0)
@@ -770,7 +794,11 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
             "budget-global",
         )
     v = d.value()
-    if provider_id and sum(r.get("provider_id") == provider_id for r in v["reserved"].values()) >= settings().max_provider_concurrency:
+    if (
+        provider_id
+        and sum(r.get("provider_id") == provider_id for r in v["reserved"].values())
+        >= settings().max_provider_concurrency
+    ):
         raise CapacityWait("Provider concurrency reserved by in-flight requests")
     month = now()[:7]
     spent = v["spent"].get(month, 0)
@@ -798,8 +826,12 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
             if rv.get("role_spent", {}).get(role, 0) + pending_role + ceiling > rv.get(
                 "role_budgets", {}
             ).get(role, rv["budget_limit"]):
-                if pending_role and rv.get("role_spent", {}).get(role, 0) + ceiling <= rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
-                    raise CapacityWait("Role budget capacity reserved by in-flight requests")
+                if pending_role and rv.get("role_spent", {}).get(
+                    role, 0
+                ) + ceiling <= rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
+                    raise CapacityWait(
+                        "Role budget capacity reserved by in-flight requests"
+                    )
                 raise ProviderError("Role budget exhausted")
         campaign = db.get(Document, rv.get("campaign_id", ""))
         if campaign:
@@ -821,10 +853,18 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
             if used + pending_campaign + ceiling > campaign.value().get(
                 "budget_limit", 10
             ):
-                if pending_campaign and used + ceiling <= campaign.value().get("budget_limit", 10):
-                    raise CapacityWait("Campaign budget capacity reserved by in-flight requests")
+                if pending_campaign and used + ceiling <= campaign.value().get(
+                    "budget_limit", 10
+                ):
+                    raise CapacityWait(
+                        "Campaign budget capacity reserved by in-flight requests"
+                    )
                 raise ProviderError("Campaign budget exhausted")
     id = uid()
+    if provider_id:
+        from .model_routing import require_dispatchable
+
+        require_dispatchable(db, provider_id)
     if token_ceiling:
         from .token_budget import reserve as reserve_tokens
 
@@ -859,12 +899,17 @@ def settle(db, reservation, cost, token_usage=None, not_dispatched=False):
 
 
 def token_usage(response):
-    return {"input_tokens": response.input_tokens, "output_tokens": response.output_tokens,
-            "cached_input_tokens": response.cached_input_tokens,
-            "cache_creation_input_tokens": response.cache_creation_input_tokens,
-            "reasoning_tokens": response.reasoning_tokens,
-            "total_tokens": response.total_tokens if response.total_tokens is not None else response.input_tokens + response.output_tokens,
-            "estimated": response.usage_estimated}
+    return {
+        "input_tokens": response.input_tokens,
+        "output_tokens": response.output_tokens,
+        "cached_input_tokens": response.cached_input_tokens,
+        "cache_creation_input_tokens": response.cache_creation_input_tokens,
+        "reasoning_tokens": response.reasoning_tokens,
+        "total_tokens": response.total_tokens
+        if response.total_tokens is not None
+        else response.input_tokens + response.output_tokens,
+        "estimated": response.usage_estimated,
+    }
 
 
 def generate_budgeted(db, provider, model, req, run, role="reasoning"):
@@ -893,7 +938,15 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
         raise ProviderError("Role budget exhausted")
     from .token_budget import ceiling as token_ceiling, mark_unknown
 
-    reservation = reserve(db, run.owner, run.id, estimate, role, provider_id=provider.id, token_ceiling=token_ceiling(req))
+    reservation = reserve(
+        db,
+        run.owner,
+        run.id,
+        estimate,
+        role,
+        provider_id=provider.id,
+        token_ceiling=token_ceiling(req),
+    )
     campaign = db.get(Document, rv["campaign_id"]) if rv.get("campaign_id") else None
     if campaign:
         campaign_id = rv["campaign_id"]
@@ -927,6 +980,9 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
         response = construct_adapter(provider).generate(req)
     except Exception:
         mark_unknown(db, reservation)
+        from .model_routing import outcome
+
+        outcome(db, provider, False)
         db.commit()
         raise
     cost = (
@@ -935,6 +991,9 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     ) / 1000000
     cost = max(cost, estimate) if response.usage_estimated else cost
     settle(db, reservation, cost, token_usage(response))
+    from .model_routing import outcome
+
+    outcome(db, provider, True, response.latency_ms)
     document(
         db,
         "usage",
@@ -952,12 +1011,18 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
             "cached_input_tokens": response.cached_input_tokens,
             "cache_creation_input_tokens": response.cache_creation_input_tokens,
             "reasoning_tokens": response.reasoning_tokens,
-            "total_tokens": response.total_tokens if response.total_tokens is not None else response.input_tokens + response.output_tokens,
+            "total_tokens": response.total_tokens
+            if response.total_tokens is not None
+            else response.input_tokens + response.output_tokens,
             "cost": cost,
-            "cost_confirmed": m.get("pricing_status") == "verified" and not response.usage_estimated,
+            "cost_confirmed": m.get("pricing_status") == "verified"
+            and not response.usage_estimated,
             "pricing_source": m.get("pricing_source"),
-            "actual_cost_usd": cost if m.get("pricing_status") == "verified" and not response.usage_estimated else None,
-            "estimated": response.usage_estimated or m.get("pricing_status") != "verified",
+            "actual_cost_usd": cost
+            if m.get("pricing_status") == "verified" and not response.usage_estimated
+            else None,
+            "estimated": response.usage_estimated
+            or m.get("pricing_status") != "verified",
             "token_usage_estimated": response.usage_estimated,
             "reservation_id": reservation,
         },

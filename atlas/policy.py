@@ -18,12 +18,23 @@ def readonly_target_request(url, method):
     if method.upper() not in ("GET", "HEAD"):
         raise Denied("State-changing target methods are unavailable")
     parsed = urlsplit(url)
-    if re.search(r"(?i)(?:^|/)(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:[/._-]|$)", unquote(parsed.path)):
+    if re.search(
+        r"(?i)(?:^|/)(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:[/._-]|$)",
+        unquote(parsed.path),
+    ):
         raise Denied("Destructive target routes are unavailable")
-    forbidden = re.compile(r"(?i)\b(?:delete\s+from|drop\s+(?:table|database|schema)|truncate\s+table|alter\s+table|shutdown|reboot|rm\s+-[a-z]*r)\b")
+    forbidden = re.compile(
+        r"(?i)\b(?:delete\s+from|drop\s+(?:table|database|schema)|truncate\s+table|alter\s+table|shutdown|reboot|rm\s+-(?=[a-z]*r)[a-z]+)\b"
+    )
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        if forbidden.search(value) or (key.lower() in {"action", "operation", "op", "cmd", "command", "method", "_method"}
-                                       and re.search(r"(?i)\b(?:delete|remove|drop|truncate|destroy|purge|wipe|shutdown|reboot)\b", value)):
+        if forbidden.search(value) or (
+            key.lower()
+            in {"action", "operation", "op", "cmd", "command", "method", "_method"}
+            and re.search(
+                r"(?i)\b(?:delete|remove|drop|truncate|destroy|purge|wipe|shutdown|reboot)\b",
+                value,
+            )
+        ):
             raise Denied("Destructive target parameters are unavailable")
 
 

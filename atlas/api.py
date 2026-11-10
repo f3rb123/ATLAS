@@ -118,6 +118,7 @@ def identity(request: Request, db=Depends(db_dep)):
                 "skills": "skill",
                 "budgets": "budget",
                 "model-configs": "model-config",
+                "model-routing": "model-config",
                 "corpus": "corpus",
                 "registries": "knowledge",
                 "knowledge": "knowledge",
@@ -152,7 +153,11 @@ def enrolled(request: Request, who=Depends(identity), db=Depends(db_dep)):
         raise HTTPException(403, "Complete MFA authentication/enrollment")
     if settings().require_mfa and not passkey:
         raise HTTPException(403, "Passkey enrollment required")
-    if settings().require_mfa and settings().production and not settings().passkey_only_recovery:
+    if (
+        settings().require_mfa
+        and settings().production
+        and not settings().passkey_only_recovery
+    ):
         if (
             not u.totp
             or not db.query(Document).filter_by(kind="recovery", owner=u.id).first()
@@ -320,8 +325,7 @@ def ready(db=Depends(db_dep)):
             u = db.query(User).filter_by(role="owner_admin").first()
             if not u:
                 raise HTTPException(503, "Owner setup required")
-            if (
-                settings().require_mfa and (
+            if settings().require_mfa and (
                 not db.query(Document).filter_by(kind="passkey", owner=u.id).first()
                 or (
                     not settings().passkey_only_recovery
@@ -331,7 +335,7 @@ def ready(db=Depends(db_dep)):
                         .filter_by(kind="recovery", owner=u.id)
                         .first()
                     )
-                ))
+                )
             ):
                 raise HTTPException(503, "Owner security enrollment required")
         return {"status": "ready"}
@@ -431,10 +435,17 @@ class PasswordChange(Strict):
 
 
 @app.post("/api/v1/auth/password")
-def password_change(body: PasswordChange, response: Response, who=Depends(enrolled), db=Depends(db_dep)):
+def password_change(
+    body: PasswordChange, response: Response, who=Depends(enrolled), db=Depends(db_dep)
+):
     auth.throttle(db, "password-change:" + who[0].id, 8)
-    result = auth.change_password(db, db.get(User, who[0].id), body.current_password,
-                                  body.new_password, mfa=bool(who[1].mfa))
+    result = auth.change_password(
+        db,
+        db.get(User, who[0].id),
+        body.current_password,
+        body.new_password,
+        mfa=bool(who[1].mfa),
+    )
     db.commit()
     return set_session(response, *result)
 
@@ -637,10 +648,14 @@ def campaign_create(body: CampaignInput, who=Depends(enrolled), db=Depends(db_de
     if not body.authorization_attested:
         raise Denied("Explicit authorization attestation required")
     if (
-        body.scope.allow
-        or body.scope.lab_networks
-        or body.mode in ("passive", "safe-active")
-    ) and (settings().require_mfa or who[1].mfa) and who[1].stepup < time.time() - 300:
+        (
+            body.scope.allow
+            or body.scope.lab_networks
+            or body.mode in ("passive", "safe-active")
+        )
+        and (settings().require_mfa or who[1].mfa)
+        and who[1].stepup < time.time() - 300
+    ):
         raise Denied("Recent WebAuthn step-up required for target scope authorization")
     v = body.model_dump()
     scope = v.pop("scope")
@@ -739,7 +754,7 @@ class RunInput(Strict):
     execution_mode: Literal["swarm", "legacy"] = "swarm"
     agent_count: int = Field(default=8, ge=1, le=16)
     instructions: str = Field(default="", max_length=4000)
-    model_mode: Literal["single", "capability"] = "single"
+    model_mode: Literal["single", "capability", "auto"] = "single"
     repository_id: str | None = None
     budget_limit: float = Field(default=1, gt=0, le=100)
     max_seconds: int = Field(default=1800, ge=30, le=86400)
@@ -796,7 +811,7 @@ def run_start(
             "model_version": model.version,
         }
     if body.model_mode == "single" and "reasoning" in models:
-        for alias in ("coding", "fast", "verifier"):
+        for alias in ("coding", "fast", "verifier", "deep_research"):
             models[alias] = {**models["reasoning"], "alias": alias}
     if any(alias not in models for alias in body.specialist_roles):
         raise Denied(
@@ -816,6 +831,10 @@ def run_start(
         "started_at": now(),
         "workflow_version": "2.0-swarm" if body.execution_mode == "swarm" else "1.0",
     }
+    if body.model_mode == "auto":
+        from .model_routing import approved_pools
+
+        v["routing_candidates"] = approved_pools(models)
     pinned_skills = [
         d
         for d in db.query(Document).filter_by(kind="skill", owner=who[0].id)
@@ -969,20 +988,53 @@ def provider_test(id: str, body: TestInput, who=Depends(stepup), db=Depends(db_d
             messages=[{"role": "user", "content": 'Return only {"ok":true} as JSON.'}],
             max_tokens=256,
             structured=body.mode != "tools",
-            tools=[{"type": "function", "function": {
-                "name": "acceptance_echo", "description": "Return a fixed local acceptance value; no external action.",
-                "parameters": {"type": "object", "properties": {"value": {"type": "string", "enum": ["atlas-local-probe"]}},
-                               "required": ["value"], "additionalProperties": False},
-            }}] if body.mode == "tools" else [],
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "acceptance_echo",
+                        "description": "Return a fixed local acceptance value; no external action.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "value": {
+                                    "type": "string",
+                                    "enum": ["atlas-local-probe"],
+                                }
+                            },
+                            "required": ["value"],
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            ]
+            if body.mode == "tools"
+            else [],
         )
         if body.mode == "tools":
-            req.messages = [{"role": "user", "content": "Call acceptance_echo with value atlas-local-probe. Do not perform any external action."}]
+            req.messages = [
+                {
+                    "role": "user",
+                    "content": "Call acceptance_echo with value atlas-local-probe. Do not perform any external action.",
+                }
+            ]
         from .gateway import reserve, settle, token_usage
         from .token_budget import ceiling, mark_unknown
 
         mv = m.value()
-        estimate = ((len(canonical(req.messages).encode("utf-8")) + 512) * mv["input_price"] + req.max_tokens * mv["output_price"]) / 1000000
-        reservation = reserve(db, who[0].id, "provider_test", estimate, "provider_probe", provider_id=d.id, token_ceiling=ceiling(req))
+        estimate = (
+            (len(canonical(req.messages).encode("utf-8")) + 512) * mv["input_price"]
+            + req.max_tokens * mv["output_price"]
+        ) / 1000000
+        reservation = reserve(
+            db,
+            who[0].id,
+            "provider_test",
+            estimate,
+            "provider_probe",
+            provider_id=d.id,
+            token_ceiling=ceiling(req),
+        )
         try:
             response = construct_adapter(d).generate(req)
         except Exception:
@@ -1002,14 +1054,32 @@ def provider_test(id: str, body: TestInput, who=Depends(stepup), db=Depends(db_d
             ),
             token_usage(response),
         )
-        document(db, "usage", who[0].id, {
-            "run_id": "provider_test", "provider_id": d.id, "model": mv["model_id"],
-            "role": "provider_probe", **token_usage(response), "reservation_id": reservation,
-            "cost": max(estimate, (response.input_tokens * mv["input_price"] + response.output_tokens * mv["output_price"]) / 1000000),
-            "cost_confirmed": mv.get("pricing_status") == "verified" and not response.usage_estimated,
-            "pricing_source": mv.get("pricing_source"),
-            "estimated": response.usage_estimated or mv.get("pricing_status") != "verified",
-        })
+        document(
+            db,
+            "usage",
+            who[0].id,
+            {
+                "run_id": "provider_test",
+                "provider_id": d.id,
+                "model": mv["model_id"],
+                "role": "provider_probe",
+                **token_usage(response),
+                "reservation_id": reservation,
+                "cost": max(
+                    estimate,
+                    (
+                        response.input_tokens * mv["input_price"]
+                        + response.output_tokens * mv["output_price"]
+                    )
+                    / 1000000,
+                ),
+                "cost_confirmed": mv.get("pricing_status") == "verified"
+                and not response.usage_estimated,
+                "pricing_source": mv.get("pricing_source"),
+                "estimated": response.usage_estimated
+                or mv.get("pricing_status") != "verified",
+            },
+        )
         # A failed capability probe is still a real, accounted provider response.
         db.commit()
         if body.mode == "structured" and response.structured_content != {"ok": True}:
@@ -1018,9 +1088,16 @@ def provider_test(id: str, body: TestInput, who=Depends(stepup), db=Depends(db_d
         if body.mode == "tools":
             calls = response.tool_calls
             functions = [c.get("function", c) for c in calls]
-            if not any(f.get("name") == "acceptance_echo" and
-                       (json.loads(f.get("arguments", "{}")) if isinstance(f.get("arguments", "{}"), str) else f.get("arguments")) == {"value": "atlas-local-probe"}
-                       for f in functions):
+            if not any(
+                f.get("name") == "acceptance_echo"
+                and (
+                    json.loads(f.get("arguments", "{}"))
+                    if isinstance(f.get("arguments", "{}"), str)
+                    else f.get("arguments")
+                )
+                == {"value": "atlas-local-probe"}
+                for f in functions
+            ):
                 raise ProviderError("Tool calling capability probe failed")
             v["verified_tools"] = True
             v["capability_status"] = "tool_calling_verified"
@@ -1028,8 +1105,11 @@ def provider_test(id: str, body: TestInput, who=Depends(stepup), db=Depends(db_d
             v["verified_structured"] = True
             v["capability_status"] = "structured_output_verified"
         m.data = canonical(v)
-        result = {"status": v["capability_status"], "token_usage": token_usage(response),
-                  "pricing_confirmed": mv.get("pricing_status") == "verified"}
+        result = {
+            "status": v["capability_status"],
+            "token_usage": token_usage(response),
+            "pricing_confirmed": mv.get("pricing_status") == "verified",
+        }
     else:
         result = construct_adapter(d).health_check()
     v = d.value()
@@ -1123,7 +1203,15 @@ def provider_delete(id: str, who=Depends(stepup), db=Depends(db_dep)):
 
 
 class AliasInput(Strict):
-    alias: Literal["fast", "reasoning", "verifier", "embedding", "vision", "coding"]
+    alias: Literal[
+        "fast",
+        "reasoning",
+        "deep_research",
+        "verifier",
+        "embedding",
+        "vision",
+        "coding",
+    ]
     provider_id: str
     model_id: str
 
@@ -1147,6 +1235,93 @@ def corpus_stats(who=Depends(enrolled), db=Depends(db_dep)):
     from .corpus import stats
 
     return stats(db, who[0].id)
+
+
+@app.get("/api/v1/model-routing")
+def model_routing_status(who=Depends(admin), db=Depends(db_dep)):
+    from .model_routing import circuit_state
+
+    aliases = []
+    for row in db.query(Document).filter_by(kind="alias", owner=who[0].id):
+        pin = row.value()
+        provider = own(db, pin["provider_id"], "provider", who[0].id)
+        model = own(db, pin["model_id"], "provider_model", who[0].id)
+        value = model.value()
+        aliases.append(
+            {
+                "alias": pin["alias"],
+                "provider_id": provider.id,
+                "provider_name": provider.value()["display_name"],
+                "model_record_id": model.id,
+                "model_id": value["model_id"],
+                "provider_version": provider.version,
+                "model_version": model.version,
+                "structured_verified": value.get("verified_structured", False),
+                "tools_verified": value.get("verified_tools", False),
+                "declared_context_window": value["context_window"],
+                "max_output_tokens": value["max_output_tokens"],
+                "pricing_status": value.get("pricing_status", "unverified"),
+                "circuit": circuit_state(db, provider.id),
+            }
+        )
+    return {
+        "modes": ["single", "capability", "auto"],
+        "aliases": aliases,
+        "automatic_pool": "only explicitly configured capability aliases, pinned when the run starts",
+        "fallback_policy": "pre_dispatch_only; unknown billing is retained and never blindly retried",
+        "embedding_policy": "existing pinned local MiniLM index remains independent of LLM routing",
+    }
+
+
+class RoutePreview(Strict):
+    alias: Literal["reasoning", "fast", "coding", "deep_research", "verifier"] = (
+        "reasoning"
+    )
+    question: str = Field(default="", max_length=2000)
+    input_bytes: int = Field(default=4000, ge=1, le=2000000)
+    output_tokens: int = Field(default=1024, ge=32, le=100000)
+
+
+@app.post("/api/v1/model-routing/preview")
+def model_routing_preview(body: RoutePreview, who=Depends(admin), db=Depends(db_dep)):
+    from types import SimpleNamespace
+    from .model_routing import approved_pools, rank
+
+    models = {}
+    for row in db.query(Document).filter_by(kind="alias", owner=who[0].id):
+        pin = row.value()
+        provider = own(db, pin["provider_id"], "provider", who[0].id)
+        model = own(db, pin["model_id"], "provider_model", who[0].id)
+        models[pin["alias"]] = {
+            **pin,
+            "provider_version": provider.version,
+            "model_version": model.version,
+        }
+    value = {"models": models, "routing_candidates": approved_pools(models)}
+    run = SimpleNamespace(owner=who[0].id, value=lambda: value)
+    ranked, rejected = rank(
+        db,
+        run,
+        body.alias,
+        "preview",
+        {"question": body.question},
+        body.input_bytes,
+        body.output_tokens,
+    )
+    return {
+        "candidates": [
+            {
+                "provider_id": p.id,
+                "model_record_id": m.id,
+                "model_id": m.value()["model_id"],
+                **reason,
+            }
+            for p, m, reason in ranked
+        ],
+        "rejected": rejected,
+        "inference_performed": False,
+        "tokens_consumed": 0,
+    }
 
 
 @app.get("/api/v1/corpus/sources")
@@ -1272,7 +1447,12 @@ def corpus_transfer_start(body: UploadInput, who=Depends(stepup), db=Depends(db_
     from .corpus_transfers import start, status
 
     row = start(db, who[0].id, body)
-    audit(db, who[0].id, "corpus_upload_started", {"id": row.id, "sha256": body.sha256, "bytes": body.byte_size})
+    audit(
+        db,
+        who[0].id,
+        "corpus_upload_started",
+        {"id": row.id, "sha256": body.sha256, "bytes": body.byte_size},
+    )
     db.commit()
     return status(row)
 
@@ -1281,10 +1461,31 @@ def corpus_transfer_start(body: UploadInput, who=Depends(stepup), db=Depends(db_
 def corpus_transfers(who=Depends(admin), db=Depends(db_dep)):
     from .corpus_transfers import status
 
-    uploads = [status(d) for d in db.query(Document).filter_by(kind="corpus_upload", owner=who[0].id).order_by(Document.created.desc()).limit(20)]
-    restored = [{"id": d.id, **{k: d.value().get(k) for k in ("sha256", "restored_at", "records", "vectors", "dimension", "embedding_model")},
-                 "withheld_raw_artifacts": len(d.value().get("withheld_raw_artifacts", []))}
-                for d in db.query(Document).filter_by(kind="corpus_transfer", owner="public")]
+    uploads = [
+        status(d)
+        for d in db.query(Document)
+        .filter_by(kind="corpus_upload", owner=who[0].id)
+        .order_by(Document.created.desc())
+        .limit(20)
+    ]
+    restored = [
+        {
+            "id": d.id,
+            **{
+                k: d.value().get(k)
+                for k in (
+                    "sha256",
+                    "restored_at",
+                    "records",
+                    "vectors",
+                    "dimension",
+                    "embedding_model",
+                )
+            },
+            "withheld_raw_artifacts": len(d.value().get("withheld_raw_artifacts", [])),
+        }
+        for d in db.query(Document).filter_by(kind="corpus_transfer", owner="public")
+    ]
     return {"uploads": uploads, "restored": restored}
 
 
@@ -1296,7 +1497,9 @@ def corpus_transfer_status(id: str, who=Depends(admin), db=Depends(db_dep)):
 
 
 @app.put("/api/v1/corpus/transfers/{id}/parts/{index}")
-async def corpus_transfer_part(id: str, index: int, request: Request, who=Depends(stepup), db=Depends(db_dep)):
+async def corpus_transfer_part(
+    id: str, index: int, request: Request, who=Depends(stepup), db=Depends(db_dep)
+):
     from .corpus_transfers import PART_BYTES, accept_part
 
     row = own(db, id, "corpus_upload", who[0].id)
@@ -1315,7 +1518,9 @@ def corpus_transfer_complete(id: str, who=Depends(stepup), db=Depends(db_dep)):
     from .corpus_transfers import finish
 
     result = finish(db, own(db, id, "corpus_upload", who[0].id, True))
-    audit(db, who[0].id, "corpus_restore_queued", {"id": id, "job_id": result["job_id"]})
+    audit(
+        db, who[0].id, "corpus_restore_queued", {"id": id, "job_id": result["job_id"]}
+    )
     db.commit()
     return result
 
@@ -1375,7 +1580,9 @@ def token_budget_status(who=Depends(admin), db=Depends(db_dep)):
 
 
 @app.patch("/api/v1/budgets/tokens")
-def token_budget_configure(body: TokenBudgetInput, who=Depends(stepup), db=Depends(db_dep)):
+def token_budget_configure(
+    body: TokenBudgetInput, who=Depends(stepup), db=Depends(db_dep)
+):
     from .token_budget import configure
 
     result = configure(db, body.cap, body.allocation, body.validation_reserve)
@@ -1395,7 +1602,9 @@ class TokenReconciliation(Strict):
 
 
 @app.post("/api/v1/budgets/tokens/reservations/{id}/reconcile")
-def token_budget_reconcile(id: str, body: TokenReconciliation, who=Depends(stepup), db=Depends(db_dep)):
+def token_budget_reconcile(
+    id: str, body: TokenReconciliation, who=Depends(stepup), db=Depends(db_dep)
+):
     from .token_budget import ledger, settle, summarize
 
     value = ledger(db).value()
@@ -1406,7 +1615,12 @@ def token_budget_reconcile(id: str, body: TokenReconciliation, who=Depends(stepu
     if run and run.kind == "run" and run.value()["status"] in ("queued", "running"):
         raise Denied("Stop the run before reconciling uncertain provider usage")
     settle(db, id, body.model_dump(exclude={"billing_reference"}))
-    audit(db, who[0].id, "token_billing_reconciled", {"id": id, "billing_reference": body.billing_reference})
+    audit(
+        db,
+        who[0].id,
+        "token_billing_reconciled",
+        {"id": id, "billing_reference": body.billing_reference},
+    )
     result = summarize(db)
     db.commit()
     return result
@@ -1541,16 +1755,28 @@ class FeedbackReview(Strict):
 
 
 @app.patch("/api/v1/knowledge-feedback/{id}/review")
-def review_feedback(id: str, body: FeedbackReview, who=Depends(admin), db=Depends(db_dep)):
+def review_feedback(
+    id: str, body: FeedbackReview, who=Depends(admin), db=Depends(db_dep)
+):
     from .vault import redact
 
     d = own(db, id, "knowledge_feedback", who[0].id, True)
     value = d.value()
     if value["status"] != "pending_review":
         raise Denied("Feedback was already reviewed")
-    value.update(status=body.decision, reviewed_by=who[0].id, reviewed_at=now(), review_reason=redact(body.reason))
+    value.update(
+        status=body.decision,
+        reviewed_by=who[0].id,
+        reviewed_at=now(),
+        review_reason=redact(body.reason),
+    )
     d.data = canonical(value)
-    audit(db, who[0].id, "knowledge_feedback_reviewed", {"id": id, "decision": body.decision})
+    audit(
+        db,
+        who[0].id,
+        "knowledge_feedback_reviewed",
+        {"id": id, "decision": body.decision},
+    )
     db.commit()
     # Reviewing usefulness is not proof of a vulnerability or a corpus rewrite.
     return {**expose(d), "trusted_source_modified": False}
@@ -1751,23 +1977,59 @@ def swarm_state(id: str, who=Depends(enrolled), db=Depends(db_dep)):
     from .db import SwarmTask
 
     run = own(db, id, "run", who[0].id)
-    task_rows = db.query(SwarmTask).filter_by(run_id=id, owner=who[0].id).order_by(SwarmTask.created_at).all()
-    events = [json.loads(e.payload) for e in db.query(Journal).filter_by(stream=id).order_by(Journal.sequence.desc()).limit(300)]
-    usage = [u.value() for u in db.query(Document).filter_by(kind="usage", owner=who[0].id) if u.value().get("run_id") == id]
+    task_rows = (
+        db.query(SwarmTask)
+        .filter_by(run_id=id, owner=who[0].id)
+        .order_by(SwarmTask.created_at)
+        .all()
+    )
+    events = [
+        json.loads(e.payload)
+        for e in db.query(Journal)
+        .filter_by(stream=id)
+        .order_by(Journal.sequence.desc())
+        .limit(300)
+    ]
+    usage = [
+        u.value()
+        for u in db.query(Document).filter_by(kind="usage", owner=who[0].id)
+        if u.value().get("run_id") == id
+    ]
     return {
-        "run_id": id, "execution_mode": run.value().get("execution_mode", "legacy"),
+        "run_id": id,
+        "execution_mode": run.value().get("execution_mode", "legacy"),
         "agent_count": run.value().get("agent_count", 1),
-        "tasks": [{"id": t.id, "role": t.role, "worker_kind": t.worker_kind,
-                   "status": t.status, "attempts": t.attempts, "priority": t.priority,
-                   "reason": json.loads(t.payload).get("reason"),
-                   "parent_event": json.loads(t.payload).get("event_id"),
-                   "result": {k: v for k, v in json.loads(t.result).items() if k in ("summary", "status", "reason", "error_type", "finding_id")},
-                   "updated_at": t.updated_at} for t in task_rows],
-        "events": [e for e in reversed(events) if e["type"].startswith(("swarm_", "knowledge_", "skill_"))],
-        "usage": {"input_tokens": sum(u["input_tokens"] for u in usage),
-                  "output_tokens": sum(u["output_tokens"] for u in usage),
-                  "cost": sum(u["cost"] for u in usage), "requests": len(usage),
-                  "includes_estimates": any(u.get("estimated") for u in usage)},
+        "tasks": [
+            {
+                "id": t.id,
+                "role": t.role,
+                "worker_kind": t.worker_kind,
+                "status": t.status,
+                "attempts": t.attempts,
+                "priority": t.priority,
+                "reason": json.loads(t.payload).get("reason"),
+                "parent_event": json.loads(t.payload).get("event_id"),
+                "result": {
+                    k: v
+                    for k, v in json.loads(t.result).items()
+                    if k in ("summary", "status", "reason", "error_type", "finding_id")
+                },
+                "updated_at": t.updated_at,
+            }
+            for t in task_rows
+        ],
+        "events": [
+            e
+            for e in reversed(events)
+            if e["type"].startswith(("swarm_", "knowledge_", "skill_", "model_route"))
+        ],
+        "usage": {
+            "input_tokens": sum(u["input_tokens"] for u in usage),
+            "output_tokens": sum(u["output_tokens"] for u in usage),
+            "cost": sum(u["cost"] for u in usage),
+            "requests": len(usage),
+            "includes_estimates": any(u.get("estimated") for u in usage),
+        },
     }
 
 
@@ -2059,7 +2321,11 @@ class CampaignEdit(Strict):
 def edit_campaign(
     id: str, body: CampaignEdit, who=Depends(enrolled), db=Depends(db_dep)
 ):
-    if body.budget_limit is not None and (settings().require_mfa or who[1].mfa) and who[1].stepup < time.time() - 300:
+    if (
+        body.budget_limit is not None
+        and (settings().require_mfa or who[1].mfa)
+        and who[1].stepup < time.time() - 300
+    ):
         raise Denied("Recent passkey step-up required to change campaign budget")
     d = own(db, id, "campaign", who[0].id, True)
     v = d.value()

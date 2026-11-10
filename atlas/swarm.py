@@ -487,6 +487,15 @@ def execute_one(worker_kind):
                 from .workflow import role
 
                 alias = "verifier" if worker_kind == "verify" else "reasoning"
+                requested_alias = {
+                    "deep-research": "deep_research",
+                    "coding-review": "coding",
+                    "fast-triage": "fast",
+                }.get(task.role)
+                if worker_kind != "verify" and requested_alias in run.value().get(
+                    "models", {}
+                ):
+                    alias = requested_alias
                 output = role(
                     db, run, "SWARM_TASK", context, alias, response_schema=SwarmOutput
                 )

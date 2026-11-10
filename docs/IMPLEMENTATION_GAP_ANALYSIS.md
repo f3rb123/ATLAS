@@ -1,3 +1,7 @@
+# Routing continuation — 10 November 2026
+
+Automatic pinned routing, persistent circuits, pre-dispatch fallback, preview UI and destructive-command guard are implemented and covered by 53 focused tests. Paid swarm acceptance and remaining completion packages are still pending; see DEPLOYMENT_READINESS.md.
+
 # Current owner requirements — 10 November 2026
 
 [Verified through actual execution, 10 November 2026] Deployment completion is now authorized and in progress. The real public candidate was restored into the previously empty development corpus through the new identity-preserving package service: 21,012 records, 34,229 384-dimensional MiniLM vectors, 39,985 aliases, 21,359 hash-verified raw files and 150 explicitly withheld artifacts. A consistent pre-import DB backup was retained. Repeat restore verified the persisted fingerprint without replacing rows. All five existing labelled hybrid queries found the expected record in the top five through the application's own corpus service. The real pinned-model semantic test now passes. No corpus re-embedding or original-archive modification occurred.
