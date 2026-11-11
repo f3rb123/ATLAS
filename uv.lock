@@ -108,8 +108,8 @@ wheels = [
 ]
 
 [[package]]
-name = "atlas-workbench"
-version = "3.0.0rc1"
+name = "atlas-skunk"
+version = "3.1.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -130,6 +130,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "redis" },
     { name = "reportlab" },
+    { name = "rich" },
     { name = "sqlalchemy" },
     { name = "typer" },
     { name = "uvicorn" },
@@ -168,6 +169,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "redis" },
     { name = "reportlab" },
+    { name = "rich" },
     { name = "sqlalchemy" },
     { name = "typer" },
     { name = "uvicorn" },

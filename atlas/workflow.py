@@ -154,9 +154,11 @@ def model_binding(db, run, alias):
         or m.version != pin["model_version"]
     ):
         raise ProviderError("Pinned provider/model version unavailable")
-    if not m.value().get("verified_structured"):
+    from .skunk_models import runtime_contract
+    managed_runtime = runtime_contract(p, m, run)
+    if not m.value().get("verified_structured") and not managed_runtime:
         raise ProviderError("Structured output capability unverified")
-    if p.value().get("health_status") != "tested":
+    if p.value().get("health_status") not in ("tested", "runtime_validated") and not managed_runtime:
         raise ProviderError("Test the configured provider/key before resuming research")
     return p, m
 
@@ -211,6 +213,8 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
         campaign_mode = db.get(Document, run.value()["campaign_id"]).value()["mode"]
 
         def allowed_tool(name):
+            if run.value().get("harness") == "skunk/1" and context.get("task", {}).get("role") == "report":
+                return name in CAPABILITIES or name == "store_research_note"
             if stage == "INDEPENDENT_SOURCE_EXPERIMENT":
                 return name in {
                     "list_repo_files",
@@ -257,6 +261,10 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
         )
     campaign = db.get(Document, run.value()["campaign_id"])
     system = SYSTEM + "\n" + GLOBAL_POLICY
+    if run.value().get("harness") == "skunk/1":
+        from .skunk_prompts import SYSTEM as SKUNK_SYSTEM, ROLES as SKUNK_ROLES
+        task_role = context.get("task", {}).get("role", alias)
+        system += "\n" + SKUNK_SYSTEM + "\nResponsibility: " + SKUNK_ROLES.get(task_role, "Investigate the assigned question with cited, non-destructive evidence.")
     if alias == "verifier" and schema is VerificationOutput:
         system = system.replace(
             "Never declare a finding confirmed.",
@@ -312,6 +320,10 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
                     "response_schema": schema.model_json_schema(),
                 }
             )
+        if run.value().get("harness") == "skunk/1" and len(prompt.encode("utf-8")) > 44000:
+            from .skunk_prompts import bounded_context
+            context = bounded_context(context)
+            prompt = canonical({"stage": stage, "context": context, "response_schema": schema.model_json_schema()})
         if len(prompt) > 64000:
             raise ProviderError("Context size limit exceeded")
         if automatic:
@@ -403,6 +415,9 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             )
             db.commit()
             continue
+        if run.value().get("harness") == "skunk/1":
+            from .skunk_models import record_valid_response
+            record_valid_response(db, provider, model, run)
         lookups = [
             t for t in output.tool_requests if t.name in CAPABILITIES or general_tools
         ]

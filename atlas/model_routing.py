@@ -72,6 +72,7 @@ def outcome(db, provider, success, latency_ms=None):
 
 
 def pin_documents(db, run, pin):
+    from .skunk_models import runtime_contract
     provider = db.get(Document, pin["provider_id"])
     model = db.get(Document, pin["model_id"])
     if (
@@ -85,8 +86,10 @@ def pin_documents(db, run, pin):
         or model.version != pin["model_version"]
         or not provider.value().get("enabled")
         or model.value().get("provider_id") != provider.id
-        or provider.value().get("health_status") != "tested"
-        or not model.value().get("verified_structured")
+        or (provider.value().get("health_status") not in ("tested", "runtime_validated")
+            and not runtime_contract(provider, model, run))
+        or (not model.value().get("verified_structured")
+            and not runtime_contract(provider, model, run))
     ):
         raise ProviderError(
             "Pinned provider/model is unavailable, changed, or unverified"

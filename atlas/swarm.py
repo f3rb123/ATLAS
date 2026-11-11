@@ -61,6 +61,8 @@ ROLES.update(
         "fast-triage": "Triage a narrow cited observation; do not confirm findings.",
     }
 )
+from .skunk_prompts import ROLES as SKUNK_ROLES
+ROLES.update(SKUNK_ROLES)
 TERMINAL = {"completed", "dead_letter", "cancelled"}
 MAX_TASKS = 128
 LEASE_SECONDS = 300
@@ -153,7 +155,8 @@ def initialize(db, run):
     count = run.value().get("agent_count", 8)
     if not 1 <= count <= 16:
         raise Denied("Agent count must be between 1 and 16")
-    roles = list(INITIAL_ROLES)
+    skunk = run.value().get("harness") == "skunk/1"
+    roles = list(SKUNK_ROLES if skunk else INITIAL_ROLES)
     discovery = None
     if run.value().get("web", {}).get("enabled") and run.value().get("target_url"):
         discovery = enqueue(
@@ -164,7 +167,7 @@ def initialize(db, run):
             digest("web-discovery"),
             priority=3,
         )
-    for i in range(count):
+    for i in range(max(len(roles), count) if skunk else count):
         name = roles[i % len(roles)]
         enqueue(
             db,
@@ -663,6 +666,15 @@ def finish_run(db, run):
         return
     from .reporting import generate_report
 
+    if value.get("harness") == "skunk/1" and not tasks(db, run.id).filter_by(dedupe_key=digest("skunk-final-report:" + run.id)).first():
+        final = enqueue(db, run, "report", {
+            "instructions": "All other tasks have settled. Read the final shared evidence and summarize confirmed findings, unresolved hypotheses, denied actions and coverage limitations. Never promote an unverified candidate.",
+            "reason": "Final report over the completed shared board",
+        }, digest("skunk-final-report:" + run.id), priority=0.1)
+        if final is not None:
+            db.commit()
+            return
+
     errors = tasks(db, run.id).filter_by(status="dead_letter").count()
     value.update(partial=bool(errors or value.get("tool_warnings")), task_errors=errors)
     run.data = canonical(value)
@@ -749,6 +761,9 @@ def execute_one(worker_kind):
                     "models", {}
                 ):
                     alias = requested_alias
+                if run.value().get("harness") == "skunk/1":
+                    from .skunk_prompts import alias_for
+                    alias = alias_for(task.role)
                 output = role(
                     db, run, "SWARM_TASK", context, alias, response_schema=SwarmOutput
                 )
@@ -901,6 +916,10 @@ def execute_one(worker_kind):
                 ):
                     task.status, task.available_at = "queued", time.time() + 1
                     task.attempts = max(0, task.attempts - 1)
+                elif value.get("harness") == "skunk/1" and value["status"] == "paused" and not isinstance(exc, (RunInterrupted, CapacityWait, Denied)):
+                    # A pause cannot make an uncertain/billed provider failure
+                    # eligible for automatic replay when the operator resumes.
+                    task.status = "dead_letter"
                 elif value["status"] == "paused" or (
                     isinstance(exc, RunInterrupted)
                     and value["status"] in ("queued", "running")

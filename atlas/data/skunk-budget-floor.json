@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "cap": 50000000,
+  "allocation": 2000000,
+  "validation_reserve": 200000,
+  "used": {
+    "cache_creation_input_tokens": 0,
+    "cached_input_tokens": 28730,
+    "input_tokens": 615895,
+    "output_tokens": 128473,
+    "reasoning_tokens": 54892,
+    "total_tokens": 744368
+  },
+  "validation_used": 110298,
+  "contract_violation": false,
+  "created_at": "2026-11-10T00:55:41.332505+00:00",
+  "reset_policy": "never_automatic",
+  "reserved": {
+    "historical-3c5b9970e6707111ac2f7f": {
+      "ceiling": 56741,
+      "role": "reasoning",
+      "state": "unknown_billing",
+      "owner": "historical-import",
+      "run_id": "historical-import",
+      "provider_id": "historical-import",
+      "created_at": "2026-11-10T02:15:24.479501+00:00",
+      "provenance": "conservative_public_budget_floor_not_private_billing_history"
+    },
+    "historical-ab971402c1bd5e3a0c063f": {
+      "ceiling": 57241,
+      "role": "coding",
+      "state": "unknown_billing",
+      "owner": "historical-import",
+      "run_id": "historical-import",
+      "provider_id": "historical-import",
+      "created_at": "2026-11-10T02:16:19.655080+00:00",
+      "provenance": "conservative_public_budget_floor_not_private_billing_history"
+    },
+    "historical-99fe3a332f92a830c34037": {
+      "ceiling": 55472,
+      "role": "reasoning",
+      "state": "unknown_billing",
+      "owner": "historical-import",
+      "run_id": "historical-import",
+      "provider_id": "historical-import",
+      "created_at": "2026-11-10T02:15:02.909039+00:00",
+      "provenance": "conservative_public_budget_floor_not_private_billing_history"
+    },
+    "historical-3d4c360b82dd2ada066167": {
+      "ceiling": 56796,
+      "role": "verifier",
+      "state": "unknown_billing",
+      "owner": "historical-import",
+      "run_id": "historical-import",
+      "provider_id": "historical-import",
+      "created_at": "2026-11-10T02:15:35.439160+00:00",
+      "provenance": "conservative_public_budget_floor_not_private_billing_history"
+    },
+    "historical-f2434e77436de37610ee38": {
+      "ceiling": 56005,
+      "role": "reasoning",
+      "state": "unknown_billing",
+      "owner": "historical-import",
+      "run_id": "historical-import",
+      "provider_id": "historical-import",
+      "created_at": "2026-11-10T02:15:00.988864+00:00",
+      "provenance": "conservative_public_budget_floor_not_private_billing_history"
+    }
+  },
+  "distribution_note": "Counters and uncertain ceilings only. Private identity mappings and billing history stay in the original database. Never release holds without verified evidence."
+}

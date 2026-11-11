@@ -19,15 +19,21 @@ def readonly_target_request(url, method):
     if method.upper() not in ("GET", "HEAD"):
         raise Denied("State-changing target methods are unavailable")
     parsed = urlsplit(url)
+    # These checks sit at the transport boundary, not in a model's prompt.
+    # Repeated decoding/comment removal closes common encoded SQL/route variants.
+    decoded_path = _guard_text(parsed.path)
+    if re.search(r"(?i)(?:^|[/_.-])(?:otp|totp|mfa|2fa|sms|one[-_]?time)(?:$|[/_.-])|(?:send|resend|request|deliver)[/_-]?(?:code|otp|sms|email)|(?:password|account)[/_-]?(?:reset|recover)|(?:verify|verification)[/_-]?(?:email|phone|code)", decoded_path):
+        raise Denied("OTP, messaging and reset workflows are unavailable; flooding is prohibited")
     if re.search(
         r"(?i)(?:^|/)_?(?:delete|remove|drop|truncate|destroy|purge|wipe|logout|signout|revoke|deactivate|shutdown|terminate|erase)(?:[/._-]|$)",
-        unquote(parsed.path),
+        decoded_path,
     ):
         raise Denied("Destructive target routes are unavailable")
     forbidden = re.compile(
         r"(?i)\b(?:delete|drop|truncate|alter|shutdown|reboot|remove-item|rmdir|unlink|rm\s+-(?=[a-z]*r)[a-z]+)\b"
     )
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        _guard_target_value(key, value)
         if key.lower() in {"cmd", "command", "exec", "shell", "powershell"}:
             raise Denied("Remote command interfaces are unavailable")
         if forbidden.search(value) or (
@@ -39,6 +45,27 @@ def readonly_target_request(url, method):
             )
         ):
             raise Denied("Destructive target parameters are unavailable")
+
+
+def _guard_text(value):
+    value = str(value)
+    for _ in range(4):
+        decoded = unquote(value)
+        if decoded == value:
+            break
+        value = decoded
+    value = re.sub(r"/\*.*?\*/", "", value, flags=re.S)
+    return value.replace("\\u0000", "").replace("\x00", "")
+
+
+def _guard_target_value(key, value):
+    text = _guard_text(value)
+    if re.search(r"(?i)\b(?:drop|truncate|delete|shutdown|reboot|unlink|rmdir)\b|\brm\s+-[a-z]*r", text):
+        raise Denied("Destructive database or deletion operation denied")
+    if re.search(r"(?i)(?:send|resend|request|deliver)[\s_/-]*(?:otp|sms|code|email)|\b(?:otp_flood|sms_bomb|email_bomb)\b", str(key) + " " + text):
+        raise Denied("OTP and messaging triggers are unavailable")
+    if str(key).lower() in ("action", "operation", "op", "method", "_method") and re.search(r"(?i)\b(?:delete|remove|destroy|purge|wipe|erase|drop|truncate)\b", text):
+        raise Denied("Destructive target action denied")
 
 
 class Strict(BaseModel):
@@ -78,7 +105,16 @@ def nondestructive_target_request(scope, url, method, body=None, purpose="naviga
     if body is not None:
         if len(body.encode()) > 16384:
             raise Denied("Target request body quota exceeded")
-        text = re.sub(r"/\*.*?\*/", " ", unquote(body), flags=re.S)
+        text = _guard_text(body)
+        _guard_target_value("body", text)
+        try:
+            fields = json.loads(body)
+        except (ValueError, TypeError):
+            from urllib.parse import parse_qsl
+            fields = dict(parse_qsl(body, keep_blank_values=True))
+        if isinstance(fields, dict):
+            for key, value in fields.items():
+                _guard_target_value(key, value)
         if re.search(
             r"(?i)\b(?:drop|truncate|delete|shutdown|reboot|unlink|rmdir)\b|\brm\s+-[a-z]*r",
             text,

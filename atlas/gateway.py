@@ -953,7 +953,8 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     rv = run.value()
     if req.max_tokens > m["max_output_tokens"]:
         raise ProviderError("Model output limit exceeded")
-    if req.structured and not m.get("verified_structured"):
+    from .skunk_models import runtime_contract
+    if req.structured and not m.get("verified_structured") and not runtime_contract(provider, model, run):
         raise ProviderError("Structured output capability unverified")
     if req.tools and not m.get("verified_tools"):
         raise ProviderError(

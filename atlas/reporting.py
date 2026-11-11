@@ -22,7 +22,7 @@ def render(findings, format):
                 "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
                 "runs": [
                     {
-                        "tool": {"driver": {"name": "ATLAS", "version": __version__}},
+                        "tool": {"driver": {"name": "SKUNK", "version": __version__}},
                         "results": [
                             {
                                 "ruleId": "ATLAS.evidence-confirmed",
@@ -40,7 +40,7 @@ def render(findings, format):
             }
         )
     lines = [
-        "# ATLAS evidence report",
+        "# SKUNK evidence report",
         "Generated " + now(),
         "Only confirmed findings are included. Severity is unscored unless reviewed.",
     ]
@@ -59,7 +59,7 @@ def render(findings, format):
     text = "\n\n".join(lines)
     if format == "html":
         return (
-            '<!doctype html><html><meta charset="utf-8"><title>ATLAS report</title><body><pre>'
+            '<!doctype html><html><meta charset="utf-8"><title>SKUNK report</title><body><pre>'
             + html.escape(text)
             + "</pre></body></html>"
         )
