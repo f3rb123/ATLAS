@@ -35,6 +35,8 @@ def main():
     shutil.copytree(args.python_runtime, root / "runtime", symlinks=True, ignore=ignore)
     target = root / "runtime/lib/python3.12/site-packages"
     shutil.copytree(args.site_packages, target, dirs_exist_ok=True, symlinks=True, ignore=ignore)
+    for name in ("_virtualenv.pth", "_virtualenv.py"):
+        (target / name).unlink(missing_ok=True)
     # Source, migrations and administration capabilities remain inspectable.
     shutil.copytree(source / "atlas", target / "atlas", dirs_exist_ok=True, ignore=ignore)
     shutil.copytree(source / "atlas", root / "app/atlas", ignore=ignore)
@@ -76,6 +78,8 @@ exec "$root/runtime/bin/python3" -I -m atlas.skunk "$@"
         "tests_run": False, "application_started": False, "model_calls": 0, "target_requests": 0,
         "runtime_acceptance": "not performed at owner request",
         "records": 21012, "vectors": 34229, "vector_dimensions": 384,
+        "default_agents": 8, "dashboard_port": 6777,
+        "models": {"orchestrator": "deepseek-v4-pro", "recon": "deepseek-v4-flash", "classifier": "deepseek-v4-pro", "exploit": "glm-5.3", "report": "deepseek-v4-flash"},
         "corpus_sha256": sha(args.corpus), "full_text_bounty_reports": 0,
         "host_requirements": ["Linux x86_64 with glibc", "Linux user namespaces", "bubblewrap for isolated scanners"],
         "token_included": False,

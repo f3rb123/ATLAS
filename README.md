@@ -1,3 +1,16 @@
+# SKUNK CLI continuation
+
+The current build adds the **SKUNK** CLI and animated live dashboard on port
+6777 while retaining the **atlas** internal package and services. Start with
+[SKUNK_CLI.md](docs/SKUNK_CLI.md) for the prebuilt install, HackerAI token variable,
+five preset model profiles, wildcard scope and report-folder commands.
+
+This continuation is build-only at the owner's request. No new application tests,
+provider calls or target scans were run; older acceptance results below do not
+verify the new CLI. Build identities are recorded in the delivered manifest.
+
+---
+
 # ATLAS V3
 
 The autonomous web/source continuation is packaged as **3.0.0rc1**, pending
@@ -24,16 +37,3 @@ For a fresh private installation, follow [DEPLOYMENT.md](docs/DEPLOYMENT.md) and
 Documentation: [audit](ATLAS_V3_FULL_AUDIT.md), [architecture](ATLAS_V3_TARGET_ARCHITECTURE.md), [knowledge](ATLAS_V3_KNOWLEDGE_ARCHITECTURE.md), [skills](ATLAS_V3_SKILLS_INVENTORY.md), [references](ATLAS_V3_REFERENCE_RESEARCH.md), [ledger](ATLAS_V3_IMPLEMENTATION_LEDGER.md), [roadmap](ATLAS_V3_REBUILD_ROADMAP.md), [handoff](ATLAS_HANDOFF.md).
 
 Models, imported references and chat messages cannot authorize actions. Unsupported scanner/exploitation adapters remain explicitly disabled. Findings require independently captured proof and secure-control evidence. Original full-text/private assets and the historical resource manifest remain recovery dependencies.
-# SKUNK CLI continuation
-
-The current build adds the **SKUNK** CLI and animated live dashboard on port
-6777 while retaining the **atlas** internal package and services. Start with
-[SKUNK_CLI.md](docs/SKUNK_CLI.md) for the prebuilt install, HackerAI token variable,
-five preset model profiles, wildcard scope and report-folder commands.
-
-This continuation is build-only at the owner's request. No new application tests,
-provider calls or target scans were run; older acceptance results below do not
-verify the new CLI. Build identities are recorded in the delivered manifest.
-
----
-

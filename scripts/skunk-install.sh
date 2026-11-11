@@ -12,7 +12,7 @@ if [[ -e "$prefix" ]]; then
   echo "Install destination already exists: $prefix. Choose a fresh destination; existing state was preserved." >&2
   exit 1
 fi
-if ! command -v bwrap >/dev/null; then
+if ! command -v bwrap >/dev/null || ! command -v git >/dev/null; then
   if [[ "$(id -u)" == 0 ]] && command -v apt-get >/dev/null; then
     apt-get update
     apt-get install -y --no-install-recommends bubblewrap git

@@ -1,3 +1,29 @@
+# SKUNK CLI continuation — 12 November 2026 (Asia/Calcutta)
+
+Owner requested a build-only SKUNK CLI with ATLAS internals, eight default slots,
+HackerAI presets, portable knowledge file, target-deletion/OTP guards and a classic
+port-6777 live dashboard. The internal-name correction from beetle to atlas is
+applied. Existing attached checkout baseline is a3824e5; release payload is the
+SHA256-pinned atlas-v3-prebuilt-20261110 archive. No application tests, model
+requests, target scans or VPS deployment have been run for this continuation.
+
+Work package 1: added the host CLI/controller, five model profiles, eight initial
+responsibilities, shared original knowledge restore/report import and animated
+skunk constellation. Reused existing policy, scoped relay, broker, durable task
+leases, discovery subscriptions and independent proof/control gate. Prompt
+excerpts are bounded to conservative model context; no larger model context is
+claimed. Actual role responses are schema-validated at runtime without synthetic
+startup probes or fabricated capability flags. Added immutable target guards for
+deletion/database actions and OTP/messaging/reset triggers, and prevented pause
+from turning unknown provider outcomes into automatic replay. Implemented classic
+loopback UI and controls, wildcard discovery, explicit incomplete coverage and
+Markdown/HTML/JSON exports. Implementation is not runtime acceptance evidence.
+
+Work package 2: prepared relocatable Python/native-tool packaging and checksum
+manifest generation. Original corpus bytes/IDs/vectors/model assets and budget
+floor are preserved. Installer does not launch the application or spend tokens.
+See SKUNK_CLI.md for install, token names, report-folder command and limits.
+
 # Persistent build log
 2026-11-08: Read the complete 2,214-line v1.4 specification. Confirmed greenfield checkout and toolchain. No existing tests or application files. No target traffic or VPS activity authorized. Created baseline, architecture and persistent tracking.
 Foundation checkpoint: uv lock/sync completed with workspace cache; initial Alembic migration applied. Four foundation tests passed (scope property tests/private destinations and envelope encryption identity/rotation). Implemented core persistence, strict scope parsing and pinned transport, authentication primitives, gateway adapters and corpus pipeline. Real CC-BY-4.0 GitHub advisory acquisition underway; provisional 17K+ structured records, zero full-text reports; quarantines under investigation. These modules are not yet fully acceptance-verified.
@@ -244,29 +270,3 @@ blocks Python network connections and reports only sizes/configuration errors.
 It cannot dispatch a model call or target tool. No application acceptance tests
 or live calls were performed while preparing it. Cause remains unconfirmed
 until the owner runs the diagnostic against the VPS.
-# SKUNK CLI continuation — 12 November 2026 (Asia/Calcutta)
-
-Owner requested a build-only SKUNK CLI with ATLAS internals, eight default slots,
-HackerAI presets, portable knowledge file, target-deletion/OTP guards and a classic
-port-6777 live dashboard. The internal-name correction from beetle to atlas is
-applied. Existing attached checkout baseline is a3824e5; release payload is the
-SHA256-pinned atlas-v3-prebuilt-20261110 archive. No application tests, model
-requests, target scans or VPS deployment have been run for this continuation.
-
-Work package 1: added the host CLI/controller, five model profiles, eight initial
-responsibilities, shared original knowledge restore/report import and animated
-skunk constellation. Reused existing policy, scoped relay, broker, durable task
-leases, discovery subscriptions and independent proof/control gate. Prompt
-excerpts are bounded to conservative model context; no larger model context is
-claimed. Actual role responses are schema-validated at runtime without synthetic
-startup probes or fabricated capability flags. Added immutable target guards for
-deletion/database actions and OTP/messaging/reset triggers, and prevented pause
-from turning unknown provider outcomes into automatic replay. Implemented classic
-loopback UI and controls, wildcard discovery, explicit incomplete coverage and
-Markdown/HTML/JSON exports. Implementation is not runtime acceptance evidence.
-
-Work package 2: prepared relocatable Python/native-tool packaging and checksum
-manifest generation. Original corpus bytes/IDs/vectors/model assets and budget
-floor are preserved. Installer does not launch the application or spend tokens.
-See SKUNK_CLI.md for install, token names, report-folder command and limits.
-

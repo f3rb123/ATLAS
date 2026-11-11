@@ -511,11 +511,8 @@ def _run(db, run, args):
                 }
             )
         )
-        python = (
-            "/usr/bin/python3"
-            if Path("/usr/bin/python3").exists()
-            else "/usr/local/bin/python3"
-        )
+        from .skunk_sandbox import interpreter
+        python, runtime_mount = interpreter()
         argv = [
             "bwrap",
             "--unshare-all",
@@ -560,6 +557,7 @@ def _run(db, run, args):
             "--setenv",
             "HOME",
             "/tmp",
+            *runtime_mount,
             python,
             "-I",
             "/scanner_child.py",

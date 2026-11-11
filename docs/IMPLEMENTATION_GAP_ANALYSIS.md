@@ -1,3 +1,21 @@
+# SKUNK CLI continuation status — 12 November 2026
+
+Current owner requested no testing. Status below means source implementation,
+not runtime verification; historical acceptance results elsewhere do not apply
+to this new CLI build.
+
+| Requirement | Current status |
+| --- | --- |
+| ATLAS internal package, SKUNK command and animated colorful dotted logo | Implemented; not runtime-tested |
+| Four scan flags, eight default concurrent slots | Implemented; not runtime-tested |
+| Preset HackerAI endpoint, exact token variable and five role/model mappings | Implemented; no model calls made |
+| Original 21,012 records / 34,229 vectors / pinned model file | Original artifact recovered and hash-preserved for packaging; new CLI restore not run |
+| Shared retrieval hook and extra report-folder import | Reuses existing service; CLI wiring implemented, not run |
+| Target deletion/database/OTP guardrails | Implemented at execution layer and in system prompts; not tested |
+| Port 6777 live findings/activity and pause/cancel/resume | Implemented; no browser/runtime tests run |
+| Linux x86_64 prebuilt runtime, tools and knowledge file | Packaging script implemented; final artifact identity recorded in BUILD-RECORD.json |
+| Exact parity and production acceptance | Not claimed; runtime acceptance deferred at owner request |
+
 # Requirement and release status — 10 November 2026
 
 > Autonomous build continuation: the owner clarified that SBI smoke restrictions
@@ -27,21 +45,3 @@
 All mandatory references, including AntiFox, are source-reviewed. Public RSS and public share endpoints resolved prior web access gaps. AGPL projects supplied architecture evidence only; no AGPL implementation was copied. No push, public deployment or destructive original-data operation occurred.
 
 Docker 29 compatibility: the owner's installer stopped before database initialization because the image store reports OCI manifest IDs. A configuration-digest verifier and non-overwriting repair are implemented; owner-host execution remains pending.
-# SKUNK CLI continuation status — 12 November 2026
-
-Current owner requested no testing. Status below means source implementation,
-not runtime verification; historical acceptance results elsewhere do not apply
-to this new CLI build.
-
-| Requirement | Current status |
-| --- | --- |
-| ATLAS internal package, SKUNK command and animated colorful dotted logo | Implemented; not runtime-tested |
-| Four scan flags, eight default concurrent slots | Implemented; not runtime-tested |
-| Preset HackerAI endpoint, exact token variable and five role/model mappings | Implemented; no model calls made |
-| Original 21,012 records / 34,229 vectors / pinned model file | Original artifact recovered and hash-preserved for packaging; new CLI restore not run |
-| Shared retrieval hook and extra report-folder import | Reuses existing service; CLI wiring implemented, not run |
-| Target deletion/database/OTP guardrails | Implemented at execution layer and in system prompts; not tested |
-| Port 6777 live findings/activity and pause/cancel/resume | Implemented; no browser/runtime tests run |
-| Linux x86_64 prebuilt runtime, tools and knowledge file | Packaging script implemented; final artifact identity recorded in BUILD-RECORD.json |
-| Exact parity and production acceptance | Not claimed; runtime acceptance deferred at owner request |
-

@@ -296,11 +296,8 @@ def execute_offline(repo, args, timeout=30):
     target = repo.path(args.test_path)
     if not target.exists():
         raise Denied("Test path missing")
-    python = (
-        "/usr/bin/python3"
-        if Path("/usr/bin/python3").exists()
-        else "/usr/local/bin/python3"
-    )
+    from .skunk_sandbox import interpreter
+    python, runtime_mount = interpreter()
     if args.template == "python_unittest":
         command = [
             python,
@@ -358,6 +355,7 @@ def execute_offline(repo, args, timeout=30):
         "--setenv",
         "PYTHONDONTWRITEBYTECODE",
         "1",
+        *runtime_mount,
     ]
     # Output to bounded file avoids PIPE RAM exhaustion; process creates a new session.
     import tempfile

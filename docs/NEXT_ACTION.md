@@ -1,3 +1,22 @@
+# Current continuation: SKUNK CLI — 12 November 2026
+
+The user selected SKUNK as the public CLI/logo and corrected the internal package
+name to atlas. Complete the build-only delivery on skunk/cli-20261112. No tests,
+live provider calls, target scans or VPS deployment are authorized for build-time
+acceptance in this continuation. Do not claim runtime success.
+
+Build output includes a relocatable Python runtime, all dependencies, eight
+pinned native tools and the unchanged original knowledge ZIP. See SKUNK_CLI.md.
+User sets `hacker-ai-token` or `HACKER_AI_TOKEN` in the terminal. Runtime role
+responses, not synthetic startup probes, validate structured capability. Existing
+database, budgets, holds and original corpus identities must remain preserved.
+The dashboard is loopback-only on port 6777; Tailscale Serve can privately expose
+it. Pause/resume/cancel operate on the controller's owned durable runs. The
+installer starts no target or model work. Source and package runtime behavior
+remain unverified until the owner chooses acceptance work.
+
+## Prior deployment support context (preserved)
+
 # Current support: failed assessment runs
 
 Docker 29 compatibility repair succeeded according to owner-provided VPS output.
@@ -22,22 +41,3 @@ for reported failed run0. Never reset/release uncertain holds/replay calls or
 create independent spending clones. GitHub delivery and Docker29 repair details
 are in docs/DELIVERY_PREBUILT_2026-11-10.md and the build log. No automatic tests,
 provider calls, targets or server mutations on startup.
-# Current continuation: SKUNK CLI — 12 November 2026
-
-The user selected SKUNK as the public CLI/logo and corrected the internal package
-name to atlas. Complete the build-only delivery on skunk/cli-20261112. No tests,
-live provider calls, target scans or VPS deployment are authorized for build-time
-acceptance in this continuation. Do not claim runtime success.
-
-Build output includes a relocatable Python runtime, all dependencies, eight
-pinned native tools and the unchanged original knowledge ZIP. See SKUNK_CLI.md.
-User sets `hacker-ai-token` or `HACKER_AI_TOKEN` in the terminal. Runtime role
-responses, not synthetic startup probes, validate structured capability. Existing
-database, budgets, holds and original corpus identities must remain preserved.
-The dashboard is loopback-only on port 6777; Tailscale Serve can privately expose
-it. Pause/resume/cancel operate on the controller's owned durable runs. The
-installer starts no target or model work. Source and package runtime behavior
-remain unverified until the owner chooses acceptance work.
-
-## Prior deployment support context (preserved)
-
