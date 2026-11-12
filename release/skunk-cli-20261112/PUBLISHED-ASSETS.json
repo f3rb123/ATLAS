@@ -1,0 +1,62 @@
+{
+  "product": "SKUNK",
+  "publication_date": "2026-11-12",
+  "timezone": "Asia/Calcutta",
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112",
+  "release_id": 442420969,
+  "tag": "skunk-v3.1.0rc1-20261112",
+  "tag_commit": "76ef8c73fdce45feffe7e8b33634f0f3af5da3a0",
+  "build_source_commit": "44000e6f8a9ece1f27cf0b269a52b6015d92620c",
+  "source_branch": "skunk/cli-20261112",
+  "source_url": "https://github.com/f3rb123/ATLAS/tree/skunk/cli-20261112",
+  "attachment_workflow": "https://github.com/f3rb123/ATLAS/actions/runs/43142386193",
+  "all_seven_sizes_and_sha256_verified": true,
+  "build_only": true,
+  "tests_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "assets": [
+    {
+      "name": "SHA256SUMS",
+      "size": 535,
+      "digest": "sha256:5ef1a9336f471eba59f420e2bbe9c8bc6e0c905e61ed92bab05f66ef87aad423",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/SHA256SUMS"
+    },
+    {
+      "name": "SKUNK-BUILD-RECORD.json",
+      "size": 981,
+      "digest": "sha256:d2ba8e8834676c49a7f56b1a4fcbd9c5bbb6d60f4d246099f5e8510a8330fda4",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/SKUNK-BUILD-RECORD.json"
+    },
+    {
+      "name": "SKUNK-README.md",
+      "size": 8815,
+      "digest": "sha256:27c5bb39fd26a0893030344853b19d54cd0b84c2e044bc270a9c5dcae548a308",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/SKUNK-README.md"
+    },
+    {
+      "name": "skunk-knowledge.zip",
+      "size": 256406385,
+      "digest": "sha256:e8b8643ed98119b23dd3b20e314654d3dca721e5ab53888271687dbefcb71025",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/skunk-knowledge.zip"
+    },
+    {
+      "name": "skunk-linux-x86_64.tar.gz",
+      "size": 528370151,
+      "digest": "sha256:41d4660e6c32c0823c76905894fac06cf667ef42f520944634bdaafd825c5abb",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/skunk-linux-x86_64.tar.gz"
+    },
+    {
+      "name": "skunk-linux-x86_64.tar.gz.sha256",
+      "size": 92,
+      "digest": "sha256:07912a00a16ef37a3885120a513e55078e13996f77654b33ad105cac096363d3",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/skunk-linux-x86_64.tar.gz.sha256"
+    },
+    {
+      "name": "skunk-source.tar.gz",
+      "size": 1331275,
+      "digest": "sha256:598388183532eb3f2fb08422a78694dc36718f1dc442a53673e28ef3fd2b0100",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-v3.1.0rc1-20261112/skunk-source.tar.gz"
+    }
+  ]
+}

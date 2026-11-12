@@ -14,3 +14,5 @@ Delivery files are under /workspace/library-files. The knowledge ZIP is inside t
 ## GitHub distribution
 
 Owner authorized uploading the source and all delivery files. Release: [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112). Source branch: `skunk/cli-20261112`. The original six files are unchanged; `SHA256SUMS` covers them. The release tag may include delivery-only documentation after the build commit. See `release/skunk-cli-20261112/RELEASE-NOTES.md` for download/install commands and exact file identities.
+
+Publication complete: seven attachments uploaded through [the attachment-only workflow](https://github.com/f3rb123/ATLAS/actions/runs/43142386193) and published as a prerelease. GitHub byte sizes and SHA256 digests match every local original. The release tag points to 76ef8c7 (delivery documentation); bundle/source archive remain built from 44000e6. See `release/skunk-cli-20261112/PUBLISHED-ASSETS.json`. Runtime acceptance is unchanged.

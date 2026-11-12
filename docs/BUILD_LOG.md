@@ -1,4 +1,6 @@
-# SKUNK GitHub delivery preparation — 12 November 2026
+# SKUNK GitHub delivery — 12 November 2026
+
+Published [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112) with the unchanged six original delivery files and SHA256SUMS. Source is on [skunk/cli-20261112](https://github.com/f3rb123/ATLAS/tree/skunk/cli-20261112). GitHub reports matching byte sizes and SHA256 digests for all seven attachments. Direct local release uploads returned HTTP401 at uploads.github.com; a dedicated [attachment-only workflow](https://github.com/f3rb123/ATLAS/actions/runs/43142386193) reassembled the exact original bytes and uploaded them with its repository token. No application tests or execution occurred. Temporary file-transport branch is removed after completion; no binary archives are added to the product source branch. Publication identities are recorded in release/skunk-cli-20261112/PUBLISHED-ASSETS.json.
 
 Owner requested uploading the completed source and built archives. Prepared the original six delivery files without rebuilding or modifying them, plus SHA256SUMS and release notes for `skunk-v3.1.0rc1-20261112`. Publishing uses the separate SKUNK source branch and a new prerelease; the earlier ATLAS release remains intact. No application, model, target or VPS execution is involved. Delivery documentation commits use `[skip ci]` to honor the no-tests instruction.
 

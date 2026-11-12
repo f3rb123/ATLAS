@@ -1,6 +1,6 @@
 # SKUNK GitHub delivery status — 12 November 2026
 
-Source publication and archive hosting are authorized. The original delivery files have matching build identities and a prepared SHA256SUMS manifest. Remote publication/verification is the current remaining delivery step. Runtime acceptance remains deferred; publication does not change that status.
+Source branch and [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112) are published. The original six delivery files are unchanged, with SHA256SUMS attached. All seven remote byte sizes and SHA256 digests match the local originals; see release/skunk-cli-20261112/PUBLISHED-ASSETS.json. Runtime acceptance remains deferred; archive publication does not verify application behavior.
 
 # SKUNK CLI continuation status — 12 November 2026
 
