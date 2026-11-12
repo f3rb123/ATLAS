@@ -1,5 +1,7 @@
 # SKUNK actual VPS token-budget diagnosis — 12 November 2026
 
+Delivery checkpoint: public SHA-pinned helper download is byte-identical to source ec2f647. Added a phone-friendly wrapper using the installed Python and verifying helper SHA256 before execution. Source compilation, shell parsing and download digests are checked; actual VPS mutation/recovery remains for the host command.
+
 Owner supplied actual TokenBudgetExhausted task errors, with HackerAI metadata HTTP200 and all three preset IDs listed. This identifies the local token quota/accounting gate; exact allocation-versus-contract branch still needs the requested compact budget totals. Repository is public again (verified metadata). Added compact host-only budget management and a standalone-compatible helper for current installed binaries. Explicit --add increases allocation within the existing cap, preserving consumption, all holds, validation reserve and contract flag. Mutations are refused for contract blocks, no headroom, active controller or missing existing ledger. Legacy failure-code mapping now labels TokenBudgetExhausted specifically. No automatic ledger reset, release of uncertain holds or model/target work is performed.
 
 # SKUNK retry/diagnostic update — 12 November 2026 (Asia/Calcutta)

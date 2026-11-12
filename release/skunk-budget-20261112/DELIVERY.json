@@ -1,0 +1,19 @@
+{
+  "operation": "SKUNK host token allocation management",
+  "date": "2026-11-12",
+  "timezone": "Asia/Calcutta",
+  "helper_source_commit": "ec2f6474691cf6ea9712d1e725eb2cb3ff25ab74",
+  "helper_url": "https://raw.githubusercontent.com/f3rb123/ATLAS/ec2f6474691cf6ea9712d1e725eb2cb3ff25ab74/atlas/skunk_budget.py",
+  "sha256": "fc9da0af87893c48b358e0e145ca546513bb192d95dd17f1d64182648fcbcb01",
+  "public_download_verified_byte_identical": true,
+  "requested_increment": 10000000,
+  "existing_cap_preserved": true,
+  "usage_and_holds_preserved": true,
+  "contract_flag_is_never_cleared": true,
+  "tests_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "vps_execution_performed": false,
+  "original_error_observed": "TokenBudgetExhausted",
+  "exact_vps_budget_totals": "awaiting compact server output"
+}
