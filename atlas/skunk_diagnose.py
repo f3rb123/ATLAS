@@ -94,7 +94,7 @@ def diagnose():
         "writes_performed": 0, "tasks": [], "models": [], "preflight": [],
         "note": "Cached context/configuration inspection is not proof that the API credential or provider is working."}
     from .skunk_usage import default_policy
-    report["hotfix"] = "resume4"
+    report["hotfix"] = "validate5"
     report["new_run_usage_policy"] = default_policy()
     report["new_run_model_presets"] = __import__("atlas.skunk_prompts", fromlist=["MODELS"]).MODELS
     report["new_run_model_call_cap"] = None
@@ -161,7 +161,9 @@ def diagnose():
                     break
 
             from . import workflow, knowledge
-            from .swarm import task_context, SwarmOutput
+            from .swarm import task_context, SwarmOutput, WebSwarmOutput
+            from .skunk_activity import collect
+            report["activity"] = collect(db, run)
             from .knowledge import CAPABILITIES, POLICY_VERSION, availability, skill_results, task_query
             saved_dispatch, saved_prepare = workflow.dispatch_role_request, knowledge.prepare_context
             current = {}
@@ -203,7 +205,8 @@ def diagnose():
                             break
                     try:
                         context, _ = task_context(db, run, task)
-                        workflow.role(db, run, "SWARM_TASK", context, alias, response_schema=SwarmOutput)
+                        schema = WebSwarmOutput if not value.get("repository_id") else SwarmOutput
+                        workflow.role(db, run, "SWARM_TASK", context, alias, response_schema=schema)
                     except InspectionComplete:
                         pass
                     except Exception as exc:

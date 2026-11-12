@@ -41,3 +41,14 @@ See [dated acceptance](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md), [
 | Web schema compatibility | Smaller web-only response model and exact correction constraints; known unambiguous JSON wrappers decoded, invalid/ambiguous objects rejected |
 | Explain no findings | Shared-board hypotheses visible as unverified leads; missing identities, unavailable experiment classes and incomplete wildcard inventory recorded |
 | Runtime acceptance | Pending owner VPS execution; zero paid model calls or live target requests during this build; no application test suite run |
+
+### SKUNK validation requirement status — 12 November 2026
+
+| Requirement | Status / evidence |
+|---|---|
+| Verifier contract matches schema | Reproduced conflicting old prompt before dispatch; corrected verdict-only contract and safe correction example |
+| Later discovered endpoints reach existing checks | Simulated same-scope discovery reproduced 2 old versus 3 repaired checks; later query endpoint included |
+| Distinguish hypotheses from execution | Read-only activity summary reports actual tool/check/replay/verdict counts; dashboard shows validation runs |
+| Preserve limits that define authorization | Scope, destructive/OTP prohibitions, identity provenance and independent proof/control gates retained; no new probe classes added |
+| Knowledge preservation | Archive, SQLite vectors, model cache and usage/holds unchanged by code update |
+| Live acceptance | Pending owner VPS activity output/trial; no paid calls, live target traffic or application suite during repair |

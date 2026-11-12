@@ -100,7 +100,7 @@ def activate(db, run):
         task.result = canonical({"resume_cycle": cycle, "prior_failure_history": history.id})
     value.update(status="queued", state="SWARM_RUNNING", resume_cycle=cycle,
         resumed_at=now(), deadline=time.time() + min(7200, max(60, int(value.get("max_seconds", 1800)))),
-        workflow_version="skunk-swarm/5", max_model_calls=None, max_tool_calls=None,
+        workflow_version="skunk-swarm/6", max_model_calls=None, max_tool_calls=None,
         usage_policy=default_policy(),
         retry_policy={"max_attempts": 4, "retry_unknown_billing": True,
             "authorization": "Host owner explicitly resumed saved work with separately billed bounded retries; prior reservations retained"})

@@ -6,8 +6,10 @@ function node(tag, value, className) { const result = document.createElement(tag
 function item(title, subtitle, label, state) { const row = node("div", undefined, "item"); const body = node("div"); body.append(node("p", title)); if (subtitle) body.append(node("small", subtitle)); row.append(body, node("span", label, "badge " + (state || ""))); return row; }
 function render(state) {
   nonce = state.control_nonce;
+  const validation = state.validation_activity || {};
+  const checkRuns = Object.values(validation.completed_registered_checks || {}).reduce((total, value) => total + value, 0) + (validation.completed_paired_experiments || 0);
   text("scope", state.scope); text("phase", state.phase);
-  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots · " + (state.model_calls || 0) + " AI calls · " + (state.token_usage_estimated ? "~" : "") + (state.tokens_used || 0) + " tokens");
+  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots · " + (state.model_calls || 0) + " AI calls · " + (state.token_usage_estimated ? "~" : "") + (state.tokens_used || 0) + " tokens · " + checkRuns + " registered validation runs");
   text("agent-count", state.agents + " slots");
   text("models", [...new Set(Object.values(state.models || {}))].join(" · "));
   text("elapsed", String(Math.floor(state.elapsed / 60)).padStart(2, "0") + ":" + String(state.elapsed % 60).padStart(2, "0"));
@@ -35,7 +37,7 @@ function render(state) {
   element("resume").disabled = busy || state.finished || state.phase !== "paused";
   element("cancel").disabled = busy || state.finished;
   if (state.error) text("notice", state.error);
-  else if (state.finished) text("notice", "Assessment " + state.phase + ". " + (state.coverage_notes || []).join(" ") + " Reports and incomplete coverage remain recorded locally.");
+  else if (state.finished) text("notice", "Assessment " + state.phase + ". " + (validation.explanation || "") + " " + (state.coverage_notes || []).join(" ") + " Reports and incomplete coverage remain recorded locally.");
 }
 async function refresh() { try { const response = await fetch("/api/state", {cache: "no-store"}); if (!response.ok) throw new Error("Controller unavailable"); render(await response.json()); } catch (_) { text("connection", "RECONNECTING"); } }
 for (const button of document.querySelectorAll("[data-action]")) button.addEventListener("click", async () => { if (busy) return; busy = true; try { const response = await fetch("/api/control", {method: "POST", headers: {"Content-Type": "application/json", "X-SKUNK-Control": nonce}, body: JSON.stringify({action: button.dataset.action})}); const result = await response.json(); if (!response.ok) throw new Error(result.error || "Control failed"); text("notice", "Control saved. In-flight requests may finish; new dispatches follow the selected state."); } catch (error) { text("notice", error.message); } finally { busy = false; refresh(); } });

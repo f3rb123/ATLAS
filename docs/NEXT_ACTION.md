@@ -1,3 +1,12 @@
+# SKUNK validate5 continuation — 12 November 2026
+
+Publish the cumulative validation update, verify all asset hashes and the pinned
+public installer, then provide `skunk diagnose --activity`. For the discovery
+handoff correction, the owner must explicitly start a fresh authorized --ra run;
+resume preserves completed discovery and old scope. Recoverable verifier failures
+can resume. Do not claim current VPS acceptance or guaranteed findings. Keep
+knowledge/vector files, credentials, billing history and scope guards.
+
 # SKUNK resume4 published — 12 November 2026
 
 The cumulative recovery update is published at

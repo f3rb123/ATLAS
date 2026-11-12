@@ -343,3 +343,25 @@ no application execution or tests ran on GitHub. Anonymous download verified the
 The updater verifies that hash before applying. Runtime recovery remains pending
 the owner's explicit VPS invocation. Source/default branch and repo visibility
 were not changed as part of publishing this release.
+
+### SKUNK validate5 root-cause repair — 12 November 2026
+
+The owner reports zero findings and asks for execution root causes. Offline
+reproduction captured a resume4 regression: verifier prompts included a research
+summary contract while the schema requires a verification verdict. This is now
+schema-specific. A second reproduction showed checks planned before scanner
+frontier enrichment: a later query endpoint missed its registered check. Planning
+now follows discovery and deduplicates specifications without broadening scope.
+
+Added `skunk diagnose --activity` and dashboard progress counts to distinguish
+requests/checks, hypotheses, replay candidates, verification tasks and verdicts.
+The summary emits counts/fixed explanations, no bodies/credentials/URLs. Full
+preflight now uses the actual worker web schema. Web task wording explicitly
+requests available bounded checks and records blocked prerequisites.
+
+Both defects reproduced and corrected with network blocked and synthetic
+in-memory SQL; actual requests stopped before dispatch or used a simulated
+broker. No application suite, paid model call, live target traffic or VPS action
+was performed. Current VPS causes still require its activity counts. Scope,
+destructive/OTP guards, identity provenance and evidence gates remain. See
+SKUNK_VALIDATION_UPDATE.md. Publication follows remote asset verification.

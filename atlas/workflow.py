@@ -304,8 +304,11 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             "No live traffic is allowed by this source-only task.",
             "Use the registered web capabilities to investigate the exact authorized target. Discovery, read-only HTTP, explicitly authorized read-query POST endpoints and owned test-account comparisons are available according to the frozen policy. Request targeted tools when evidence is missing. Publish cited observations and testable hypotheses; never expand scope or perform destructive actions. web.check queues independent replay for supported candidates. Use web.experiment for a concrete paired HTTP hypothesis with distinct proof/control requests, bounded assertions and an observable contrast; it also queues independent replay. Reflection, missing headers and GraphQL introspection alone are observations, not confirmed vulnerabilities.",
         )
-    if skunk and not run.value().get("repository_id"):
+    web_result = skunk and issubclass(schema, WebRoleOutput)
+    if web_result:
         system += "\nWeb result contract: return one JSON object, without prose, markdown or thinking tags. Use summary, observations, citations, hypotheses, discoveries (swarm only), tool_requests and specialist_requests. Omit empty optional fields. Do not emit surfaces, slices, threat_model, experiment_proposals or assumptions_note. experiment must be null; HTTP experiments belong only in tool_requests named web.experiment when it appears in tool_catalog. Use at most three tools, four discoveries and one specialist request. Keep titles under 160 characters and discovery text under 1200. Do not invent evidence to fill a required field. A minimal valid result is {\"summary\":\"A concise statement of what the supplied evidence establishes and what remains unresolved.\"}. Only request tools present in tool_catalog; an unavailable capability is a coverage limitation."
+    elif skunk and schema is VerificationOutput:
+        system += "\nVerification result contract: return only status, reason, counterfactual, evidence_ids and optional tool_requests, exactly as required by response_schema. Do not return a research summary or discoveries. Cite the exact supplied fresh proof and control IDs; a discussion or response difference alone does not establish impact. Return inconclusive when evidence is insufficient. Never invent evidence IDs or an observed result. The backend independently enforces proof/control binding."
     repairs = 0
     for round_number in range(4):
         context["reasoning_round"] = {
@@ -448,7 +451,7 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
                     "constraints": {k: v for k, v in e.get("ctx", {}).items() if k in {"max_length", "min_length", "expected", "pattern", "ge", "le"} and isinstance(v, (str, int, float))}}
                     for e in exc.errors(include_input=False)[:8]],
                 "prior_output_untrusted": result.content[:2500],
-                "minimal_valid_result": {"summary": "Summarize only the supplied evidence and state unresolved limitations."} if skunk and schema is not VerificationOutput else None,
+                "minimal_valid_result": {"summary": "Summarize only the supplied evidence and state unresolved limitations."} if web_result else {"status": "inconclusive", "reason": "The supplied evidence is insufficient to establish the claim.", "counterfactual": "A distinct secure control and fresh proof are required.", "evidence_ids": []} if skunk and schema is VerificationOutput else None,
                 "instruction": "Your completed, accounted response failed the exact JSON schema. Return only one valid JSON object with the listed fields/types. Omit extra fields and do not add tools or specialist requests. This is one bounded correction, not authorization to change scope or claims.",
             }
             append(

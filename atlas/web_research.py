@@ -506,55 +506,10 @@ def execute(db, run, name, args):
     raise Denied("Unknown web capability")
 
 
-def discover(db, run, task):
-    from .tools import broker
-    from .swarm import Discovery, publish
-
-    plan = WebPlan.model_validate(run.value().get("web", {}))
-    target = run.value()["target_url"]
-    # Spend bounded discovery capacity before paid reasoning. No agent/model
-    # can enable profiles that were absent from the frozen run configuration.
-    if run.value().get("assessment_profile") == "smoke_readonly":
-        return broker(
-            db, run, None, "web.request", {"url": target, "method": "HEAD"}, task.role
-        )
-    result = broker(
-        db,
-        run,
-        None,
-        "web.crawl",
-        {
-            "url": target,
-            "max_pages": plan.max_pages,
-            "max_depth": plan.max_depth,
-            "identity_id": plan.identity_ids[0] if plan.identity_ids else None,
-        },
-        task.role,
-    )
-    pages = result["result"]["pages"]
-    if not pages:
-        raise Denied(
-            "No authorized target response was collected; web discovery did not succeed"
-        )
+def planned_checks(pages, plan, scope):
+    """Plan registered checks after the entire bounded discovery frontier settles."""
     checks = []
-    scope = scope_for(db, run)
     for page in pages:
-        for topic in page["technologies"] or ["general"]:
-            publish(
-                db,
-                run,
-                task,
-                Discovery(
-                    kind="endpoint",
-                    topic=topic
-                    if topic in ["graphql", "oauth", "javascript", "api"]
-                    else "general",
-                    title="Observed web endpoint",
-                    text=page["url"],
-                    citations=[page["observation_id"]],
-                    confidence=1,
-                ),
-            )
         for parameter, _ in parse_qsl(
             urlsplit(page["url"]).query, keep_blank_values=True
         ):
@@ -604,6 +559,60 @@ def discover(db, run, task):
                 identity_id=plan.identity_ids[0] if plan.identity_ids else None,
             )
         )
+    unique = {}
+    for item in checks:
+        unique.setdefault(canonical(item.model_dump()), item)
+    return list(unique.values())
+
+
+def discover(db, run, task):
+    from .tools import broker
+    from .swarm import Discovery, publish
+
+    plan = WebPlan.model_validate(run.value().get("web", {}))
+    target = run.value()["target_url"]
+    # Spend bounded discovery capacity before paid reasoning. No agent/model
+    # can enable profiles that were absent from the frozen run configuration.
+    if run.value().get("assessment_profile") == "smoke_readonly":
+        return broker(
+            db, run, None, "web.request", {"url": target, "method": "HEAD"}, task.role
+        )
+    result = broker(
+        db,
+        run,
+        None,
+        "web.crawl",
+        {
+            "url": target,
+            "max_pages": plan.max_pages,
+            "max_depth": plan.max_depth,
+            "identity_id": plan.identity_ids[0] if plan.identity_ids else None,
+        },
+        task.role,
+    )
+    pages = result["result"]["pages"]
+    if not pages:
+        raise Denied(
+            "No authorized target response was collected; web discovery did not succeed"
+        )
+    scope = scope_for(db, run)
+    for page in pages:
+        for topic in page["technologies"] or ["general"]:
+            publish(
+                db,
+                run,
+                task,
+                Discovery(
+                    kind="endpoint",
+                    topic=topic
+                    if topic in ["graphql", "oauth", "javascript", "api"]
+                    else "general",
+                    title="Observed web endpoint",
+                    text=page["url"],
+                    citations=[page["observation_id"]],
+                    confidence=1,
+                ),
+            )
     outcomes = []
     frontier = []
     if any(
@@ -683,6 +692,13 @@ def discover(db, run, task):
             outcomes.append(
                 {"url_hash": digest(url), "status": "blocked", "reason": str(exc)[:150]}
             )
+    checks = planned_checks(pages, plan, scope)
+    append(db, run.id, task.role, "web_validation_plan", {
+        "pages_collected": len(pages), "checks_planned": len(checks),
+        "checks_scheduled": min(len(checks), plan.max_checks),
+        "classes": sorted({item.kind for item in checks}),
+        "scope_hash": run.value().get("policy_hash"),
+    }, run.value()["campaign_id"])
     for item in checks[: plan.max_checks]:
         try:
             outcomes.append(

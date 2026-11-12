@@ -98,6 +98,7 @@ class Controller:
         self.failed_runs = 0
         self.successful_runs = 0
         self.exported = set()
+        self.activity_cache = (None, 0, {})
         self.note("SKUNK controller starting; no live target work has begun")
 
     def note(self, text):
@@ -237,7 +238,7 @@ class Controller:
                 "offline_execution_approved": False, "tool_pins": pins(db, self.owner_id),
                 "scanner_template_pins": template_pins(db, self.owner_id), "target_identities": {},
                 "integration_pins": {}, "skills": [], "specialist_roles": ["coding", "fast"],
-                "workflow_version": "skunk-swarm/5", "usage_policy": default_policy(),
+                "workflow_version": "skunk-swarm/6", "usage_policy": default_policy(),
                 "followup_policy": {"max_depth": 2, "max_tasks_per_role": 8, "coalesce_after_pending": 2},
                 "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True,
                     "authorization": "Host owner explicitly accepts separately billed retries; preserve prior reservations"}}
@@ -427,12 +428,23 @@ class Controller:
                      "events": list(self.events[-100:]), "tasks": [], "findings": [], "candidates": [], "observations": 0,
                      "model_calls": 0, "failed_tasks": 0, "completed_tasks": 0,
                      "coverage_notes": [],
+                     "validation_activity": {},
                      "usage_policy": "tracking_only", "tokens_used": 0, "token_usage_estimated": False,
                      "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True}}
             ids = list(self.run_ids)
         if not self.owner_id or not ids:
             return state
         with session() as db:
+            if self.current_run:
+                current = db.get(Document, self.current_run)
+                if current and current.owner == self.owner_id and current.value().get("execution_mode") == "swarm":
+                    cached_id, cached_at, activity = self.activity_cache
+                    if cached_id != current.id or time.monotonic() - cached_at >= 5:
+                        from .skunk_activity import collect
+                        activity = collect(db, current)
+                        with self.lock:
+                            self.activity_cache = (current.id, time.monotonic(), activity)
+                    state["validation_activity"] = activity
             tasks = db.query(SwarmTask).filter(SwarmTask.run_id.in_(ids)).order_by(SwarmTask.created_at.desc()).limit(100).all()
             state["tasks"] = [{"id": t.id, "role": t.role, "status": t.status, "attempts": t.attempts,
                 "diagnostic": json.loads(t.result).get("diagnostic_code"),

@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
     prefix, package = args.prefix.resolve(), args.package.resolve()
     manifest = json.loads((package / "HOTFIX.json").read_text())
-    assert manifest["hotfix"] in ("retry1", "mod2", "flow3", "resume4") and manifest["internal_package"] == "atlas", "Unexpected patch identity"
+    assert manifest["hotfix"] in ("retry1", "mod2", "flow3", "resume4", "validate5") and manifest["internal_package"] == "atlas", "Unexpected patch identity"
     hotfix = manifest["hotfix"]
     record_path = prefix / "BUILD-RECORD.json"
     record = json.loads(record_path.read_text())
@@ -82,7 +82,7 @@ def main():
         record["installed_hotfix"] = {"id": manifest["hotfix"], "source_commit": manifest["source_commit"],
             "applied_at": datetime.now(timezone.utc).isoformat(), "application_test_suites_run": False,
             "offline_diagnostics_run": manifest.get("offline_diagnostics_run", False)}
-        if hotfix in ("mod2", "flow3", "resume4"):
+        if hotfix in ("mod2", "flow3", "resume4", "validate5"):
             record["installed_hotfix"].update(model_presets=manifest["model_presets"], usage_policy=manifest["new_run_usage_policy"])
         replace(record_path, (json.dumps(record, indent=2) + "\n").encode())
     except BaseException:
@@ -94,14 +94,17 @@ def main():
         replace(record_path, (backup / "BUILD-RECORD.json").read_bytes())
         raise
     print("Installed " + hotfix + ". Existing database, knowledge, credentials and token holds were preserved.")
-    if hotfix in ("mod2", "flow3", "resume4"):
+    if hotfix in ("mod2", "flow3", "resume4", "validate5"):
         print("New SKUNK runs use deepseek-v4-mod / glm-5.3-mod and track usage without local token or spending caps.")
     if hotfix == "flow3":
         print("Run-wide model/tool call caps are disabled; context packing and specialist coalescing are updated.")
     print("Inspect the previous run: skunk diagnose")
-    if hotfix == "resume4":
+    if hotfix in ("resume4", "validate5"):
         print("Recover the latest saved assessment: skunk resume --latest")
         print("Only recoverable unfinished tasks retry. Completed tasks, frozen scope, old reports and billing history stay preserved.")
+        if hotfix == "validate5":
+            print("See actual validation progress: skunk diagnose --activity")
+            print("A completed discovery task does not repeat on resume. A new --scope ... --ra run uses the repaired discovery/check planning.")
     else:
         print("Then start your chosen scope again; new runs have bounded automatic retries.")
     print("Code backup: " + str(backup))

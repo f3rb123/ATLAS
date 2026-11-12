@@ -107,7 +107,11 @@ def main():
         if args and args[0] == "diagnose":
             from .skunk_diagnose import diagnose
             try:
-                result = diagnose()
+                if "--activity" in args[1:]:
+                    from .skunk_activity import inspect
+                    result = inspect()
+                else:
+                    result = diagnose()
                 if "--provider" in args[1:]:
                     from .skunk_diagnose import provider_diagnosis
                     result["provider_metadata_check"] = provider_diagnosis()

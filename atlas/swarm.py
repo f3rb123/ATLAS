@@ -488,7 +488,9 @@ def task_context(db, run, task):
             )
         },
         "policy": db.get(Document, value["policy_id"]).value(),
-        "constraint": "Research only. Return cited discoveries; no self-confirmed findings. Each task has an independent context.",
+        "constraint": "Investigate with the registered web tools permitted by the frozen scope. Turn an evidence-backed lead into a bounded registered check or paired proof/control experiment when available. Record actual results and missing prerequisites; do not merely restate a hypothesis or self-confirm findings. Each task has an independent context."
+        if value.get("harness") == "skunk/1" and value.get("web", {}).get("enabled")
+        else "Research only. Return cited discoveries; no self-confirmed findings. Each task has an independent context.",
     }
     context["available_integrations"] = [
         {
