@@ -1,3 +1,7 @@
+# SKUNK local token headroom repair — 12 November 2026
+
+Deliver the SHA-pinned standalone budget helper for the existing VPS interpreter. The owner authorizes additional billed work; offer an explicit 10-million-token allocation increment within the existing cap, with contract/usage/holds preserved. Obtain its short JSON result before declaring the server unblocked. A contract-violation result requires actual accounting review; do not clear that flag. Model catalog metadata is reachable; inference and target assessment remain unverified after fixing local headroom. No additional broad diagnostic output is needed from the phone.
+
 # SKUNK retry1 delivery — 12 November 2026
 
 The repository is now private. Use the authenticated gh release-download command in the hotfix release notes; a plain curl link returns HTTP404. The owner must use their own GitHub login on the VPS. No password or token sharing in chat is needed.

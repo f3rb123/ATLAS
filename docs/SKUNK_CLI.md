@@ -15,6 +15,10 @@ It adds read-only diagnostics, bounded billed retries authorized by the owner,
 clear task error details and failed-run status. The original rc1 full archive
 does not contain this later source update.
 
+For `TokenBudgetExhausted`, see [local token allocation](SKUNK_TOKEN_BUDGET_FIX.md).
+The current source includes a compact `skunk budget` command; existing binaries
+can use the same standalone helper with their bundled Python.
+
 ## Install
 
 ```bash

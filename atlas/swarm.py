@@ -983,6 +983,11 @@ def failure_code(exc):
     """Only fixed metadata; never log rejected model/provider payloads."""
     from pydantic import ValidationError
     from .gateway import ProviderError
+    from .token_budget import TokenBudgetExhausted
+
+    if isinstance(exc, TokenBudgetExhausted):
+        from .skunk_failures import describe
+        return describe(exc)
 
     if isinstance(exc, ValidationError):
         return {

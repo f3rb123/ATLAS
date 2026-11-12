@@ -1,3 +1,14 @@
+# SKUNK confirmed local quota gate — 12 November 2026
+
+| Item | Current evidence/status |
+| --- | --- |
+| Actual failed tasks | VPS output shows TokenBudgetExhausted; this is a local quota/accounting exception |
+| HackerAI authentication/model catalog | Owner output shows HTTP200 and all three exact preset IDs listed; inference is not thereby verified |
+| Exact local block | Compact budget totals requested; allocation exhaustion versus contract violation still to distinguish |
+| Headroom repair | Explicit host allocation increment implemented within the unchanged cap; usage, holds and contract status preserved |
+| Phone-friendly operation | One-line budget summary and standalone helper for the existing bundled Python |
+| Verification | Source compilation/digests only; no application tests, paid calls, targets or VPS mutations here |
+
 # SKUNK retry1 status — 12 November 2026
 
 Delivery complete: six hotfix release asset sizes/digests verified against local originals; the twelve existing module preimages match the original rc1 bundle. Original VPS root cause and actual runtime recovery remain unverified pending diagnostic output.

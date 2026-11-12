@@ -100,6 +100,10 @@ def main():
     root = prepare_environment()
     args = sys.argv[1:]
     try:
+        if args and args[0] == "budget":
+            from .skunk_budget import main as budget
+            budget(args[1:])
+            return
         if args and args[0] == "diagnose":
             from .skunk_diagnose import diagnose
             try:
