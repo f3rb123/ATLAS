@@ -1,0 +1,55 @@
+{
+  "hotfix": "retry1",
+  "publication_date": "2026-11-12",
+  "timezone": "Asia/Calcutta",
+  "release_id": 442468986,
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-hotfix1-20261112",
+  "source_commit": "4e9cf1d7564c9bc623321ac03953ccd140c6bcf5",
+  "upload_workflow": "https://github.com/f3rb123/ATLAS/actions/runs/43149940448",
+  "all_asset_sizes_and_sha256_verified": true,
+  "original_bundle_module_preimages_checked": 12,
+  "application_tests_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "vps_deployment_performed": false,
+  "original_vps_root_cause": "awaiting actual server diagnostic output",
+  "runtime_recovery_verified": false,
+  "assets": [
+    {
+      "name": "HOTFIX.json",
+      "bytes": 1922,
+      "digest": "sha256:996ef43001ce9efab8d0bc7aa3654f9e90db14de70c5fa1b355483460b0dd31f",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/HOTFIX.json"
+    },
+    {
+      "name": "SKUNK-HOTFIX-README.md",
+      "bytes": 4392,
+      "digest": "sha256:60014db037552df5421e49463cb8ae03af09f8beed5a7ab4bcd7ffb322a6ed0f",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/SKUNK-HOTFIX-README.md"
+    },
+    {
+      "name": "SKUNK-HOTFIX-SHA256SUMS",
+      "bytes": 454,
+      "digest": "sha256:b083d24d50c8ca97bb01c8c4a85a161d99edd6d5627b3c15854a9ecd9e6e9331",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/SKUNK-HOTFIX-SHA256SUMS"
+    },
+    {
+      "name": "skunk-retry-hotfix1.tar.gz",
+      "bytes": 52494,
+      "digest": "sha256:6117d956283144491b291899b9daed3c1178139517aeda630a246e605f729915",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/skunk-retry-hotfix1.tar.gz"
+    },
+    {
+      "name": "skunk-retry-hotfix1.tar.gz.sha256",
+      "bytes": 93,
+      "digest": "sha256:ee3fd9ab7615621ca009831f2b3946ccd71989c010c2a3af4eb5b58b6d93246f",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/skunk-retry-hotfix1.tar.gz.sha256"
+    },
+    {
+      "name": "skunk-source-hotfix1.tar.gz",
+      "bytes": 1347624,
+      "digest": "sha256:76dce7ff42f5328f2d6988c96e7c8b66662b70aa16dcdd8ca216b61030c717ac",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112/skunk-source-hotfix1.tar.gz"
+    }
+  ]
+}

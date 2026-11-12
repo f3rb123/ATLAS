@@ -1,5 +1,7 @@
 # SKUNK retry1 delivery — 12 November 2026
 
+retry1 is published: https://github.com/f3rb123/ATLAS/releases/tag/skunk-hotfix1-20261112. Exit the old CLI, apply the small update under the same account/runtime, then obtain `skunk diagnose --provider` output. Do not claim the original failure is resolved until server evidence identifies it and an authorized run confirms recovery. No target or paid inference was dispatched here.
+
 Package and publish the code-only hotfix and source snapshot, then provide a one-line updater for the existing VPS install. The owner authorized separately billed retries, bounded here to four recoverable task attempts with preserved uncertain holds. Request `skunk diagnose --provider` output to identify the original all-dead-letter failure. Do not claim its root cause is fixed without that evidence. No new target scans, paid model probes or tests have been performed. Source changes alone do not verify runtime recovery.
 
 # SKUNK GitHub delivery — 12 November 2026

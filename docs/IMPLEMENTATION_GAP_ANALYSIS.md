@@ -1,5 +1,7 @@
 # SKUNK retry1 status — 12 November 2026
 
+Delivery complete: six hotfix release asset sizes/digests verified against local originals; the twelve existing module preimages match the original rc1 bundle. Original VPS root cause and actual runtime recovery remain unverified pending diagnostic output.
+
 | Item | Status |
 | --- | --- |
 | First-error dead-letter behavior | Recoverable failures now queue up to four host-authorized attempts; new SKUNK runs only |
