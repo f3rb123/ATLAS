@@ -1,3 +1,7 @@
+# SKUNK GitHub delivery status — 12 November 2026
+
+Source publication and archive hosting are authorized. The original delivery files have matching build identities and a prepared SHA256SUMS manifest. Remote publication/verification is the current remaining delivery step. Runtime acceptance remains deferred; publication does not change that status.
+
 # SKUNK CLI continuation status — 12 November 2026
 
 Current owner requested no testing. Status below means source implementation,

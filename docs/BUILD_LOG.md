@@ -1,3 +1,7 @@
+# SKUNK GitHub delivery preparation — 12 November 2026
+
+Owner requested uploading the completed source and built archives. Prepared the original six delivery files without rebuilding or modifying them, plus SHA256SUMS and release notes for `skunk-v3.1.0rc1-20261112`. Publishing uses the separate SKUNK source branch and a new prerelease; the earlier ATLAS release remains intact. No application, model, target or VPS execution is involved. Delivery documentation commits use `[skip ci]` to honor the no-tests instruction.
+
 # SKUNK CLI continuation — 12 November 2026 (Asia/Calcutta)
 
 Owner requested a build-only SKUNK CLI with ATLAS internals, eight default slots,

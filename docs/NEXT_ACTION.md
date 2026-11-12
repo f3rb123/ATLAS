@@ -1,3 +1,7 @@
+# SKUNK GitHub delivery — 12 November 2026
+
+Upload the prepared six original files plus SHA256SUMS to [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112), publish the prerelease, and verify remote sizes/digests and source ref. Owner authorized this GitHub publication. Keep the prior release and existing runtime data intact; do not run tests, models, targets or VPS deployment.
+
 # Current continuation: SKUNK CLI — 12 November 2026
 
 The user selected SKUNK as the public CLI/logo and corrected the internal package
