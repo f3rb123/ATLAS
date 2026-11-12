@@ -7,7 +7,7 @@ function item(title, subtitle, label, state) { const row = node("div", undefined
 function render(state) {
   nonce = state.control_nonce;
   text("scope", state.scope); text("phase", state.phase);
-  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots");
+  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots · " + (state.model_calls || 0) + " AI calls");
   text("agent-count", state.agents + " slots");
   text("elapsed", String(Math.floor(state.elapsed / 60)).padStart(2, "0") + ":" + String(state.elapsed % 60).padStart(2, "0"));
   text("coverage", state.targets ? state.targets + " hosts discovered · " + state.remaining + " queued" : "Preparing scope");
@@ -19,7 +19,12 @@ function render(state) {
   for (const candidate of state.candidates.slice(-30)) findings.append(item(candidate.claim, "Hypothesis · requires independent proof/control", candidate.status, "candidate"));
   if (!findings.children.length) findings.append(node("p", "No evidence-backed findings yet. Activity and coverage are shown below.", "empty"));
   const agents = element("agents"); agents.replaceChildren();
-  for (const task of state.tasks) agents.append(item(task.role, task.id.slice(0, 8) + " · attempt " + task.attempts + (task.diagnostic ? " · " + task.diagnostic : ""), task.status, task.status === "dead_letter" ? "error" : task.status === "queued" ? "candidate" : ""));
+  for (const task of state.tasks) {
+    const diagnostic = task.diagnostic || {};
+    const detail = typeof diagnostic === "string" ? diagnostic : [diagnostic.code, diagnostic.message, diagnostic.action, diagnostic.location].filter(Boolean).join(" · ");
+    const retry = task.retry_in_seconds ? " · retry in " + task.retry_in_seconds + "s" : "";
+    agents.append(item(task.role, task.id.slice(0, 8) + " · attempt " + task.attempts + retry + (detail ? " · " + detail : ""), task.status, task.status === "dead_letter" ? "error" : task.status === "queued" ? "candidate" : ""));
+  }
   if (!agents.children.length) agents.append(node("p", "Preparing specialist responsibilities.", "empty"));
   const feed = element("events"); const atEnd = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40; feed.replaceChildren();
   for (const event of state.events) { const row = node("div", undefined, "event"); row.append(node("time", event.time.slice(11, 19)), node("span", event.actor, "actor"), node("span", event.type + " · " + event.text, "detail")); feed.append(row); }

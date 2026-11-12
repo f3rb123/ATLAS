@@ -95,6 +95,8 @@ class Controller:
         self.finished = threading.Event()
         self.current_run = None
         self.partial = False
+        self.failed_runs = 0
+        self.successful_runs = 0
         self.exported = set()
         self.note("SKUNK controller starting; no live target work has begun")
 
@@ -227,14 +229,16 @@ class Controller:
                 "target_url": target, "agent_count": self.count, "model_mode": "capability",
                 "models": models, "status": "paused" if self.paused.is_set() else "running",
                 "state": "DISCOVERY" if discovery else "SWARM_RUNNING", "budget_limit": 100,
-                "budget_used": 0, "max_model_calls": 80 if self.deep else 24,
-                "max_tool_calls": 300 if self.deep else 80, "max_seconds": 7200 if self.deep else 1800,
+                "budget_used": 0, "max_model_calls": 160 if self.deep else 64,
+                "max_tool_calls": 400 if self.deep else 160, "max_seconds": 7200 if self.deep else 1800,
                 "deadline": time.time() + (7200 if self.deep else 1800), "started_at": now(),
                 "instructions": self.instruction, "web": plan.model_dump(), "assessment_profile": "standard",
                 "offline_execution_approved": False, "tool_pins": pins(db, self.owner_id),
                 "scanner_template_pins": template_pins(db, self.owner_id), "target_identities": {},
                 "integration_pins": {}, "skills": [], "specialist_roles": ["coding", "fast"],
-                "workflow_version": "skunk-swarm/1"}
+                "workflow_version": "skunk-swarm/2",
+                "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True,
+                    "authorization": "Host owner explicitly accepts separately billed retries; preserve prior reservations"}}
             run = document(db, "run", self.owner_id, value)
             if not discovery:
                 initialize(db, run)
@@ -339,6 +343,10 @@ class Controller:
                         run = db.get(Document, identity)
                         value = run.value()
                         if value["status"] in ("completed", "cancelled", "blocked"):
+                            if value["status"] == "blocked":
+                                self.failed_runs += 1
+                            elif value["status"] == "completed":
+                                self.successful_runs += 1
                             if value["status"] != "completed" or value.get("partial") or value.get("task_errors"):
                                 self.partial = True
                             if value.get("blocked_reason"):
@@ -370,7 +378,9 @@ class Controller:
                 if remaining < 64000 and self.pending:
                     self.note("Persistent token allocation cannot cover another bounded call. Remaining hosts were not scanned.")
                     break
-            self.phase = "cancelled" if self.cancelled.is_set() else ("partial" if self.pending or self.partial else "completed")
+            self.phase = "cancelled" if self.cancelled.is_set() else "failed" if self.failed_runs and not self.successful_runs else ("partial" if self.pending or self.partial else "completed")
+            if self.phase == "failed":
+                self.error = "The assessment failed. Inspect the task failure details or run skunk diagnose; no successful coverage is claimed."
         except InterruptedError:
             self.phase = "cancelled"
         except Exception as error:
@@ -396,13 +406,20 @@ class Controller:
                      "scope": self.scope_text, "agents": self.count, "deep": self.deep, "models": MODELS,
                      "elapsed": round(time.time() - self.started), "error": self.error,
                      "targets": len(self.targets), "remaining": len(self.pending), "finished": self.finished.is_set(),
-                     "events": list(self.events[-100:]), "tasks": [], "findings": [], "candidates": [], "observations": 0}
+                     "events": list(self.events[-100:]), "tasks": [], "findings": [], "candidates": [], "observations": 0,
+                     "model_calls": 0, "failed_tasks": 0, "completed_tasks": 0,
+                     "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True}}
             ids = list(self.run_ids)
         if not self.owner_id or not ids:
             return state
         with session() as db:
             tasks = db.query(SwarmTask).filter(SwarmTask.run_id.in_(ids)).order_by(SwarmTask.created_at.desc()).limit(100).all()
-            state["tasks"] = [{"id": t.id, "role": t.role, "status": t.status, "attempts": t.attempts, "diagnostic": json.loads(t.result).get("diagnostic_code")} for t in tasks]
+            state["tasks"] = [{"id": t.id, "role": t.role, "status": t.status, "attempts": t.attempts,
+                "diagnostic": json.loads(t.result).get("diagnostic_code"),
+                "retry_in_seconds": max(0, round(t.available_at - time.time())) if t.status == "queued" and t.attempts else 0} for t in tasks]
+            state["failed_tasks"] = sum(t.status == "dead_letter" for t in tasks)
+            state["completed_tasks"] = sum(t.status == "completed" for t in tasks)
+            state["model_calls"] = sum(row.value().get("model_calls", 0) for identity in ids if (row := db.get(Document, identity)))
             for item in db.query(Document).filter(Document.owner == self.owner_id, Document.kind.in_(["finding", "hypothesis", "http_observation", "usage"])).all():
                 value = item.value()
                 if value.get("run_id") not in ids:

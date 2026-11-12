@@ -1,3 +1,15 @@
+# SKUNK retry1 status — 12 November 2026
+
+| Item | Status |
+| --- | --- |
+| First-error dead-letter behavior | Recoverable failures now queue up to four host-authorized attempts; new SKUNK runs only |
+| Billing concern | Owner accepts separately billed retries; original usage and uncertain holds remain preserved |
+| Failure visibility | Safe specific HTTP/schema/config/database codes, messages, source locations and retry wait implemented |
+| Completion semantics | All failed research ends blocked/failed; errors/cancellations retain incomplete coverage |
+| Local diagnosis | Read-only cached preflight plus optional explicit GET /models metadata check implemented |
+| VPS original failure | Actual server diagnostics still required; root cause and recovery not verified |
+| Delivery/verification | Small code updater prepared; source compilation/shell parsing/asset hashes only, no application tests or live model/target requests |
+
 # SKUNK GitHub delivery status — 12 November 2026
 
 Source branch and [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112) are published. The original six delivery files are unchanged, with SHA256SUMS attached. All seven remote byte sizes and SHA256 digests match the local originals; see release/skunk-cli-20261112/PUBLISHED-ASSETS.json. Runtime acceptance remains deferred; archive publication does not verify application behavior.

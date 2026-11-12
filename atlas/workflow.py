@@ -389,7 +389,17 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
         try:
             output = schema.model_validate(result.structured_content)
         except ValidationError as exc:
-            if repairs >= 1 or round_number == 3:
+            if repairs >= (3 if run.value().get("harness") == "skunk/1" else 1) or round_number == 3:
+                try:
+                    exc.response_metadata = {
+                        "model": model.value()["model_id"],
+                        "finish_reason": result.finish_reason if result.finish_reason in ("stop", "length", "content_filter", "tool_calls", "max_tokens") else "other",
+                        "output_tokens": result.output_tokens,
+                        "reasoning_tokens": result.reasoning_tokens,
+                        "json_object_present": result.structured_content is not None,
+                    }
+                except (AttributeError, TypeError):
+                    pass
                 raise
             repairs += 1
             fields = [

@@ -1,3 +1,7 @@
+# SKUNK retry1 delivery — 12 November 2026
+
+Package and publish the code-only hotfix and source snapshot, then provide a one-line updater for the existing VPS install. The owner authorized separately billed retries, bounded here to four recoverable task attempts with preserved uncertain holds. Request `skunk diagnose --provider` output to identify the original all-dead-letter failure. Do not claim its root cause is fixed without that evidence. No new target scans, paid model probes or tests have been performed. Source changes alone do not verify runtime recovery.
+
 # SKUNK GitHub delivery — 12 November 2026
 
 GitHub delivery is complete: [skunk-v3.1.0rc1-20261112](https://github.com/f3rb123/ATLAS/releases/tag/skunk-v3.1.0rc1-20261112). All six original files plus SHA256SUMS are published, with seven remote byte sizes/SHA256 digests verified. [Source branch](https://github.com/f3rb123/ATLAS/tree/skunk/cli-20261112) is pushed. No tests, models, targets or VPS deployment were run. Keep runtime acceptance deferred until the owner requests it; preserve existing data and token holds.

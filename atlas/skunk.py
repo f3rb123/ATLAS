@@ -77,12 +77,17 @@ def render(state, frame):
     header = Text("  " + state["scope"] + "\n", style="bold")
     header.append("  " + state["phase"] + " · " + str(state["agents"]) + " slots · " + str(state["elapsed"]) + "s\n", style="cyan")
     header.append("  Dashboard  http://127.0.0.1:6777\n", style="dim")
-    header.append("  " + str(state["observations"]) + " responses · " + str(len(state["findings"])) + " findings · " + str(len(state["candidates"])) + " candidates", style="dim")
+    header.append("  " + str(state["observations"]) + " responses · " + str(state.get("model_calls", 0)) + " AI calls · " + str(len(state["findings"])) + " findings · " + str(len(state["candidates"])) + " candidates", style="dim")
     table = Table(expand=True, box=None, padding=(0, 1))
     table.add_column("Agent responsibility")
     table.add_column("State")
+    table.add_column("Details")
     for item in state["tasks"][:10]:
-        table.add_row(Text(item["role"]), Text(item["status"], style="green" if item["status"] == "completed" else "cyan"))
+        diagnostic = item.get("diagnostic") or {}
+        detail = diagnostic.get("message", diagnostic.get("code", "")) if isinstance(diagnostic, dict) else str(diagnostic)
+        if item.get("retry_in_seconds"):
+            detail = "Retry in " + str(item["retry_in_seconds"]) + "s · " + detail
+        table.add_row(Text(item["role"]), Text(item["status"] + " · " + str(item["attempts"]), style="green" if item["status"] == "completed" else "red" if item["status"] == "dead_letter" else "cyan"), Text(detail))
     events = Text()
     for event in state["events"][-6:]:
         events.append(str(event["time"])[11:19] + " " + event["actor"] + " · ", style="dim")
@@ -95,6 +100,19 @@ def main():
     root = prepare_environment()
     args = sys.argv[1:]
     try:
+        if args and args[0] == "diagnose":
+            from .skunk_diagnose import diagnose
+            try:
+                result = diagnose()
+                if "--provider" in args[1:]:
+                    from .skunk_diagnose import provider_diagnosis
+                    result["provider_metadata_check"] = provider_diagnosis()
+            except Exception as error:
+                from .skunk_failures import describe
+                result = {"diagnostic": "Local preflight could not finish", "failure": describe(error),
+                    "model_calls_performed": 0, "target_requests_performed": 0}
+            print(json.dumps(result, indent=2))
+            return
         if args and args[0] == "knowledge":
             knowledge_command(args[1:])
             return

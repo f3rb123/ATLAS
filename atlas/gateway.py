@@ -123,6 +123,35 @@ class ProviderError(ValueError):
     pass
 
 
+class ProviderHTTPError(ProviderError):
+    """Retain HTTP metadata, never a raw vendor error body or credential."""
+
+    def __init__(self, status, headers=None, body=None):
+        from email.utils import parsedate_to_datetime
+        super().__init__({401: "authentication_failed", 403: "access_denied", 429: "rate_limited"}.get(status, "provider_http_error"))
+        self.http_status = int(status)
+        self.retry_after = None
+        self.error_parameter = None
+        value = next((v for k, v in (headers or {}).items() if k.lower() == "retry-after"), None)
+        if value is not None:
+            try:
+                delay = int(value)
+            except (ValueError, TypeError):
+                try:
+                    delay = parsedate_to_datetime(value).timestamp() - time.time()
+                except (ValueError, TypeError, OverflowError):
+                    delay = None
+            if delay is not None:
+                self.retry_after = min(300, max(0, delay))
+        try:
+            error = json.loads(body or b"{}").get("error", {})
+            param = error.get("param") if isinstance(error, dict) else None
+            if param in {"model", "response_format", "max_tokens", "max_completion_tokens", "temperature"}:
+                self.error_parameter = param
+        except (ValueError, TypeError, AttributeError):
+            pass
+
+
 class StructuredOutputError(ProviderError):
     def __init__(self, response):
         super().__init__(
@@ -603,7 +632,7 @@ class Adapter:
         scope = provider_scope(url)
         t = time.monotonic()
         try:
-            status, _, body = request(
+            status, received_headers, body = request(
                 url,
                 "POST",
                 self.headers(),
@@ -613,13 +642,7 @@ class Adapter:
                 settings().provider_timeout_seconds,
             )
             if status != 200:
-                raise ProviderError(
-                    {
-                        401: "authentication_failed",
-                        403: "access_denied",
-                        429: "rate_limited",
-                    }.get(status, "provider_http_error")
-                )
+                raise ProviderHTTPError(status, received_headers, body)
             result = self.normalize(json.loads(body.decode()), r)
             result.latency_ms = (time.monotonic() - t) * 1000
             return result

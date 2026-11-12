@@ -10,6 +10,11 @@ The installer installs `bubblewrap` and Git through APT if bubblewrap is missing
 and installation is run as root; otherwise install that host prerequisite first.
 The sandbox is never bypassed when a host cannot support it.
 
+For rc1 task failures, apply [the retry1 code update](SKUNK_RETRY_HOTFIX.md).
+It adds read-only diagnostics, bounded billed retries authorized by the owner,
+clear task error details and failed-run status. The original rc1 full archive
+does not contain this later source update.
+
 ## Install
 
 ```bash

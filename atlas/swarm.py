@@ -276,9 +276,10 @@ def claim_one(db, worker_kind):
             t.status, t.updated_at = "cancelled", time.time()
             db.commit()
             continue
-        if t.attempts >= MAX_ATTEMPTS:
+        from .skunk_failures import allowed as paid_retry_allowed, attempts as retry_attempts
+        if t.attempts >= (retry_attempts(run) if paid_retry_allowed(run) else MAX_ATTEMPTS):
             t.status = "dead_letter"
-            t.result = canonical({"error": "lease_attempt_limit"})
+            t.result = canonical({**json.loads(t.result or "{}"), "error": "lease_attempt_limit"})
             db.commit()
             finish_run(db, run)
             continue
@@ -307,7 +308,7 @@ def claim_one(db, worker_kind):
             continue
         if t.attempts:
             budget = db.get(Document, "budget-global", populate_existing=True)
-            if budget and any(
+            if not paid_retry_allowed(run) and budget and any(
                 r.get("task_id") == t.id for r in budget.value()["reserved"].values()
             ):
                 t.status = "dead_letter"
@@ -666,7 +667,10 @@ def finish_run(db, run):
         return
     from .reporting import generate_report
 
-    if value.get("harness") == "skunk/1" and not tasks(db, run.id).filter_by(dedupe_key=digest("skunk-final-report:" + run.id)).first():
+    skunk = value.get("harness") == "skunk/1"
+    research = tasks(db, run.id).filter(SwarmTask.role.not_in(("report", "web-discovery")))
+    all_failed = skunk and research.count() > 0 and research.filter_by(status="completed").count() == 0
+    if skunk and not all_failed and not tasks(db, run.id).filter_by(dedupe_key=digest("skunk-final-report:" + run.id)).first():
         final = enqueue(db, run, "report", {
             "instructions": "All other tasks have settled. Read the final shared evidence and summarize confirmed findings, unresolved hypotheses, denied actions and coverage limitations. Never promote an unverified candidate.",
             "reason": "Final report over the completed shared board",
@@ -676,13 +680,16 @@ def finish_run(db, run):
             return
 
     errors = tasks(db, run.id).filter_by(status="dead_letter").count()
-    value.update(partial=bool(errors or value.get("tool_warnings")), task_errors=errors)
+    cancelled = tasks(db, run.id).filter_by(status="cancelled").count()
+    value.update(partial=bool(errors or cancelled or value.get("tool_warnings")), task_errors=errors)
+    if all_failed:
+        value["blocked_reason"] = "All research tasks failed or were cancelled. No successful assessment was completed; inspect the task diagnostics."
     run.data = canonical(value)
     report = generate_report(db, run, "markdown")
     value.update(
-        state="COMPLETED",
-        status="completed",
-        partial=bool(errors or value.get("tool_warnings")),
+        state="FAILED" if all_failed else "COMPLETED",
+        status="blocked" if all_failed else "completed",
+        partial=bool(errors or cancelled or value.get("tool_warnings")),
         task_errors=errors,
         report_id=report.id,
         finished=now(),
@@ -692,7 +699,7 @@ def finish_run(db, run):
         db,
         run.id,
         "scheduler",
-        "swarm_completed",
+        "swarm_failed" if all_failed else "swarm_completed",
         {"task_errors": errors, "report_id": report.id},
         value["campaign_id"],
     )
@@ -895,6 +902,8 @@ def execute_one(worker_kind):
             import logging
 
             from .gateway import CapacityWait, RunInterrupted
+            from .skunk_failures import describe, retry_delay
+            diagnostic = describe(exc)
 
             if not isinstance(exc, (RunInterrupted, CapacityWait)):
                 logging.getLogger("atlas").warning(
@@ -916,6 +925,15 @@ def execute_one(worker_kind):
                 ):
                     task.status, task.available_at = "queued", time.time() + 1
                     task.attempts = max(0, task.attempts - 1)
+                elif value.get("harness") == "skunk/1" and value["status"] in ("queued", "running", "paused") and (delay := retry_delay(run, task, diagnostic)) is not None:
+                    # The host owner explicitly accepts separately billed retries.
+                    # Preserve every prior unknown reservation and evidence artifact.
+                    task.status, task.available_at = "queued", time.time() + delay
+                    append(db, run.id, task.role, "swarm_task_retry_scheduled", {
+                        "task_id": task.id, "attempt": task.attempts,
+                        "retry_in_seconds": delay, "diagnostic_code": diagnostic,
+                        "prior_billing_reservations": "retained",
+                    }, value["campaign_id"])
                 elif value.get("harness") == "skunk/1" and value["status"] == "paused" and not isinstance(exc, (RunInterrupted, CapacityWait, Denied)):
                     # A pause cannot make an uncertain/billed provider failure
                     # eligible for automatic replay when the operator resumes.
@@ -934,8 +952,8 @@ def execute_one(worker_kind):
                 task.result = canonical(
                     {
                         "error_type": type(exc).__name__,
-                        "diagnostic_code": failure_code(exc),
-                        "reason": "Task failed; inspect policy/provider diagnostics",
+                        "diagnostic_code": diagnostic if value.get("harness") == "skunk/1" else failure_code(exc),
+                        "reason": "Retry scheduled with backoff" if task.status == "queued" else "Task failed; inspect policy/provider diagnostics",
                         "model_output_trusted": False,
                     }
                 )
@@ -948,7 +966,7 @@ def execute_one(worker_kind):
                     {
                         "task_id": task.id,
                         "error_type": type(exc).__name__,
-                        "diagnostic_code": failure_code(exc),
+                        "diagnostic_code": diagnostic if value.get("harness") == "skunk/1" else failure_code(exc),
                         "status": task.status,
                     },
                     value["campaign_id"],
