@@ -333,3 +333,13 @@ ledgers, policy/expiry refusal, new final report keys, scoped worker claims and
 lead/finding separation. Network was blocked. Source compilation passed. No
 application suite, provider call, target traffic or VPS execution occurred.
 See docs/SKUNK_RESUME_UPDATE.md; publication is recorded after asset verification.
+
+### resume4 publication
+
+Published skunk-resume4-20261112 from source 379c0df570774aa5c037b3e048da795f18a48596.
+All seven asset sizes/SHA256 digests match. The attachment-only workflow succeeded;
+no application execution or tests ran on GitHub. Anonymous download verified the
+85,132-byte archive SHA256 ff9a4f4a75c59108255616e6d13d674b2d6524714446a67d55073973ac44d3be.
+The updater verifies that hash before applying. Runtime recovery remains pending
+the owner's explicit VPS invocation. Source/default branch and repo visibility
+were not changed as part of publishing this release.

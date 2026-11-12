@@ -1,0 +1,65 @@
+{
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-resume4-20261112",
+  "release_id": 442661915,
+  "tag": "skunk-resume4-20261112",
+  "source_commit": "379c0df570774aa5c037b3e048da795f18a48596",
+  "published_at": "2026-11-12T08:22:49Z",
+  "prerelease": true,
+  "attachment_workflow_url": "https://github.com/f3rb123/ATLAS/actions/runs/43182290459",
+  "attachment_workflow_conclusion": "success",
+  "anonymous_patch_download_sha256_verified": true,
+  "application_test_suites_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "assets": [
+    {
+      "name": "SKUNK-RESUME4-MANIFEST.json",
+      "size": 9273,
+      "digest": "sha256:ecb94cb64a957290afc70af6407157128917db84612282b40f961ff5da8bbe3c",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/SKUNK-RESUME4-MANIFEST.json"
+    },
+    {
+      "name": "SKUNK-RESUME4-OFFLINE-CHECKS.json",
+      "size": 1404,
+      "digest": "sha256:a8ab92274d0e1cb90be96308a6be44b716a732ebde253d2c12cd06695826abdc",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/SKUNK-RESUME4-OFFLINE-CHECKS.json"
+    },
+    {
+      "name": "SKUNK-RESUME4-README.md",
+      "size": 3852,
+      "digest": "sha256:52b4dc778541a2c68c938724b89331264c903eda954a831ca06b5a2902e37630",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/SKUNK-RESUME4-README.md"
+    },
+    {
+      "name": "SKUNK-RESUME4-SHA256SUMS",
+      "size": 559,
+      "digest": "sha256:5b2c95585b7d237ae5688906b890be1f79d9e041969c43ef01abb60eeabc90a3",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/SKUNK-RESUME4-SHA256SUMS"
+    },
+    {
+      "name": "skunk-resume4.tar.gz",
+      "size": 85132,
+      "digest": "sha256:ff9a4f4a75c59108255616e6d13d674b2d6524714446a67d55073973ac44d3be",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/skunk-resume4.tar.gz"
+    },
+    {
+      "name": "skunk-resume4.tar.gz.sha256",
+      "size": 87,
+      "digest": "sha256:60578dad83113fdac1304dc9ab04b6fea6cad106ca30e5cd70a053d5aeb482bb",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/skunk-resume4.tar.gz.sha256"
+    },
+    {
+      "name": "skunk-source-resume4.tar.gz",
+      "size": 1378451,
+      "digest": "sha256:2cf33c608836cce1da6d2325063a82e8ddbe098a234ece5f0fd633b072ffc26a",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-resume4-20261112/skunk-source-resume4.tar.gz"
+    }
+  ]
+}

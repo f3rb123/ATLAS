@@ -1,3 +1,23 @@
+# SKUNK resume4 published — 12 November 2026
+
+The cumulative recovery update is published at
+https://github.com/f3rb123/ATLAS/releases/tag/skunk-resume4-20261112.
+All seven remote asset sizes/digests match; anonymous patch download was verified.
+The owner is ready for VPS acceptance. Exit the old CLI with Ctrl+C, apply
+`scripts/skunk-resume4-update.sh` from its pinned published source commit, then
+run `skunk resume --latest`. An explicit saved assessment can be selected with
+`skunk resume --run RUN_ID`. Installer execution starts no scan.
+
+No application suite, paid model call, live target traffic or VPS deployment was
+performed here. Resume reuses frozen scope/model pins and preserves completed
+work, prior attempts, HTTP quota usage, billing holds, knowledge and old reports.
+Policy-denied work remains denied. Real VPS/provider recovery is pending the
+owner's trial; no vulnerability is promised. Public-index inventory, absent
+identities and unavailable experiment classes remain explicit coverage limits.
+See docs/SKUNK_RESUME_UPDATE.md and release/skunk-resume4-20261112/.
+
+Earlier delivery history follows.
+
 # SKUNK flow3 delivery — 12 November 2026
 
 flow3 is published at https://github.com/f3rb123/ATLAS/releases/tag/skunk-flow3-20261112. Exit the old CLI, apply scripts/skunk-flow3-update.sh from the pinned published commit, then restart the original scope. Historical task states remain. Actual VPS recovery still needs owner execution; do not claim paid model/target acceptance from offline diagnostics.
@@ -71,13 +91,3 @@ for reported failed run0. Never reset/release uncertain holds/replay calls or
 create independent spending clones. GitHub delivery and Docker29 repair details
 are in docs/DELIVERY_PREBUILT_2026-11-10.md and the build log. No automatic tests,
 provider calls, targets or server mutations on startup.
-
-# SKUNK resume4 delivery — 12 November 2026
-
-Publish the cumulative resume4 code update and source snapshot. After remote
-asset hashes and public updater bytes are verified, provide the pinned one-line
-installer and `skunk resume --latest`. The owner is ready to run it on the VPS.
-Do not start a target scan from this environment. Existing evidence, credentials,
-policy, usage/holds and old reports must remain. Offline diagnostics do not prove
-VPS/provider acceptance. Completed tasks and policy denials are not requeued;
-missing identities and frozen-scope coverage gaps remain explicit limitations.

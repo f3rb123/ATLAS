@@ -31,5 +31,13 @@
     "unverified_lead_not_promoted_to_finding": true,
     "coverage_limitations_present": true
   },
-  "expired_scope_refused": true
+  "expired_scope_refused": true,
+  "packaging": {
+    "cumulative_files": 22,
+    "flow3_plus_original_preimages_accepted": true,
+    "patch_payload_hashes_verified": true,
+    "python_source_compiled": true,
+    "shell_syntax_valid": true,
+    "javascript_syntax_valid": true
+  }
 }
