@@ -2,11 +2,11 @@
 
 BASE_URL = "https://api.hackerai.sh/v1"
 MODELS = {
-    "orchestrator": "deepseek-v4-pro",
-    "recon": "deepseek-v4-flash",
-    "classifier": "deepseek-v4-pro",
-    "exploit": "glm-5.3",
-    "report": "deepseek-v4-flash",
+    "orchestrator": "deepseek-v4-mod",
+    "recon": "deepseek-v4-mod",
+    "classifier": "deepseek-v4-mod",
+    "exploit": "glm-5.3-mod",
+    "report": "deepseek-v4-mod",
 }
 ROLES = {
     "orchestrator": "Plan and coordinate bounded research. Read the shared evidence, prioritize falsifiable questions and request the appropriate specialists. Preserve operator scope and all hard limits.",

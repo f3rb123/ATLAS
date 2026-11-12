@@ -845,6 +845,9 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
             "budget-global",
         )
     v = d.value()
+    run = db.get(Document, run_id)
+    from .skunk_usage import tracking_only
+    track_only = tracking_only(run)
     token_ledger = db.get(Document, "token-budget-global")
     token_reservations = (
         token_ledger.value().get("reserved", {}) if token_ledger else {}
@@ -862,21 +865,20 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
     month = now()[:7]
     spent = v["spent"].get(month, 0)
     pending = sum(x["amount"] for x in v["reserved"].values())
-    if spent + pending + ceiling > v["cap"]:
+    if not track_only and spent + pending + ceiling > v["cap"]:
         if pending and spent + ceiling <= v["cap"]:
             raise CapacityWait("Monthly budget capacity reserved by in-flight requests")
         raise ProviderError("Monthly budget exhausted")
-    run = db.get(Document, run_id)
     if run and run.kind == "run":
         rv = run.value()
         pending_run = sum(
             x["amount"] for x in v["reserved"].values() if x["run_id"] == run_id
         )
-        if rv.get("budget_used", 0) + pending_run + ceiling > rv["budget_limit"]:
+        if not track_only and rv.get("budget_used", 0) + pending_run + ceiling > rv["budget_limit"]:
             if pending_run and rv.get("budget_used", 0) + ceiling <= rv["budget_limit"]:
                 raise CapacityWait("Run budget capacity reserved by in-flight requests")
             raise ProviderError("Run budget exhausted")
-        if role:
+        if role and not track_only:
             pending_role = sum(
                 x["amount"]
                 for x in v["reserved"].values()
@@ -893,7 +895,7 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
                     )
                 raise ProviderError("Role budget exhausted")
         campaign = db.get(Document, rv.get("campaign_id", ""))
-        if campaign:
+        if campaign and not track_only:
             campaign_runs = {
                 r.id
                 for r in db.query(Document).filter_by(kind="run", owner=owner)
@@ -937,6 +939,7 @@ def reserve(db, owner, run_id, ceiling, role=None, provider_id=None, token_ceili
         "provider_id": provider_id,
         "task_id": getattr(run, "_swarm_claim", (None, None))[0] if run else None,
         "token_ceiling": token_ceiling,
+        "enforcement": "tracking_only" if track_only else "bounded",
     }
     d.data = canonical(v)
     db.commit()
@@ -974,6 +977,8 @@ def token_usage(response):
 def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     m = model.value()
     rv = run.value()
+    from .skunk_usage import tracking_only
+    track_only = tracking_only(run)
     if req.max_tokens > m["max_output_tokens"]:
         raise ProviderError("Model output limit exceeded")
     from .skunk_models import runtime_contract
@@ -989,12 +994,12 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     estimate = (
         input_upper * m["input_price"] + req.max_tokens * m["output_price"]
     ) / 1000000
-    if rv.get("budget_used", 0) + estimate > rv["budget_limit"]:
+    if not track_only and rv.get("budget_used", 0) + estimate > rv["budget_limit"]:
         raise ProviderError("Run budget exhausted")
     if rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
         raise ProviderError("Model call limit exhausted")
     role_spent = rv.get("role_spent", {}).get(role, 0)
-    if role_spent + estimate > rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
+    if not track_only and role_spent + estimate > rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
         raise ProviderError("Role budget exhausted")
     from .token_budget import ceiling as token_ceiling, mark_unknown
 
@@ -1008,7 +1013,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
         token_ceiling=token_ceiling(req),
     )
     campaign = db.get(Document, rv["campaign_id"]) if rv.get("campaign_id") else None
-    if campaign:
+    if campaign and not track_only:
         campaign_id = rv["campaign_id"]
         total = 0
         for usage in db.query(Document).filter_by(kind="usage", owner=run.owner):

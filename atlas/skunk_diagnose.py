@@ -93,6 +93,10 @@ def diagnose():
         "model_calls_performed": 0, "target_requests_performed": 0,
         "writes_performed": 0, "tasks": [], "models": [], "preflight": [],
         "note": "Cached context/configuration inspection is not proof that the API credential or provider is working."}
+    from .skunk_usage import default_policy
+    report["hotfix"] = "mod2"
+    report["new_run_usage_policy"] = default_policy()
+    report["new_run_model_presets"] = __import__("atlas.skunk_prompts", fromlist=["MODELS"]).MODELS
 
     def no_network(*_args, **_kwargs):
         raise RuntimeError("Network is disabled in skunk diagnose")
@@ -108,7 +112,7 @@ def diagnose():
                 report["note"] = "No SKUNK assessment was found in this runtime. No database was created or changed."
                 return report
             value = run.value()
-            report["run"] = {"id": run.id, **{name: value.get(name) for name in ("status", "state", "partial", "task_errors", "model_calls", "max_model_calls", "tool_calls", "max_tool_calls", "workflow_version", "retry_policy")}}
+            report["run"] = {"id": run.id, **{name: value.get(name) for name in ("status", "state", "partial", "task_errors", "model_calls", "max_model_calls", "tool_calls", "max_tool_calls", "workflow_version", "retry_policy", "usage_policy")}}
             rows = db.query(SwarmTask).filter_by(run_id=run.id).order_by(SwarmTask.created_at).all()
             report["task_counts"] = dict(Counter(row.status for row in rows))
             for task in rows:
@@ -141,6 +145,8 @@ def diagnose():
                     "remaining_allocation": max(0, budget["allocation"] - budget["used"]["total_tokens"] - reserved),
                     "unknown_billing_holds": sum(item.get("state") == "unknown_billing" for item in budget.get("reserved", {}).values()),
                     "contract_violation": budget.get("contract_violation", False)}
+                report["token_budget"]["limits_enforced_for_new_skunk_runs"] = False
+                report["token_budget"]["historical_counters_and_holds_preserved"] = True
             recent = db.query(Journal).filter_by(stream=run.id).order_by(Journal.sequence.desc()).limit(100).all()
             report["recent_failures"] = []
             for row in recent:

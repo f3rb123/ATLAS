@@ -10,14 +10,10 @@ The installer installs `bubblewrap` and Git through APT if bubblewrap is missing
 and installation is run as root; otherwise install that host prerequisite first.
 The sandbox is never bypassed when a host cannot support it.
 
-For rc1 task failures, apply [the retry1 code update](SKUNK_RETRY_HOTFIX.md).
-It adds read-only diagnostics, bounded billed retries authorized by the owner,
-clear task error details and failed-run status. The original rc1 full archive
-does not contain this later source update.
-
-For `TokenBudgetExhausted`, see [local token allocation](SKUNK_TOKEN_BUDGET_FIX.md).
-The current source includes a compact `skunk budget` command; existing binaries
-can use the same standalone helper with their bundled Python.
+Apply the cumulative [mod2 update](SKUNK_MOD_UPDATE.md) to the original rc1
+archive or retry1 installation. It includes diagnostics/retries and uses the
+owner-selected Pentest model counterparts with usage tracking without local
+token/spending caps. The original rc1 archive is an earlier source snapshot.
 
 ## Install
 
@@ -60,11 +56,11 @@ For shell tools that support `env`, its syntax is
 
 | Responsibility | Preset model |
 | --- | --- |
-| Orchestrator: planning and coordination | `deepseek-v4-pro` |
-| Recon: enumeration and discovery | `deepseek-v4-flash` |
-| Classifier: vulnerability classification | `deepseek-v4-pro` |
-| Exploit: analysis and validation | `glm-5.3` |
-| Report: evidence and report generation | `deepseek-v4-flash` |
+| Orchestrator: planning and coordination | `deepseek-v4-mod` |
+| Recon: enumeration and discovery | `deepseek-v4-mod` |
+| Classifier: vulnerability classification | `deepseek-v4-mod` |
+| Exploit: analysis and validation | `glm-5.3-mod` |
+| Report: evidence and report generation | `deepseek-v4-mod` |
 
 Eight concurrent slots are the default. Responsibilities include orchestrator,
 three recon specializations, classifier, exploit, independent validation and
@@ -101,8 +97,8 @@ only considered when the frozen scope separately allows it. A single hostname
 scope matches that hostname, without silently adding its subdomains.
 
 Invoking the command records the host operator's explicit scope instruction;
-use it only for authorized targets. Rate, request, time, token and task bounds
-remain enforced. `--prompt` cannot change these controls or grant scope.
+use it only for authorized targets. Rate, request, time and model/tool-call bounds remain enforced. New SKUNK
+runs track token usage without local token or spending caps. `--prompt` cannot change these controls or grant scope.
 
 ## Dashboard
 
@@ -189,7 +185,8 @@ application. Its runtime behavior has not been tested in this build.
 Confirmed findings still require independent fresh proof/control evidence.
 Unverified hypotheses and incomplete runs remain labeled as such. The supplied
 historical token floor and uncertain reservations are preserved on a fresh store;
-existing ledgers are never reset. Do not run independent spending clones against
+existing ledgers are never reset. New SKUNK runs use host-authorized tracking-only
+accounting; historical ledger ceilings remain recorded without blocking those runs. Do not run independent spending clones against
 the same original budget. To continue an existing deployment's exact live ledger,
 perform an explicit state migration rather than discarding the original database.
 

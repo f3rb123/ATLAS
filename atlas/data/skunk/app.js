@@ -7,7 +7,7 @@ function item(title, subtitle, label, state) { const row = node("div", undefined
 function render(state) {
   nonce = state.control_nonce;
   text("scope", state.scope); text("phase", state.phase);
-  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots · " + (state.model_calls || 0) + " AI calls");
+  text("mode", (state.deep ? "Deep recon + non-destructive validation" : "Reconnaissance") + " · " + state.agents + " concurrent slots · " + (state.model_calls || 0) + " AI calls · " + (state.token_usage_estimated ? "~" : "") + (state.tokens_used || 0) + " tokens");
   text("agent-count", state.agents + " slots");
   text("elapsed", String(Math.floor(state.elapsed / 60)).padStart(2, "0") + ":" + String(state.elapsed % 60).padStart(2, "0"));
   text("coverage", state.targets ? state.targets + " hosts discovered · " + state.remaining + " queued" : "Preparing scope");

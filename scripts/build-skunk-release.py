@@ -2,6 +2,7 @@
 """Build-only relocatable Python distribution. Never imports or runs the application."""
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -79,7 +80,8 @@ exec "$root/runtime/bin/python3" -I -m atlas.skunk "$@"
         "runtime_acceptance": "not performed at owner request",
         "records": 21012, "vectors": 34229, "vector_dimensions": 384,
         "default_agents": 8, "dashboard_port": 6777,
-        "models": {"orchestrator": "deepseek-v4-pro", "recon": "deepseek-v4-flash", "classifier": "deepseek-v4-pro", "exploit": "glm-5.3", "report": "deepseek-v4-flash"},
+        "models": ast.literal_eval(next(node.value for node in ast.parse((source / "atlas/skunk_prompts.py").read_text()).body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "MODELS" for target in node.targets))),
+        "new_run_usage_policy": {"mode": "tracking_only", "token_limits_enforced": False, "spending_limits_enforced": False},
         "corpus_sha256": sha(args.corpus), "full_text_bounty_reports": 0,
         "host_requirements": ["Linux x86_64 with glibc", "Linux user namespaces", "bubblewrap for isolated scanners"],
         "token_included": False,

@@ -37,7 +37,8 @@ def main():
     args = parser.parse_args()
     prefix, package = args.prefix.resolve(), args.package.resolve()
     manifest = json.loads((package / "HOTFIX.json").read_text())
-    assert manifest["hotfix"] == "retry1" and manifest["internal_package"] == "atlas", "Unexpected patch identity"
+    assert manifest["hotfix"] in ("retry1", "mod2") and manifest["internal_package"] == "atlas", "Unexpected patch identity"
+    hotfix = manifest["hotfix"]
     record_path = prefix / "BUILD-RECORD.json"
     record = json.loads(record_path.read_text())
     assert record["product"] == "SKUNK" and record["internal_package"] == "atlas", "SKUNK installation required"
@@ -59,13 +60,14 @@ def main():
             target = root / relative
             assert target.resolve().is_relative_to(prefix) and not target.is_symlink(), "Unexpected installation path"
             current = sha(target) if target.exists() else None
-            assert current in (item["base_sha256"], item["sha256"]), "Local code differs; preserve it and inspect before updating: " + str(relative)
+            accepted = item.get("base_sha256s", [item["base_sha256"]])
+            assert current in [*accepted, item["sha256"]], "Local code differs; preserve it and inspect before updating: " + str(relative)
             if current != item["sha256"]:
                 changes.append((source, target, target.read_bytes() if target.exists() else None, target.stat().st_mode & 0o777 if target.exists() else 0o600))
     if not changes:
-        print("The retry1 code update is already installed. Run: skunk diagnose")
+        print("The " + hotfix + " code update is already installed. Run: skunk diagnose")
         return
-    backup = prefix / "hotfix-backups" / ("retry1-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
+    backup = prefix / "hotfix-backups" / (hotfix + "-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
     backup.mkdir(parents=True, mode=0o700)
     shutil.copy2(record_path, backup / "BUILD-RECORD.json")
     applied = []
@@ -79,6 +81,8 @@ def main():
             applied.append((target, previous, mode))
         record["installed_hotfix"] = {"id": manifest["hotfix"], "source_commit": manifest["source_commit"],
             "applied_at": datetime.now(timezone.utc).isoformat(), "application_tests_run": False}
+        if hotfix == "mod2":
+            record["installed_hotfix"].update(model_presets=manifest["model_presets"], usage_policy=manifest["new_run_usage_policy"])
         replace(record_path, (json.dumps(record, indent=2) + "\n").encode())
     except BaseException:
         for target, previous, mode in reversed(applied):
@@ -88,7 +92,9 @@ def main():
                 replace(target, previous, mode)
         replace(record_path, (backup / "BUILD-RECORD.json").read_bytes())
         raise
-    print("Installed retry1. Existing database, knowledge, credentials and token holds were preserved.")
+    print("Installed " + hotfix + ". Existing database, knowledge, credentials and token holds were preserved.")
+    if hotfix == "mod2":
+        print("New SKUNK runs use deepseek-v4-mod / glm-5.3-mod and track usage without local token or spending caps.")
     print("Inspect the previous run: skunk diagnose")
     print("Then start your chosen scope again; new runs have bounded automatic retries.")
     print("Code backup: " + str(backup))

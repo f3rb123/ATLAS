@@ -128,7 +128,9 @@ def reserve(db, id, amount, owner, run_id, role, provider_id):
         raise ValueError("Token reservation must be a positive integer")
     row = ledger(db)
     value = row.value()
-    if value["contract_violation"]:
+    from .skunk_usage import tracking_only
+    track_only = tracking_only(db.get(Document, run_id))
+    if not track_only and value["contract_violation"]:
         raise TokenBudgetExhausted(
             "Provider token contract violated; operator review required"
         )
@@ -146,9 +148,9 @@ def reserve(db, id, amount, owner, run_id, role, provider_id):
     protected = max(
         0, value["validation_reserve"] - value["validation_used"] - validation_pending
     )
-    if amount > remaining or (
+    if not track_only and (amount > remaining or (
         role not in VALIDATION_ROLES and amount > remaining - protected
-    ):
+    )):
         raise TokenBudgetExhausted(
             "Global token allocation exhausted or reserved for independent validation"
         )
@@ -159,6 +161,7 @@ def reserve(db, id, amount, owner, run_id, role, provider_id):
         "role": role or "unspecified",
         "provider_id": provider_id,
         "state": "pending",
+        "enforcement": "tracking_only" if track_only else "bounded",
         "created_at": now(),
     }
     row.data = canonical(value)

@@ -77,7 +77,7 @@ def render(state, frame):
     header = Text("  " + state["scope"] + "\n", style="bold")
     header.append("  " + state["phase"] + " · " + str(state["agents"]) + " slots · " + str(state["elapsed"]) + "s\n", style="cyan")
     header.append("  Dashboard  http://127.0.0.1:6777\n", style="dim")
-    header.append("  " + str(state["observations"]) + " responses · " + str(state.get("model_calls", 0)) + " AI calls · " + str(len(state["findings"])) + " findings · " + str(len(state["candidates"])) + " candidates", style="dim")
+    header.append("  " + str(state["observations"]) + " responses · " + str(state.get("model_calls", 0)) + " AI calls · " + ("~" if state.get("token_usage_estimated") else "") + str(state.get("tokens_used", 0)) + " tokens · " + str(len(state["findings"])) + " findings · " + str(len(state["candidates"])) + " candidates", style="dim")
     table = Table(expand=True, box=None, padding=(0, 1))
     table.add_column("Agent responsibility")
     table.add_column("State")

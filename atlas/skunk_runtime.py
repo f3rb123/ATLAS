@@ -205,6 +205,7 @@ class Controller:
         from .scanner_templates import pins as template_pins
         from .swarm import initialize
         from .web_research import WebPlan
+        from .skunk_usage import default_policy
         with self.lock, session() as db:
             campaign = db.get(Document, self.campaign_id)
             if target:
@@ -236,7 +237,7 @@ class Controller:
                 "offline_execution_approved": False, "tool_pins": pins(db, self.owner_id),
                 "scanner_template_pins": template_pins(db, self.owner_id), "target_identities": {},
                 "integration_pins": {}, "skills": [], "specialist_roles": ["coding", "fast"],
-                "workflow_version": "skunk-swarm/2",
+                "workflow_version": "skunk-swarm/3", "usage_policy": default_policy(),
                 "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True,
                     "authorization": "Host owner explicitly accepts separately billed retries; preserve prior reservations"}}
             run = document(db, "run", self.owner_id, value)
@@ -371,13 +372,6 @@ class Controller:
                             self.pending.insert(0, fallback)
                             self.note("No HTTPS response was captured; scheduling the separately authorized HTTP origin")
                 self.export()
-                from .token_budget import summarize
-                with session() as db:
-                    remaining = summarize(db)["remaining_allocation"]
-                    db.commit()
-                if remaining < 64000 and self.pending:
-                    self.note("Persistent token allocation cannot cover another bounded call. Remaining hosts were not scanned.")
-                    break
             self.phase = "cancelled" if self.cancelled.is_set() else "failed" if self.failed_runs and not self.successful_runs else ("partial" if self.pending or self.partial else "completed")
             if self.phase == "failed":
                 self.error = "The assessment failed. Inspect the task failure details or run skunk diagnose; no successful coverage is claimed."
@@ -408,6 +402,7 @@ class Controller:
                      "targets": len(self.targets), "remaining": len(self.pending), "finished": self.finished.is_set(),
                      "events": list(self.events[-100:]), "tasks": [], "findings": [], "candidates": [], "observations": 0,
                      "model_calls": 0, "failed_tasks": 0, "completed_tasks": 0,
+                     "usage_policy": "tracking_only", "tokens_used": 0, "token_usage_estimated": False,
                      "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True}}
             ids = list(self.run_ids)
         if not self.owner_id or not ids:
@@ -432,6 +427,9 @@ class Controller:
                     state["candidates"].append({"id": item.id, "claim": value.get("claim", "Candidate"), "status": value.get("status", "candidate")})
                 elif item.kind == "http_observation":
                     state["observations"] += 1
+                elif item.kind == "usage":
+                    state["tokens_used"] += value.get("total_tokens", value.get("input_tokens", 0) + value.get("output_tokens", 0))
+                    state["token_usage_estimated"] |= bool(value.get("token_usage_estimated"))
             journal = db.query(Journal).filter(Journal.stream == self.current_run).order_by(Journal.sequence.desc()).limit(100).all()
             entries = []
             for item in journal:

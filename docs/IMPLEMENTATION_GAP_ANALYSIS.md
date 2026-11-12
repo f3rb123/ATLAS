@@ -1,3 +1,15 @@
+# SKUNK mod2 current status — 12 November 2026
+
+| Item | Status |
+| --- | --- |
+| Exact owner-selected Pentest model family | DeepSeek roles use deepseek-v4-mod; validation uses glm-5.3-mod |
+| Local TokenBudgetExhausted gate | New host SKUNK runs track usage without local token/spending enforcement |
+| Historical counters and unknown holds | Preserved, including old contract flags and ceilings |
+| Legacy ATLAS limits | Retained for runs without the explicit host-owned SKUNK tracking policy |
+| Target safeguards and bounded execution | Scope, deletion/database/OTP, schema, proof, concurrency, retry/request/time/model/tool controls retained |
+| Cumulative updater | Original rc1/retry1 module preimages accepted; guarded backup and handled-error rollback |
+| Evidence | Source compilation/shell parsing/archive hashes; no application tests, mod inference, target scans or VPS execution |
+
 # SKUNK confirmed local quota gate — 12 November 2026
 
 | Item | Current evidence/status |
