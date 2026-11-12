@@ -12,8 +12,10 @@ The owner reported all-dead-letter tasks and authorized separately billed retrie
 
 Exit the SKUNK CLI with Ctrl+C first. Run this under the same Unix account and SKUNK_DATA_DIR:
 
+The repository is currently private; plain curl downloads return HTTP404. The command below installs GitHub CLI through APT if needed, and uses GitHub device login when no active login exists. Open https://github.com/login/device on your phone and enter the displayed code if prompted. It requires a GitHub account with access to f3rb123/ATLAS.
+
 ```bash
-( set -e; skunk_fix_dir=$(mktemp -d); cd "$skunk_fix_dir"; skunk_fix_url=https://github.com/f3rb123/ATLAS/releases/download/skunk-hotfix1-20261112; curl -fL --retry 3 -O "$skunk_fix_url/skunk-retry-hotfix1.tar.gz"; curl -fsSL --retry 3 -O "$skunk_fix_url/skunk-retry-hotfix1.tar.gz.sha256"; sha256sum -c skunk-retry-hotfix1.tar.gz.sha256; tar -xzf skunk-retry-hotfix1.tar.gz; bash skunk-retry-hotfix1/apply.sh; skunk diagnose --provider )
+( set -e; if ! command -v gh >/dev/null 2>&1; then apt-get update; apt-get install -y gh; fi; gh auth status >/dev/null 2>&1 || gh auth login --hostname github.com --git-protocol https --web; skunk_fix_dir=$(mktemp -d); cd "$skunk_fix_dir"; gh release download skunk-hotfix1-20261112 --repo f3rb123/ATLAS --pattern 'skunk-retry-hotfix1.tar.gz*'; sha256sum -c skunk-retry-hotfix1.tar.gz.sha256; tar -xzf skunk-retry-hotfix1.tar.gz; bash skunk-retry-hotfix1/apply.sh; skunk diagnose --provider )
 ```
 
 Inspect/share the resulting JSON to diagnose the original failure. After the cause is resolved, start your scope command again. Old completed runs are preserved and are not reopened automatically:
