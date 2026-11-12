@@ -1,5 +1,7 @@
 # SKUNK mod2 current status — 12 November 2026
 
+Publication evidence: six remote file sizes/digests verified; original/retry1 module hashes accepted; source 14c8c3a. Source/asset checks do not claim actual mod API compatibility or completed VPS deployment.
+
 | Item | Status |
 | --- | --- |
 | Exact owner-selected Pentest model family | DeepSeek roles use deepseek-v4-mod; validation uses glm-5.3-mod |

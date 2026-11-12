@@ -1,0 +1,66 @@
+{
+  "product": "SKUNK",
+  "hotfix": "mod2",
+  "publication_date": "2026-11-12",
+  "timezone": "Asia/Calcutta",
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-mod2-20261112",
+  "source_commit": "14c8c3a382f18c52ca030194d9541d33aec4553a",
+  "workflow_url": "https://github.com/f3rb123/ATLAS/actions/runs/43152953729",
+  "all_remote_sizes_and_sha256_verified": true,
+  "model_presets": {
+    "orchestrator": "deepseek-v4-mod",
+    "recon": "deepseek-v4-mod",
+    "classifier": "deepseek-v4-mod",
+    "exploit": "glm-5.3-mod",
+    "report": "deepseek-v4-mod"
+  },
+  "usage_policy": {
+    "mode": "tracking_only",
+    "token_limits_enforced": false,
+    "spending_limits_enforced": false
+  },
+  "original_preimages_verified": 16,
+  "retry1_preimages_verified": 8,
+  "application_tests_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "vps_execution_performed": false,
+  "assets": [
+    {
+      "name": "SKUNK-MOD2-MANIFEST.json",
+      "bytes": 4908,
+      "digest": "sha256:339c8ab437944043be2e39580c76eb2cbddd2c7ae22a91ced4d42ca19f9eb898",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/SKUNK-MOD2-MANIFEST.json"
+    },
+    {
+      "name": "SKUNK-MOD2-README.md",
+      "bytes": 3520,
+      "digest": "sha256:8100b9504444943caad7cde2190d48b0103a5e97af14c8c21ced00a7c90a76e8",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/SKUNK-MOD2-README.md"
+    },
+    {
+      "name": "SKUNK-MOD2-SHA256SUMS",
+      "bytes": 444,
+      "digest": "sha256:d5fce20c2dbd1cdb5e10276ab9b825514703fead3ab9eb30f188040bb35c5d4a",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/SKUNK-MOD2-SHA256SUMS"
+    },
+    {
+      "name": "skunk-mod2.tar.gz",
+      "bytes": 59131,
+      "digest": "sha256:0ec68c1c94c9d65adb5b823760a1c557eabba8306e9032187929da7c5e0ad71e",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/skunk-mod2.tar.gz"
+    },
+    {
+      "name": "skunk-mod2.tar.gz.sha256",
+      "bytes": 84,
+      "digest": "sha256:638239bb512f7717ec9aa9795d4310d96188fe5e10d9b5957a46aeee08b851ef",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/skunk-mod2.tar.gz.sha256"
+    },
+    {
+      "name": "skunk-source-mod2.tar.gz",
+      "bytes": 1356841,
+      "digest": "sha256:1fb4212e11e256b81da5c479c69c10a9f5f5782b4f09eb273ae5f5b3ac40b082",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-mod2-20261112/skunk-source-mod2.tar.gz"
+    }
+  ]
+}

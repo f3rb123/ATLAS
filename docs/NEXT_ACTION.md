@@ -1,5 +1,7 @@
 # SKUNK mod2 delivery — 12 November 2026
 
+mod2 is published at https://github.com/f3rb123/ATLAS/releases/tag/skunk-mod2-20261112. Exit the old CLI, apply scripts/skunk-mod2-update.sh from a pinned source URL, then rerun the original scope command. New runs use mod presets and tracking-only accounting. Earlier --add allocation helper is superseded; no budget-counter reset is needed.
+
 Package and publish the cumulative mod2 update for the existing VPS install, including retry recovery, exact -mod presets and host-owned tracking-only accounting. Earlier --add allocation plan is superseded by the owner's unlimited-local-budget instruction; no further budget totals are needed to implement that mode. Preserve all counters, holds, keys, knowledge and historical frozen runs. Provide one phone-friendly public download/apply command, then restart the original scope as a new run. Do not claim new mod IDs were inference-tested or that VPS execution has been performed here.
 
 # SKUNK local token headroom repair — 12 November 2026
