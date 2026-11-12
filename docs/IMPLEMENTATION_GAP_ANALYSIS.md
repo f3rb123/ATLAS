@@ -1,5 +1,7 @@
 # SKUNK flow3 status — 12 November 2026
 
+Publication verified: seven GitHub asset sizes/digests; original/retry1/mod2 preimages20/8/12. Offline context/scheduler evidence is attached to the release. Actual VPS execution/recovery remains unverified here.
+
 | Owner-reported issue | Change/evidence |
 | --- | --- |
 | Mass model_call_limit after completed work | Tracking-only run model/tool ceilings removed; counters and legacy bounded behavior retained |

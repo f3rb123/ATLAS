@@ -1,0 +1,45 @@
+{
+  "broad-context-inspection": {
+    "scenario": "Broad structured evidence and full tool registry; synthetic offline context, not a VPS snapshot",
+    "old_packer": {
+      "status": "context_limit_reproduced"
+    },
+    "raw_bytes": 94580,
+    "new_packed_bytes": 26419,
+    "context_budget": 34000,
+    "all_selected_contracts_intact": true,
+    "required_and_enums_preserved": true,
+    "operator_instruction_preserved": true,
+    "model_calls": 0,
+    "target_requests": 0,
+    "database_writes": 0
+  },
+  "context-inspection": {
+    "old_packer": "fit",
+    "raw_context_bytes": 8616640,
+    "packed_context_bytes": 32736,
+    "context_byte_budget": 34000,
+    "model_input_plus_output_bytes": 45424,
+    "physical_context_bound": 64000,
+    "tool_catalog_entries": 47,
+    "selected_complete_tool_schemas": 36,
+    "selected_schemas_intact": true,
+    "operator_instruction_preserved": true,
+    "response_schema_preserved": true,
+    "tool_result_list_shape_preserved": true,
+    "model_calls": 0,
+    "target_requests": 0,
+    "database_writes": 0
+  },
+  "scheduler-inspection": {
+    "diagnostic": "Synthetic in-memory scheduler inspection; no VPS state",
+    "distinct_leads": 3,
+    "queued_specialist_tasks": 2,
+    "coalesced_event_count": 2,
+    "same_evidence_reuses_task": true,
+    "depth_three_was_deferred": true,
+    "model_calls": 0,
+    "target_requests": 0,
+    "persistent_database_writes": 0
+  }
+}

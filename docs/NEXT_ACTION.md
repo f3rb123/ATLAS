@@ -1,5 +1,7 @@
 # SKUNK flow3 delivery — 12 November 2026
 
+flow3 is published at https://github.com/f3rb123/ATLAS/releases/tag/skunk-flow3-20261112. Exit the old CLI, apply scripts/skunk-flow3-update.sh from the pinned published commit, then restart the original scope. Historical task states remain. Actual VPS recovery still needs owner execution; do not claim paid model/target acceptance from offline diagnostics.
+
 Build/publish the cumulative flow3 updater, accepting original rc1/retry1/mod2 preimages. Provide a short public pinned download/apply command, then start a new scan under the same account/runtime. Model IDs remain the owner-selected -mod equivalents. The old run's partial/error history is preserved. No extra budget increase is needed. Be precise about offline diagnostic evidence versus actual VPS recovery; do not claim live acceptance.
 
 # SKUNK mod2 delivery — 12 November 2026

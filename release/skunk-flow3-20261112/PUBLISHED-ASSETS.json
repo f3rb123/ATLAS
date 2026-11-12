@@ -1,0 +1,78 @@
+{
+  "product": "SKUNK",
+  "hotfix": "flow3",
+  "publication_date": "2026-11-12",
+  "timezone": "Asia/Calcutta",
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-flow3-20261112",
+  "source_commit": "721346d3c18d0d0cf6fd59c6bd8d380b19ed3d7d",
+  "workflow_url": "https://github.com/f3rb123/ATLAS/actions/runs/43160657011",
+  "all_remote_sizes_and_sha256_verified": true,
+  "model_presets": {
+    "orchestrator": "deepseek-v4-mod",
+    "recon": "deepseek-v4-mod",
+    "classifier": "deepseek-v4-mod",
+    "exploit": "glm-5.3-mod",
+    "report": "deepseek-v4-mod"
+  },
+  "usage_policy": {
+    "mode": "tracking_only",
+    "token_limits_enforced": false,
+    "spending_limits_enforced": false,
+    "model_call_limits_enforced": false,
+    "tool_call_limits_enforced": false
+  },
+  "preimages": {
+    "original": 20,
+    "skunk-retry-hotfix1.tar.gz": 8,
+    "skunk-mod2.tar.gz": 12
+  },
+  "offline_context_and_scheduler_diagnostics_run": true,
+  "full_application_suites_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "vps_execution_performed": false,
+  "assets": [
+    {
+      "name": "SKUNK-FLOW3-MANIFEST.json",
+      "bytes": 6732,
+      "digest": "sha256:39b61a5886add689b5acb67057564adf842a7f818c1c385c6fb0a985238666ba",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/SKUNK-FLOW3-MANIFEST.json"
+    },
+    {
+      "name": "SKUNK-FLOW3-OFFLINE-CHECKS.json",
+      "bytes": 1425,
+      "digest": "sha256:b3849d26b7bf7051b8a2d0386722e3027263e03a03ccdd0597efd0ddb56aea06",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/SKUNK-FLOW3-OFFLINE-CHECKS.json"
+    },
+    {
+      "name": "SKUNK-FLOW3-README.md",
+      "bytes": 4342,
+      "digest": "sha256:ad4a0b14616f9796edcad31e2846f0d00f5b69398d63466aec6c75c74b754369",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/SKUNK-FLOW3-README.md"
+    },
+    {
+      "name": "SKUNK-FLOW3-SHA256SUMS",
+      "bytes": 547,
+      "digest": "sha256:fd874f7722b47062dc8532c3242cb917735fa224819b88f52243946e1f671145",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/SKUNK-FLOW3-SHA256SUMS"
+    },
+    {
+      "name": "skunk-flow3.tar.gz",
+      "bytes": 73448,
+      "digest": "sha256:4eb380c013d7000f328c1dd4b3bb8289441b480f2904e788dced53b21cba43de",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/skunk-flow3.tar.gz"
+    },
+    {
+      "name": "skunk-flow3.tar.gz.sha256",
+      "bytes": 85,
+      "digest": "sha256:0f434df279173972d5bdd1176294252e5edd92590ca6282b9dabd246f2786f5b",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/skunk-flow3.tar.gz.sha256"
+    },
+    {
+      "name": "skunk-source-flow3.tar.gz",
+      "bytes": 1366307,
+      "digest": "sha256:583bbb77a92a9b8f0d8d79b2dbe6bd139ca708e8007a1e14b499fe72e45f3caf",
+      "download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-flow3-20261112/skunk-source-flow3.tar.gz"
+    }
+  ]
+}
