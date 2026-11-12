@@ -54,22 +54,4 @@ def alias_for(role):
     return "exploit"
 
 
-def bounded_context(context):
-    """Bound retrieved evidence, preserving instructions and exact output schemas."""
-    from .db import canonical
-    def clip(value, width, length, key=""):
-        if isinstance(value, str):
-            limit = 4000 if key in ("instructions", "operator_instructions", "question") else width
-            encoded = value.encode("utf-8")
-            return value if len(encoded) <= limit else encoded[:limit].decode("utf-8", errors="ignore") + " [excerpt truncated]"
-        if isinstance(value, list):
-            return [clip(item, width, length) for item in value[:length]]
-        if isinstance(value, dict):
-            return {key: clip(item, width, length, key) for key, item in value.items()}
-        return value
-    for width, length in ((1200, 8), (600, 4), (240, 2)):
-        result = clip(context, width, length)
-        result["bounded_context"] = "Selected excerpts only; use knowledge.retrieve for missing evidence. Policy and scope remain enforced independently."
-        if len(canonical(result).encode("utf-8")) <= 34000:
-            return result
-    raise ValueError("Role context exceeds the configured model limit even after bounded excerpting")
+from .skunk_context import bounded_context

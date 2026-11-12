@@ -230,14 +230,15 @@ class Controller:
                 "target_url": target, "agent_count": self.count, "model_mode": "capability",
                 "models": models, "status": "paused" if self.paused.is_set() else "running",
                 "state": "DISCOVERY" if discovery else "SWARM_RUNNING", "budget_limit": 100,
-                "budget_used": 0, "max_model_calls": 160 if self.deep else 64,
-                "max_tool_calls": 400 if self.deep else 160, "max_seconds": 7200 if self.deep else 1800,
+                "budget_used": 0, "max_model_calls": None,
+                "max_tool_calls": None, "max_seconds": 7200 if self.deep else 1800,
                 "deadline": time.time() + (7200 if self.deep else 1800), "started_at": now(),
                 "instructions": self.instruction, "web": plan.model_dump(), "assessment_profile": "standard",
                 "offline_execution_approved": False, "tool_pins": pins(db, self.owner_id),
                 "scanner_template_pins": template_pins(db, self.owner_id), "target_identities": {},
                 "integration_pins": {}, "skills": [], "specialist_roles": ["coding", "fast"],
-                "workflow_version": "skunk-swarm/3", "usage_policy": default_policy(),
+                "workflow_version": "skunk-swarm/4", "usage_policy": default_policy(),
+                "followup_policy": {"max_depth": 2, "max_tasks_per_role": 8, "coalesce_after_pending": 2},
                 "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True,
                     "authorization": "Host owner explicitly accepts separately billed retries; preserve prior reservations"}}
             run = document(db, "run", self.owner_id, value)

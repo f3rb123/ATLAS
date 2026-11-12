@@ -1,3 +1,7 @@
+# SKUNK flow3 delivery — 12 November 2026
+
+Build/publish the cumulative flow3 updater, accepting original rc1/retry1/mod2 preimages. Provide a short public pinned download/apply command, then start a new scan under the same account/runtime. Model IDs remain the owner-selected -mod equivalents. The old run's partial/error history is preserved. No extra budget increase is needed. Be precise about offline diagnostic evidence versus actual VPS recovery; do not claim live acceptance.
+
 # SKUNK mod2 delivery — 12 November 2026
 
 mod2 is published at https://github.com/f3rb123/ATLAS/releases/tag/skunk-mod2-20261112. Exit the old CLI, apply scripts/skunk-mod2-update.sh from a pinned source URL, then rerun the original scope command. New runs use mod presets and tracking-only accounting. Earlier --add allocation helper is superseded; no budget-counter reset is needed.

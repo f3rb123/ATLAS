@@ -94,9 +94,11 @@ def diagnose():
         "writes_performed": 0, "tasks": [], "models": [], "preflight": [],
         "note": "Cached context/configuration inspection is not proof that the API credential or provider is working."}
     from .skunk_usage import default_policy
-    report["hotfix"] = "mod2"
+    report["hotfix"] = "flow3"
     report["new_run_usage_policy"] = default_policy()
     report["new_run_model_presets"] = __import__("atlas.skunk_prompts", fromlist=["MODELS"]).MODELS
+    report["new_run_model_call_cap"] = None
+    report["new_run_tool_call_cap"] = None
 
     def no_network(*_args, **_kwargs):
         raise RuntimeError("Network is disabled in skunk diagnose")

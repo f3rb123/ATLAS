@@ -10,10 +10,10 @@ The installer installs `bubblewrap` and Git through APT if bubblewrap is missing
 and installation is run as root; otherwise install that host prerequisite first.
 The sandbox is never bypassed when a host cannot support it.
 
-Apply the cumulative [mod2 update](SKUNK_MOD_UPDATE.md) to the original rc1
-archive or retry1 installation. It includes diagnostics/retries and uses the
-owner-selected Pentest model counterparts with usage tracking without local
-token/spending caps. The original rc1 archive is an earlier source snapshot.
+Apply the cumulative [flow3 update](SKUNK_FLOW_UPDATE.md) to rc1, retry1 or mod2.
+It includes mod model presets, usage-only accounting, context packing and cited
+specialist coalescing. New tracking-only runs have no run-wide model/tool call
+ceiling. The original rc1 archive is an earlier source snapshot.
 
 ## Install
 

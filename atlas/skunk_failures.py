@@ -15,6 +15,7 @@ KNOWN = {
     "rate_limited": ("provider_rate_limited", "HackerAI rate limited the request (HTTP 429).", True, "Wait for Retry-After; SKUNK backs off before retrying."),
     "Context size limit exceeded": ("context_limit", "The assembled role context exceeds the harness limit.", False, "Use skunk diagnose to inspect request sizes; update the harness context bounds."),
     "Role context exceeds the configured model limit even after bounded excerpting": ("context_limit", "The role context remains oversized after excerpting.", False, "Run skunk diagnose to inspect request construction."),
+    "Operator/task instructions cannot fit the configured physical model context": ("context_limit", "Core instructions exceed the model's physical context window.", False, "Inspect the configured context window and instruction sizes with skunk diagnose."),
     "Conservative context/token limit exceeded": ("context_limit", "The request exceeds the configured model context bound.", False, "Use skunk diagnose to inspect the pinned model and prompt sizes."),
     "Model output limit exceeded": ("model_output_limit", "The requested output exceeds the pinned model limit.", False, "Correct the model/output configuration."),
     "Pinned provider/model version unavailable": ("model_pin_changed", "The pinned provider/model version is unavailable or changed.", False, "Start a new run after reviewing the model configuration; existing run pins stay frozen."),

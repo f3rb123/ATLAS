@@ -102,13 +102,20 @@ def enqueue(db, run, role, payload, key, priority=1):
     old = tasks(db, run.id).filter_by(dedupe_key=key).first()
     if old:
         return old
-    if tasks(db, run.id).count() >= MAX_TASKS:
+    skunk = run.value().get("harness") == "skunk/1"
+    final_report = role == "report" and key == digest("skunk-final-report:" + run.id)
+    task_limit = MAX_TASKS - 1 if skunk and not final_report else MAX_TASKS
+    if tasks(db, run.id).count() >= task_limit:
+        if skunk:
+            value = run.value()
+            value["tool_warnings"] = (value.get("tool_warnings", []) + [{"tool": "swarm_scheduler", "code": "task_limit", "limit": task_limit}])[-100:]
+            run.data = canonical(value)
         append(
             db,
             run.id,
             "scheduler",
             "swarm_task_limit",
-            {"limit": MAX_TASKS},
+            {"limit": task_limit},
             run.value()["campaign_id"],
         )
         return None
@@ -149,6 +156,13 @@ def enqueue(db, run, role, payload, key, priority=1):
         run.value()["campaign_id"],
     )
     return t
+
+
+def enqueue_followup(db, run, parent, role, payload, key, priority=1, citations=()):
+    if run.value().get("harness") == "skunk/1":
+        from .skunk_scheduling import followup
+        return followup(db, run, parent, role, payload, citations, priority)
+    return enqueue(db, run, role, payload, key, priority)
 
 
 def initialize(db, run):
@@ -391,9 +405,10 @@ def publish(db, run, task, discovery):
         and discovery.confidence >= 0.5
         and discovery.topic != task.role
     ):
-        enqueue(
+        enqueue_followup(
             db,
             run,
+            task,
             discovery.topic,
             {
                 "event_id": id,
@@ -409,11 +424,13 @@ def publish(db, run, task, discovery):
             },
             digest("subscription:" + discovery.topic + ":" + id),
             discovery.confidence,
+            discovery.citations,
         )
     if discovery.kind == "hypothesis" and task.role != "deep-research":
-        enqueue(
+        enqueue_followup(
             db,
             run,
+            task,
             "deep-research",
             {
                 "event_id": id,
@@ -429,6 +446,7 @@ def publish(db, run, task, discovery):
             },
             digest("research:" + id),
             discovery.confidence,
+            discovery.citations,
         )
     return event
 
@@ -562,6 +580,14 @@ def task_context(db, run, task):
         event = db.get(Document, payload["event_id"])
         if event and event.owner == run.owner and event.value()["run_id"] == run.id:
             context["discovery"] = event.value()
+    context["related_discoveries"] = []
+    for identity in payload.get("event_ids", [])[:8]:
+        event = db.get(Document, identity)
+        if event and event.owner == run.owner and event.value().get("run_id") == run.id:
+            data = event.value()
+            context["related_discoveries"].append({"id": event.id, **{key: data.get(key) for key in ("kind", "topic", "title", "text", "citations")}})
+    if payload.get("additional_questions"):
+        context["assigned_questions"] = payload["additional_questions"][:4]
     # Only a small, explicit shared view; never whole agent histories.
     context["shared_observations"] = [
         d.value()
@@ -784,9 +810,10 @@ def execute_one(worker_kind):
                     target = (
                         "coding-review" if request.role == "coding" else "fast-triage"
                     )
-                    enqueue(
+                    enqueue_followup(
                         db,
                         run,
+                        task,
                         target,
                         {
                             "instructions": request.question,
@@ -794,6 +821,7 @@ def execute_one(worker_kind):
                             "parent_task": task.id,
                         },
                         digest("request:" + request.role + ":" + request.question),
+                        citations=output.citations,
                     )
                 for discovery in output.discoveries:
                     publish(db, run, task, discovery)
@@ -814,7 +842,13 @@ def execute_one(worker_kind):
                         id,
                     )
                     hypotheses.append(item.id)
-                if output.experiment:
+                if output.experiment and run.value().get("harness") == "skunk/1" and (repo is None or not run.value().get("offline_execution_approved")):
+                    result["blocked_actions"] = [{"capability": "local_reproduction", "reason": "No approved repository reproduction is available; use typed web proof/control capabilities."}]
+                    value = run.value()
+                    value["tool_warnings"] = (value.get("tool_warnings", []) + [{"tool": "local_reproduction", "code": "repository_reproduction_unavailable", "task_id": task.id}])[-100:]
+                    run.data = canonical(value)
+                    append(db, run.id, task.role, "swarm_action_blocked", {"task_id": task.id, "code": "repository_reproduction_unavailable"}, value["campaign_id"])
+                elif output.experiment:
                     from .tools import broker
 
                     e = output.experiment.model_dump(exclude_none=True)

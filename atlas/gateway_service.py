@@ -68,7 +68,8 @@ def integration_read(body: IntegrationRead, request: Request):
                     raise HTTPException(403)
                 run._swarm_claim = (task.id, body.lease_token)
                 check_fence(db, run)
-            if run.value().get("tool_calls", 0) > run.value().get("max_tool_calls", 50):
+            from .skunk_usage import tracking_only
+            if not tracking_only(run) and run.value().get("tool_calls", 0) > run.value().get("max_tool_calls", 50):
                 raise HTTPException(403)
             return execute(
                 db,

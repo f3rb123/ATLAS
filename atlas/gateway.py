@@ -996,7 +996,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
     ) / 1000000
     if not track_only and rv.get("budget_used", 0) + estimate > rv["budget_limit"]:
         raise ProviderError("Run budget exhausted")
-    if rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
+    if not track_only and rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
         raise ProviderError("Model call limit exhausted")
     role_spent = rv.get("role_spent", {}).get(role, 0)
     if not track_only and role_spent + estimate > rv.get("role_budgets", {}).get(role, rv["budget_limit"]):
@@ -1033,7 +1033,7 @@ def generate_budgeted(db, provider, model, req, run, role="reasoning"):
         settle(db, reservation, 0, not_dispatched=True)
         db.commit()
         raise RunInterrupted("Run was stopped before dispatch")
-    if rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
+    if not track_only and rv.get("model_calls", 0) >= rv.get("max_model_calls", 20):
         settle(db, reservation, 0, not_dispatched=True)
         db.commit()
         raise ProviderError("Model call limit exhausted")

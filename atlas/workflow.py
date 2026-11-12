@@ -181,6 +181,7 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
     from .knowledge import GLOBAL_POLICY, CAPABILITIES, prepare_context
 
     automatic = run.value().get("model_mode") == "auto"
+    skunk = run.value().get("harness") == "skunk/1"
     if not automatic:
         p, m = model_binding(db, run, alias)
     schema = response_schema or (
@@ -213,6 +214,12 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
         campaign_mode = db.get(Document, run.value()["campaign_id"]).value()["mode"]
 
         def allowed_tool(name):
+            if skunk and name in ("http_request", "fetch_allowed_url", "inspect_redirect_chain"):
+                from .config import settings
+                if not settings().relay_url:
+                    return False
+            if skunk and name in ("request_more_budget", "request_user_approval"):
+                return False
             if run.value().get("harness") == "skunk/1" and context.get("task", {}).get("role") == "report":
                 return name in CAPABILITIES or name == "store_research_note"
             if stage == "INDEPENDENT_SOURCE_EXPERIMENT":
@@ -247,6 +254,14 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             for name, (risk, model) in TOOLS.items()
             if name not in CAPABILITIES and allowed_tool(name)
         }
+    full_tool_capabilities = context.get("tool_capabilities", {})
+    full_knowledge_capabilities = context.get("knowledge", {}).get("capabilities", {})
+    response_contract = schema.model_json_schema()
+    if skunk:
+        from .skunk_context import compact_schema
+        response_contract = compact_schema(response_contract)
+        if not run.value().get("repository_id") and "experiment" in response_contract.get("properties", {}):
+            response_contract["properties"]["experiment"] = {"type": "null", "default": None}
     context["untrusted_validated_skills"] = []
     for pin in run.value().get("skills", []):
         d = db.get(Document, pin["id"])
@@ -284,14 +299,23 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             if round_number >= 2
             else "Use supplied evidence first; request only a missing narrow lookup",
         }
+        if skunk:
+            from .skunk_context import bounded_context
+            context["tool_capabilities"] = full_tool_capabilities
+            context.setdefault("knowledge", {})["capabilities"] = full_knowledge_capabilities
+            window = 64000 if automatic else m.value()["context_window"]
+            output_limit = 4096 if automatic else min(4096, m.value()["max_output_tokens"])
+            envelope = canonical({"stage": stage, "context": {}, "response_schema": response_contract})
+            room = window - output_limit - len(system.encode("utf-8")) - len(envelope.encode("utf-8")) - 1024
+            context = bounded_context(context, max_bytes=min(34000, room))
         prompt = canonical(
             {
                 "stage": stage,
                 "context": context,
-                "response_schema": schema.model_json_schema(),
+                "response_schema": response_contract,
             }
         )
-        if len(prompt) > 64000:
+        if not skunk and len(prompt) > 64000:
             for item in context.get("source", []):
                 if isinstance(item, dict) and isinstance(item.get("text"), str):
                     item["text"] = item["text"][:1000]
@@ -303,11 +327,11 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
                 {
                     "stage": stage,
                     "context": context,
-                    "response_schema": schema.model_json_schema(),
+                    "response_schema": response_contract,
                 }
             )
         while (
-            len(prompt) > 64000 and len(context.get("knowledge_tool_results", [])) > 1
+            not skunk and len(prompt) > 64000 and len(context.get("knowledge_tool_results", [])) > 1
         ):
             context["knowledge_tool_results"].pop(0)
             context["context_note"] = (
@@ -317,13 +341,9 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
                 {
                     "stage": stage,
                     "context": context,
-                    "response_schema": schema.model_json_schema(),
+                    "response_schema": response_contract,
                 }
             )
-        if run.value().get("harness") == "skunk/1" and len(prompt.encode("utf-8")) > 44000:
-            from .skunk_prompts import bounded_context
-            context = bounded_context(context)
-            prompt = canonical({"stage": stage, "context": context, "response_schema": schema.model_json_schema()})
         if len(prompt) > 64000:
             raise ProviderError("Context size limit exceeded")
         if automatic:
@@ -459,7 +479,7 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
                 if (
                     general_tools
                     and t.name not in CAPABILITIES
-                    and t.name not in context.get("tool_capabilities", {})
+                    and t.name not in (full_tool_capabilities if skunk else context.get("tool_capabilities", {}))
                 ):
                     raise Denied(
                         "Capability is unavailable for this role and pinned configuration"
@@ -475,11 +495,17 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
 
                 db.expire_all()
                 check_fence(db, run)
+                if skunk and isinstance(exc, Denied):
+                    value = run.value()
+                    value["tool_warnings"] = (value.get("tool_warnings", []) + [{"tool": t.name, "code": "policy_denied", "task_id": getattr(run, "_swarm_claim", (None, None))[0]}])[-100:]
+                    run.data = canonical(value)
+                    db.flush()
                 current_results.append(
                     {
                         "capability": t.name,
                         "status": "denied_or_invalid",
                         "error_type": type(exc).__name__,
+                        **({"schema_hint": t.name} if skunk and not isinstance(exc, Denied) else {}),
                         "instruction": "The registered tool could not execute these arguments. Do not expand scope, retry unknown paid calls or invent results. Use available evidence, correct a bounded request, or report the limitation.",
                     }
                 )

@@ -456,7 +456,8 @@ def broker(db, run, repo, name, payload, actor):
         kill = db.get(type(run), "kill-switch")
         if kill and kill.value().get("enabled"):
             raise Denied("Emergency stop active")
-        if v.get("tool_calls", 0) >= v.get("max_tool_calls", 50):
+        from .skunk_usage import tracking_only
+        if not tracking_only(run) and v.get("tool_calls", 0) >= v.get("max_tool_calls", 50):
             raise Denied("Tool budget exhausted")
         risk, model = TOOLS[name]
         args = model.model_validate(payload) if model else None

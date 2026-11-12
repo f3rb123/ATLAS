@@ -1,3 +1,11 @@
+# SKUNK flow3 recovery — 12 November 2026
+
+Actual owner output shows completed work followed by model_call_limit, context_limit and unavailable local-reproduction errors. The prior mod2 source kept 64/160 model and 160/400 tool ceilings; tracking-only SKUNK now tracks those counts without run-wide call enforcement. Legacy bounded runs are unchanged. Context packing separates full selected schemas from byte-bounded evidence, compacts schema annotations without deleting property names/required/enums, preserves the full allowed-tool catalog and computes room from the physical model envelope. Invalid-argument feedback prioritizes that contract. Unavailable relay/approval tools are not advertised by the standalone CLI. Local repository experiments remain blocked, with valid observations retained and incomplete coverage recorded.
+
+Specialists now deduplicate by role/citations, coalesce compatible pending evidence, and bound follow-up depth/per-role work. Reporter follow-ups do not reopen research; report capacity is reserved. Policy denials remain denials and are recorded as coverage warnings. Scope, destructive/OTP guards, proof, deadlines, request limits, concurrency and per-task rounds/retries remain intact.
+
+Offline diagnostics: a 94,580-byte broad structured synthetic context reproduced old context_limit and packed to 26,419 bytes; an 8.6MB synthetic context packed to 32,736 bytes (full input/output allowance45,424 under64,000). Selected schemas, required/enum fields and operator text were preserved. In-memory scheduling coalesced three leads into two tasks, deduplicated repeated evidence and deferred depth3. Network was disabled; no paid inference, target requests or persistent runtime writes. These are synthetic offline diagnostics, not an actual VPS prompt or live acceptance. Full test/browser suites and VPS execution were not run.
+
 # SKUNK mod models and tracking-only accounting — 12 November 2026
 
 Published the 59,131-byte cumulative mod2 update. All six GitHub asset sizes/SHA256 digests match local artifacts; original rc1 preimages (16) and retry1 preimages (8) match. Source 14c8c3a. Added a pinned-download wrapper for the phone terminal. No application tests, mod inference, target scans or VPS execution were run. Temporary upload branch is removed after delivery.

@@ -6,6 +6,7 @@ def default_policy():
         "version": 1, "mode": "tracking_only", "authority": "host-owner",
         "authorization": "Owner explicitly requested no local token or spending caps",
         "token_limits_enforced": False, "spending_limits_enforced": False,
+        "model_call_limits_enforced": False, "tool_call_limits_enforced": False,
     }
 
 

@@ -1,3 +1,14 @@
+# SKUNK flow3 status — 12 November 2026
+
+| Owner-reported issue | Change/evidence |
+| --- | --- |
+| Mass model_call_limit after completed work | Tracking-only run model/tool ceilings removed; counters and legacy bounded behavior retained |
+| Context remains oversized after generic trimming | Exact byte-budgeted evidence/contract packing; synthetic old failure reproduced and new packet26,419 bytes |
+| Repeated specialist fan-out | Cited-role deduplication, queued evidence coalescing and bounded follow-up generations; in-memory behavior inspected |
+| No-repository local reproduction proposal | Remains denied; valid observations retained with a coverage warning rather than task loss |
+| Guardrails | Scope, destructive/OTP, proofs, context/schema, time/request/concurrency and per-task round/retry controls retained |
+| Acceptance | Source/shell checks and offline synthetic diagnostics; no full suites, paid calls, targets or VPS execution |
+
 # SKUNK mod2 current status — 12 November 2026
 
 Publication evidence: six remote file sizes/digests verified; original/retry1 module hashes accepted; source 14c8c3a. Source/asset checks do not claim actual mod API compatibility or completed VPS deployment.
