@@ -81,7 +81,7 @@ exec "$root/runtime/bin/python3" -I -m atlas.skunk "$@"
         "records": 21012, "vectors": 34229, "vector_dimensions": 384,
         "default_agents": 8, "dashboard_port": 6777,
         "models": ast.literal_eval(next(node.value for node in ast.parse((source / "atlas/skunk_prompts.py").read_text()).body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "MODELS" for target in node.targets))),
-        "new_run_usage_policy": {"mode": "tracking_only", "token_limits_enforced": False, "spending_limits_enforced": False},
+        "new_run_usage_policy": {"mode": "tracking_only", "token_limits_enforced": False, "spending_limits_enforced": False, "model_call_limits_enforced": False, "tool_call_limits_enforced": False},
         "corpus_sha256": sha(args.corpus), "full_text_bounty_reports": 0,
         "host_requirements": ["Linux x86_64 with glibc", "Linux user namespaces", "bubblewrap for isolated scanners"],
         "token_included": False,

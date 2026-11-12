@@ -26,6 +26,7 @@ def main():
     output = args.destination.resolve()
     basename = "skunk-flow3"
     root = output / basename
+    assert not subprocess.check_output(["git", "status", "--porcelain"], cwd=repo, text=True).strip(), "Commit the reviewed source before building"
     root.mkdir(parents=True, exist_ok=False)
     manifest = {"hotfix": args.hotfix, "internal_package": "atlas", "base_source_commit": BASE,
         "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
@@ -36,7 +37,6 @@ def main():
         models = next(node.value for node in assignments if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "MODELS" for target in node.targets))
         manifest["model_presets"] = ast.literal_eval(models)
         manifest["new_run_usage_policy"] = {"mode": "tracking_only", "token_limits_enforced": False, "spending_limits_enforced": False, "model_call_limits_enforced": False, "tool_call_limits_enforced": False}
-    assert not subprocess.check_output(["git", "status", "--porcelain"], cwd=repo, text=True).strip(), "Commit the reviewed source before building"
     for name in FLOW_FILES:
         source = repo / name
         target = root / "files" / name
