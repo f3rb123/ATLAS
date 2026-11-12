@@ -26,7 +26,7 @@ from .db import (
     uid,
 )
 from .policy import Denied, Strict
-from .workflow import Hypothesis, RoleOutput
+from .workflow import Hypothesis, RoleOutput, WebRoleOutput
 
 INITIAL_ROLES = {
     "recon": "Map authorized assets and source entrypoints. Publish cited endpoint and technology observations; no unregistered scanning.",
@@ -87,6 +87,21 @@ class SwarmOutput(RoleOutput):
     discoveries: list[Discovery] = Field(default=[], max_length=8)
 
 
+class WebDiscovery(Discovery):
+    title: str = Field(min_length=1, max_length=160)
+    text: str = Field(min_length=1, max_length=1200)
+    citations: list[str] = Field(default=[], max_length=6)
+
+
+class WebSwarmOutput(WebRoleOutput):
+    discoveries: list[WebDiscovery] = Field(default=[], max_length=4)
+
+
+def final_report_key(run):
+    cycle = run.value().get("resume_cycle", 0)
+    return digest("skunk-final-report:" + run.id + (":" + str(cycle) if cycle else ""))
+
+
 def tasks(db, run_id):
     return db.query(SwarmTask).filter_by(run_id=run_id)
 
@@ -103,8 +118,11 @@ def enqueue(db, run, role, payload, key, priority=1):
     if old:
         return old
     skunk = run.value().get("harness") == "skunk/1"
-    final_report = role == "report" and key == digest("skunk-final-report:" + run.id)
+    final_report = role == "report" and key == final_report_key(run)
     task_limit = MAX_TASKS - 1 if skunk and not final_report else MAX_TASKS
+    if skunk and final_report:
+        # One additional terminal report per explicit resume; no new research slots.
+        task_limit += min(100, max(0, int(run.value().get("resume_cycle", 0))))
     if tasks(db, run.id).count() >= task_limit:
         if skunk:
             value = run.value()
@@ -237,7 +255,7 @@ def check_fence(db, run, claim=None):
     active(db, run)
 
 
-def claim_one(db, worker_kind):
+def claim_one(db, worker_kind, run_ids=None):
     # Candidate reads carry no locks across external work. A short per-run claim
     # transaction enforces concurrency, fencing and duplicate suppression.
     candidates = (
@@ -245,6 +263,7 @@ def claim_one(db, worker_kind):
         .filter(
             SwarmTask.worker_kind == worker_kind,
             SwarmTask.available_at <= time.time(),
+            SwarmTask.run_id.in_(run_ids) if run_ids is not None else True,
             or_(
                 SwarmTask.status == "queued",
                 (SwarmTask.status == "running") & (SwarmTask.lease_until < time.time()),
@@ -291,7 +310,7 @@ def claim_one(db, worker_kind):
             db.commit()
             continue
         from .skunk_failures import allowed as paid_retry_allowed, attempts as retry_attempts
-        if t.attempts >= (retry_attempts(run) if paid_retry_allowed(run) else MAX_ATTEMPTS):
+        if t.attempts >= (retry_attempts(run, t) if paid_retry_allowed(run) else MAX_ATTEMPTS):
             t.status = "dead_letter"
             t.result = canonical({**json.loads(t.result or "{}"), "error": "lease_attempt_limit"})
             db.commit()
@@ -696,11 +715,11 @@ def finish_run(db, run):
     skunk = value.get("harness") == "skunk/1"
     research = tasks(db, run.id).filter(SwarmTask.role.not_in(("report", "web-discovery")))
     all_failed = skunk and research.count() > 0 and research.filter_by(status="completed").count() == 0
-    if skunk and not all_failed and not tasks(db, run.id).filter_by(dedupe_key=digest("skunk-final-report:" + run.id)).first():
+    if skunk and not all_failed and not tasks(db, run.id).filter_by(dedupe_key=final_report_key(run)).first():
         final = enqueue(db, run, "report", {
             "instructions": "All other tasks have settled. Read the final shared evidence and summarize confirmed findings, unresolved hypotheses, denied actions and coverage limitations. Never promote an unverified candidate.",
             "reason": "Final report over the completed shared board",
-        }, digest("skunk-final-report:" + run.id), priority=0.1)
+        }, final_report_key(run), priority=0.1)
         if final is not None:
             db.commit()
             return
@@ -732,9 +751,9 @@ def finish_run(db, run):
     db.commit()
 
 
-def execute_one(worker_kind):
+def execute_one(worker_kind, run_ids=None):
     with session() as db:
-        claim = claim_one(db, worker_kind)
+        claim = claim_one(db, worker_kind, run_ids)
         if claim is None:
             # Recover the crash window after task completion commits but before
             # the final report/run status commits. Completion is idempotent.
@@ -742,6 +761,7 @@ def execute_one(worker_kind):
                 db.query(Document)
                 .filter(
                     Document.kind == "run",
+                    Document.id.in_(run_ids) if run_ids is not None else True,
                     Document.data.contains('"execution_mode":"swarm"'),
                     Document.data.contains('"status":"running"'),
                 )
@@ -797,9 +817,8 @@ def execute_one(worker_kind):
                 if run.value().get("harness") == "skunk/1":
                     from .skunk_prompts import alias_for
                     alias = alias_for(task.role)
-                output = role(
-                    db, run, "SWARM_TASK", context, alias, response_schema=SwarmOutput
-                )
+                schema = WebSwarmOutput if run.value().get("harness") == "skunk/1" and not run.value().get("repository_id") else SwarmOutput
+                output = role(db, run, "SWARM_TASK", context, alias, response_schema=schema)
                 check_fence(db, run)
                 for request in output.tool_requests:
                     from .tools import broker

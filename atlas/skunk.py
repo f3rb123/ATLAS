@@ -131,16 +131,24 @@ def main():
                 output.write(token)
             print("Token saved privately. Environment values take precedence.")
             return
-        parser = argparse.ArgumentParser(prog="skunk", description="SKUNK · ATLAS swarm research CLI")
-        parser.add_argument("--agents", type=int, default=8, help="Concurrent specialist slots, 1–16 (default: 8)")
-        parser.add_argument("--scope", required=True, help="One hostname, URL, IP or quoted wildcard such as '*.example.com'")
-        parser.add_argument("--ra", action="store_true", help="Deep recon plus typed non-destructive validation")
-        parser.add_argument("--prompt", default="Investigate the authorized surface and publish evidence-backed findings.", help="Additional research instructions; cannot override hard policy")
-        values = parser.parse_args(args)
-        if not 1 <= values.agents <= 16:
-            parser.error("--agents must be between 1 and 16")
-        if len(values.prompt) > 4000:
-            parser.error("--prompt is limited to 4000 characters")
+        resuming = bool(args and args[0] == "resume")
+        if resuming:
+            parser = argparse.ArgumentParser(prog="skunk resume", description="Recover unfinished saved work with the same frozen scope, evidence and model pins")
+            selection = parser.add_mutually_exclusive_group()
+            selection.add_argument("--latest", action="store_true", help="Resume the latest saved assessment (default)")
+            selection.add_argument("--run", help="Resume this saved assessment ID instead")
+            values = parser.parse_args(args[1:])
+        else:
+            parser = argparse.ArgumentParser(prog="skunk", description="SKUNK · ATLAS swarm research CLI. Saved work: skunk resume --latest")
+            parser.add_argument("--agents", type=int, default=8, help="Concurrent specialist slots, 1–16 (default: 8)")
+            parser.add_argument("--scope", required=True, help="One hostname, URL, IP or quoted wildcard such as '*.example.com'")
+            parser.add_argument("--ra", action="store_true", help="Deep recon plus typed non-destructive validation")
+            parser.add_argument("--prompt", default="Investigate the authorized surface and publish evidence-backed findings.", help="Additional research instructions; cannot override hard policy")
+            values = parser.parse_args(args)
+            if not 1 <= values.agents <= 16:
+                parser.error("--agents must be between 1 and 16")
+            if len(values.prompt) > 4000:
+                parser.error("--prompt is limited to 4000 characters")
         lock = (root / "controller.lock").open("a")
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -148,7 +156,11 @@ def main():
             raise ValueError("A SKUNK controller already owns this runtime. Open its dashboard instead.")
         from .skunk_runtime import Controller
         from .skunk_dashboard import start
-        controller = Controller(values.scope, values.agents, values.ra, values.prompt)
+        if resuming:
+            from .skunk_resume import SavedController
+            controller = SavedController(values.run)
+        else:
+            controller = Controller(values.scope, values.agents, values.ra, values.prompt)
         # Bind first; an occupied port cannot leave an invisible scan behind.
         dashboard = start(controller, 6777)
         thread = threading.Thread(target=controller.run, name="skunk-controller", daemon=True)

@@ -71,3 +71,13 @@ for reported failed run0. Never reset/release uncertain holds/replay calls or
 create independent spending clones. GitHub delivery and Docker29 repair details
 are in docs/DELIVERY_PREBUILT_2026-11-10.md and the build log. No automatic tests,
 provider calls, targets or server mutations on startup.
+
+# SKUNK resume4 delivery — 12 November 2026
+
+Publish the cumulative resume4 code update and source snapshot. After remote
+asset hashes and public updater bytes are verified, provide the pinned one-line
+installer and `skunk resume --latest`. The owner is ready to run it on the VPS.
+Do not start a target scan from this environment. Existing evidence, credentials,
+policy, usage/holds and old reports must remain. Offline diagnostics do not prove
+VPS/provider acceptance. Completed tasks and policy denials are not requeued;
+missing identities and frozen-scope coverage gaps remain explicit limitations.

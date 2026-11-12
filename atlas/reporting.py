@@ -100,14 +100,27 @@ def generate_report(db, run, format):
         "policy_hash": run.value().get("policy_hash", "unavailable"),
         "note": "A completed run is bounded research over the captured surface, not proof that every vulnerability was found.",
     }
+    unverified = []
+    if run.value().get("harness") == "skunk/1":
+        from .skunk_evidence import leads, coverage_notes
+        unverified = leads(db, run)
+        coverage["limitations"] = coverage_notes(db, run)
+        coverage["unverified_lead_count_in_report"] = len(unverified)
+        coverage["resume_cycle"] = run.value().get("resume_cycle", 0)
+        coverage["partial"] |= bool(coverage["limitations"])
     content = render(findings, format)
+    details = "# Run coverage\n\n" + json.dumps(coverage, indent=2)
+    if unverified:
+        details += "\n\n# Unverified leads\n\nThese are research hypotheses, not confirmed vulnerabilities. Independent proof and a secure control are still required.\n\n"
+        details += "\n\n".join("\n".join("    " + line for line in json.dumps(lead, ensure_ascii=False, indent=2).splitlines()) for lead in unverified)
     if format == "markdown":
-        content = (
-            "# Run coverage\n\n" + json.dumps(coverage, indent=2) + "\n\n" + content
-        )
+        content = details + "\n\n" + content
+    if format == "html":
+        content = content.replace("<body>", "<body><pre>" + html.escape(details) + "</pre>", 1)
     if format == "json":
         parsed = json.loads(content)
         parsed["coverage"] = coverage
+        parsed["unverified_leads"] = unverified
         content = canonical(parsed)
     return document(
         db,
@@ -118,6 +131,7 @@ def generate_report(db, run, format):
             "format": format,
             "content": content,
             "coverage": coverage,
+            "unverified_lead_count": len(unverified),
             "confirmed_count": len(findings),
         },
     )

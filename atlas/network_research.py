@@ -237,6 +237,7 @@ def execute(body, actor="network-relay"):
                 },
                 "body": redact(content.decode(errors="replace"))[:65536],
                 "body_sha256": digest(content),
+                "body_truncated": len(content.decode(errors="replace")) > 65536 or len(content) >= min(scope.max_response_bytes, 1024 * 1024),
             }
         elif body.kind == "dns":
             ips = addresses(hostname, body.port, scope.lab_networks)

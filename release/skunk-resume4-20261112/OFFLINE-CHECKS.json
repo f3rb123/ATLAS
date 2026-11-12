@@ -1,0 +1,35 @@
+{
+  "scenario": "Synthetic offline JSON and saved-run recovery inspection; not VPS state",
+  "network": "blocked",
+  "model_calls": 0,
+  "target_requests": 0,
+  "persistent_database_writes": 0,
+  "application_test_suites_run": false,
+  "structured_responses": {
+    "known_envelopes_decoded": 4,
+    "ambiguous_or_invalid_responses_rejected": 6,
+    "web_schema_bytes": 3160,
+    "prior_swarm_schema_bytes": 6392,
+    "source_only_experiment_rejected": true
+  },
+  "saved_run_recovery": {
+    "recoverable_tasks_requeued": 2,
+    "completed_tasks_preserved": true,
+    "policy_denial_preserved": true,
+    "scope_and_policy_hash_preserved": true,
+    "attempt_counter_preserved": true,
+    "bounded_new_attempts": 4,
+    "retry_backoff_starts_at_seconds": 4,
+    "unrelated_runs_not_claimed": true,
+    "ledgers_and_uncertain_holds_preserved": true,
+    "http_request_usage_preserved": true,
+    "new_final_report_key": true,
+    "failure_history_snapshots": 2
+  },
+  "reporting": {
+    "shared_board_lead_visible": true,
+    "unverified_lead_not_promoted_to_finding": true,
+    "coverage_limitations_present": true
+  },
+  "expired_scope_refused": true
+}

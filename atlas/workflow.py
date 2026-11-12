@@ -85,6 +85,17 @@ class RoleOutput(Strict):
     experiment: ExperimentProposal | None = None
 
 
+class WebRoleOutput(Strict):
+    """A small web contract; source-only plans are not valid web results."""
+    summary: str = Field(min_length=1, max_length=4000)
+    observations: list[str] = Field(default=[], max_length=12)
+    citations: list[str] = Field(default=[], max_length=20)
+    hypotheses: list[Hypothesis] = Field(default=[], max_length=4)
+    tool_requests: list[ToolRequest] = Field(default=[], max_length=3)
+    specialist_requests: list[SpecialistRequest] = Field(default=[], max_length=1)
+    experiment: None = None
+
+
 class VerificationOutput(Strict):
     status: str = Field(
         pattern="^(confirmed|likely|inconclusive|refuted|duplicate|blocked_by_policy)$"
@@ -212,8 +223,11 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             "source.experiment",
         }
         campaign_mode = db.get(Document, run.value()["campaign_id"]).value()["mode"]
+        frozen_scope = db.get(Document, run.value()["policy_id"]).value()["scope"]
 
         def allowed_tool(name):
+            if skunk and name == "web.experiment" and "differential" not in frozen_scope.get("test_classes", []):
+                return False
             if skunk and name in ("http_request", "fetch_allowed_url", "inspect_redirect_chain"):
                 from .config import settings
                 if not settings().relay_url:
@@ -290,6 +304,8 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             "No live traffic is allowed by this source-only task.",
             "Use the registered web capabilities to investigate the exact authorized target. Discovery, read-only HTTP, explicitly authorized read-query POST endpoints and owned test-account comparisons are available according to the frozen policy. Request targeted tools when evidence is missing. Publish cited observations and testable hypotheses; never expand scope or perform destructive actions. web.check queues independent replay for supported candidates. Use web.experiment for a concrete paired HTTP hypothesis with distinct proof/control requests, bounded assertions and an observable contrast; it also queues independent replay. Reflection, missing headers and GraphQL introspection alone are observations, not confirmed vulnerabilities.",
         )
+    if skunk and not run.value().get("repository_id"):
+        system += "\nWeb result contract: return one JSON object, without prose, markdown or thinking tags. Use summary, observations, citations, hypotheses, discoveries (swarm only), tool_requests and specialist_requests. Omit empty optional fields. Do not emit surfaces, slices, threat_model, experiment_proposals or assumptions_note. experiment must be null; HTTP experiments belong only in tool_requests named web.experiment when it appears in tool_catalog. Use at most three tools, four discoveries and one specialist request. Keep titles under 160 characters and discovery text under 1200. Do not invent evidence to fill a required field. A minimal valid result is {\"summary\":\"A concise statement of what the supplied evidence establishes and what remains unresolved.\"}. Only request tools present in tool_catalog; an unavailable capability is a coverage limitation."
     repairs = 0
     for round_number in range(4):
         context["reasoning_round"] = {
@@ -428,7 +444,11 @@ def role(db, run, stage, context, alias="reasoning", response_schema=None):
             ]
             context["model_output_repair"] = {
                 "invalid_fields": fields,
-                "prior_output_untrusted": result.content[:6000],
+                "errors": [{"field": ".".join(str(p) for p in e["loc"])[:120], "type": e["type"],
+                    "constraints": {k: v for k, v in e.get("ctx", {}).items() if k in {"max_length", "min_length", "expected", "pattern", "ge", "le"} and isinstance(v, (str, int, float))}}
+                    for e in exc.errors(include_input=False)[:8]],
+                "prior_output_untrusted": result.content[:2500],
+                "minimal_valid_result": {"summary": "Summarize only the supplied evidence and state unresolved limitations."} if skunk and schema is not VerificationOutput else None,
                 "instruction": "Your completed, accounted response failed the exact JSON schema. Return only one valid JSON object with the listed fields/types. Omit extra fields and do not add tools or specialist requests. This is one bounded correction, not authorization to change scope or claims.",
             }
             append(

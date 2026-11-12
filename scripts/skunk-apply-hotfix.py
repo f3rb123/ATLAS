@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
     prefix, package = args.prefix.resolve(), args.package.resolve()
     manifest = json.loads((package / "HOTFIX.json").read_text())
-    assert manifest["hotfix"] in ("retry1", "mod2", "flow3") and manifest["internal_package"] == "atlas", "Unexpected patch identity"
+    assert manifest["hotfix"] in ("retry1", "mod2", "flow3", "resume4") and manifest["internal_package"] == "atlas", "Unexpected patch identity"
     hotfix = manifest["hotfix"]
     record_path = prefix / "BUILD-RECORD.json"
     record = json.loads(record_path.read_text())
@@ -53,7 +53,7 @@ def main():
     changes = []
     for item in manifest["files"]:
         relative = Path(item["path"])
-        assert relative.parts[0] == "atlas" and ".." not in relative.parts and relative.suffix in (".py", ".js"), "Unexpected patch path"
+        assert relative.parts[0] == "atlas" and ".." not in relative.parts and relative.suffix in (".py", ".js", ".html"), "Unexpected patch path"
         source = package / "files" / relative
         assert not source.is_symlink() and sha(source) == item["sha256"], "Patch checksum mismatch: " + str(relative)
         for root in (prefix / "app", prefix / "runtime/lib/python3.12/site-packages"):
@@ -82,7 +82,7 @@ def main():
         record["installed_hotfix"] = {"id": manifest["hotfix"], "source_commit": manifest["source_commit"],
             "applied_at": datetime.now(timezone.utc).isoformat(), "application_test_suites_run": False,
             "offline_diagnostics_run": manifest.get("offline_diagnostics_run", False)}
-        if hotfix in ("mod2", "flow3"):
+        if hotfix in ("mod2", "flow3", "resume4"):
             record["installed_hotfix"].update(model_presets=manifest["model_presets"], usage_policy=manifest["new_run_usage_policy"])
         replace(record_path, (json.dumps(record, indent=2) + "\n").encode())
     except BaseException:
@@ -94,12 +94,16 @@ def main():
         replace(record_path, (backup / "BUILD-RECORD.json").read_bytes())
         raise
     print("Installed " + hotfix + ". Existing database, knowledge, credentials and token holds were preserved.")
-    if hotfix in ("mod2", "flow3"):
+    if hotfix in ("mod2", "flow3", "resume4"):
         print("New SKUNK runs use deepseek-v4-mod / glm-5.3-mod and track usage without local token or spending caps.")
     if hotfix == "flow3":
         print("Run-wide model/tool call caps are disabled; context packing and specialist coalescing are updated.")
     print("Inspect the previous run: skunk diagnose")
-    print("Then start your chosen scope again; new runs have bounded automatic retries.")
+    if hotfix == "resume4":
+        print("Recover the latest saved assessment: skunk resume --latest")
+        print("Only recoverable unfinished tasks retry. Completed tasks, frozen scope, old reports and billing history stay preserved.")
+    else:
+        print("Then start your chosen scope again; new runs have bounded automatic retries.")
     print("Code backup: " + str(backup))
 
 

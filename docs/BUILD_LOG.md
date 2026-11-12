@@ -310,3 +310,26 @@ blocks Python network connections and reports only sizes/configuration errors.
 It cannot dispatch a model call or target tool. No application acceptance tests
 or live calls were performed while preparing it. Cause remains unconfirmed
 until the owner runs the diagnostic against the VPS.
+
+# SKUNK saved-run recovery and web response contract — 12 November 2026
+
+Owner reports show most tasks now complete, one recon-endpoints task exhausted
+its schema retries, and no independently confirmed findings. Added explicit
+`skunk resume --latest` / `--run` recovery for the same owner and frozen scope.
+Completed tasks, policy denials, attempts, usage/uncertain holds and original
+reports remain; prior failures have durable history snapshots and each recovery
+has a distinct final report/export. Controller workers claim only their own runs.
+
+Web-only roles use a smaller response contract, bounded validation feedback and
+unambiguous JSON envelope decoding; source experiment fields cannot execute as
+web results. Tool catalogs omit paired HTTP experiments absent frozen policy.
+Only fresh deep scopes include that registered class. Shared-board hypotheses
+now appear as unverified leads in the dashboard and all CLI report formats, with
+coverage limitations. Public-index retries and truncation/source status are
+recorded. The model footer reads actual role pins.
+
+Offline in-memory diagnosis confirmed selective recovery, retained attempts and
+ledgers, policy/expiry refusal, new final report keys, scoped worker claims and
+lead/finding separation. Network was blocked. Source compilation passed. No
+application suite, provider call, target traffic or VPS execution occurred.
+See docs/SKUNK_RESUME_UPDATE.md; publication is recorded after asset verification.

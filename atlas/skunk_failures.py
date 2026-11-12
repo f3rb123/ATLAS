@@ -1,6 +1,7 @@
 """Credential-free failure explanations and bounded host-owned retry decisions."""
 
 import traceback
+import json
 
 
 # Only fixed messages are displayed. Never include exception payloads, prompts,
@@ -107,11 +108,13 @@ def allowed(run):
     return value.get("harness") == "skunk/1" and value.get("retry_policy", {}).get("retry_unknown_billing") is True
 
 
-def attempts(run):
-    return min(5, max(1, int(run.value().get("retry_policy", {}).get("max_attempts", 4))))
+def attempts(run, task=None):
+    floor = json.loads(task.payload).get("resume_attempt_floor", 0) if task is not None and allowed(run) else 0
+    return max(0, int(floor)) + min(5, max(1, int(run.value().get("retry_policy", {}).get("max_attempts", 4))))
 
 
 def retry_delay(run, task, diagnostic):
-    if not allowed(run) or not diagnostic.get("retryable") or task.attempts >= attempts(run):
+    if not allowed(run) or not diagnostic.get("retryable") or task.attempts >= attempts(run, task):
         return None
-    return max(min(60, 4 * 2 ** max(0, task.attempts - 1)), diagnostic.get("retry_after_seconds", 0))
+    floor = max(0, int(json.loads(task.payload).get("resume_attempt_floor", 0)))
+    return max(min(60, 4 * 2 ** min(4, max(0, task.attempts - floor - 1))), diagnostic.get("retry_after_seconds", 0))

@@ -552,21 +552,8 @@ class Adapter:
         structured = None
         warnings = []
         if r.structured:
-            candidate = content
-            fenced = re.fullmatch(
-                r"\s*```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```\s*", content
-            )
-            if fenced:
-                candidate = fenced.group(1)
-                warnings.append("exact_json_fence_normalized")
-            try:
-                structured = json.loads(candidate)
-            except (TypeError, json.JSONDecodeError):
-                warnings.append("invalid_structured_json")
-            if not isinstance(structured, dict):
-                structured = None
-                if not warnings:
-                    warnings.append("structured_object_required")
+            from .skunk_json import object_response
+            structured, warnings = object_response(content)
         return ModelResponse(
             content=self.scrub(content),
             structured_content=self.scrub_data(structured),

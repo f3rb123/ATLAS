@@ -30,3 +30,14 @@ Final complete Python gate: **214 passed**, including real semantic inference, L
 Python audit: 75 dependencies, zero known advisories. Production npm audit: zero. History secret scan: zero after exact reviewed historical false positives, including a public `alg=none`, empty-signature JWT teaching heading. Bandit: no high findings; five medium patterns reviewed (fixed official URL sources, dynamically supplied full pinned model revision, private sandbox tmpfs paths). No blanket directory/rule suppression was added.
 
 See [dated acceptance](docs/test-results/DEPLOYMENT_ACCEPTANCE_2026-11-10.md), [deployment](docs/DEPLOYMENT.md), [delivery](docs/DELIVERY.md), [current audit](ATLAS_V3_FULL_AUDIT.md) and [next action](docs/NEXT_ACTION.md). Release checksums identify the exact final commit and artifacts; source files do not embed their own future commit hash.
+
+# SKUNK recovery requirement status — 12 November 2026
+
+| Requirement | Implementation / evidence |
+|---|---|
+| Recover a saved partial run | Explicit local CLI `resume --latest` or `--run`; selective task recovery, durable failure history, four further bounded attempts per operator recovery |
+| Preserve successful work and accounting | Completed tasks, cumulative attempts, model/HTTP usage, uncertain holds and original reports retained; synthetic in-memory inspection passed |
+| Preserve authorization | Frozen scope/hash and pins retained; expired scope, active leases and emergency stop refuse recovery; policy-denied tasks stay denied |
+| Web schema compatibility | Smaller web-only response model and exact correction constraints; known unambiguous JSON wrappers decoded, invalid/ambiguous objects rejected |
+| Explain no findings | Shared-board hypotheses visible as unverified leads; missing identities, unavailable experiment classes and incomplete wildcard inventory recorded |
+| Runtime acceptance | Pending owner VPS execution; zero paid model calls or live target requests during this build; no application test suite run |

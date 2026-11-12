@@ -41,7 +41,7 @@ def parse_scope(value, deep=False):
                     methods=["GET", "HEAD", "OPTIONS", "POST"] if deep else ["GET", "HEAD"])
     classes = ["surface", "headers", "dns", "passive_sources"]
     if deep:
-        classes += ["ports", "scanners", "redirect", "cors", "reflection", "graphql", "authorization", "read_json"]
+        classes += ["ports", "scanners", "redirect", "cors", "reflection", "graphql", "authorization", "read_json", "differential"]
     scope = Scope(allow=[rule], max_requests=2000 if deep else 300,
                   min_request_interval=0.5, test_classes=classes,
                   post_paths=["/graphql", "/api/graphql"] if deep else [])
@@ -237,7 +237,7 @@ class Controller:
                 "offline_execution_approved": False, "tool_pins": pins(db, self.owner_id),
                 "scanner_template_pins": template_pins(db, self.owner_id), "target_identities": {},
                 "integration_pins": {}, "skills": [], "specialist_roles": ["coding", "fast"],
-                "workflow_version": "skunk-swarm/4", "usage_policy": default_policy(),
+                "workflow_version": "skunk-swarm/5", "usage_policy": default_policy(),
                 "followup_policy": {"max_depth": 2, "max_tasks_per_role": 8, "coalesce_after_pending": 2},
                 "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True,
                     "authorization": "Host owner explicitly accepts separately billed retries; preserve prior reservations"}}
@@ -259,31 +259,50 @@ class Controller:
         run_id = self.new_run(None, discovery=True)
         urls = ["https://crt.sh/?q=" + quote("%." + self.domain) + "&output=json",
                 "https://web.archive.org/cdx/search/cdx?url=" + quote("*." + self.domain + "/*") + "&output=json&fl=original&collapse=urlkey&filter=statuscode:200&limit=2000"]
-        names = set()
+        names, sources = set(), []
         for url in urls:
-            self.wait()
-            try:
-                with session() as db:
-                    result = send(db, db.get(Document, run_id), {"kind": "metadata", "hostname": self.domain, "url": url})
-                    db.commit()
-                text = result.get("body", "")
-                # Parse hostnames even when a large index response is truncated.
-                for candidate in re.findall(r"[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+", text):
-                    try:
-                        candidate = host(candidate)
-                    except ValueError:
-                        continue
-                    if candidate.endswith("." + self.domain) and candidate != self.domain:
-                        names.add(candidate)
-                self.note("Index returned " + str(len(names)) + " unique in-scope hostnames so far")
-            except Exception as error:
-                self.note("A public index was unavailable: " + type(error).__name__)
+            source = {"index": urlsplit(url).hostname, "status": "unavailable", "attempts": 0}
+            for attempt in range(3):
+                self.wait()
+                source["attempts"] += 1
+                try:
+                    with session() as db:
+                        result = send(db, db.get(Document, run_id), {"kind": "metadata", "hostname": self.domain, "url": url})
+                        db.commit()
+                    status = result.get("status", 0)
+                    source["http_status"] = status
+                    if status != 200:
+                        if status not in (408, 429, 500, 502, 503, 504):
+                            break
+                        raise OSError("Public index temporarily unavailable")
+                    text = result.get("body", "")
+                    # Retain usable hosts from bounded responses; record truncation.
+                    for candidate in re.findall(r"[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+", text):
+                        try:
+                            candidate = host(candidate)
+                        except ValueError:
+                            continue
+                        if candidate.endswith("." + self.domain) and candidate != self.domain:
+                            names.add(candidate)
+                    source["status"] = "incomplete" if result.get("body_truncated") or len(text) >= 65536 else "ok"
+                    self.note("Public index returned " + str(len(names)) + " unique in-scope hostnames so far; wildcard inventory remains bounded")
+                    break
+                except (Denied, InterruptedError):
+                    raise
+                except Exception as error:
+                    source["error_type"] = type(error).__name__
+                    self.note("Public index " + source["index"] + " unavailable on attempt " + str(attempt + 1) + ": " + type(error).__name__)
+                    if attempt < 2:
+                        if self.cancelled.wait(2 ** (attempt + 1)):
+                            self.wait()
+            sources.append(source)
         with session() as db:
             run = db.get(Document, run_id)
             value = run.value()
+            value["wildcard_discovery"] = {"sources": sources, "hostnames": len(names), "exhaustive": False}
             if value["status"] not in ("cancelled", "paused"):
                 value.update(status="completed", state="COMPLETED", finished=now())
-                run.data = canonical(value)
+            run.data = canonical(value)
             db.commit()
         self.wait()
         if not names:
@@ -297,7 +316,9 @@ class Controller:
                 self.shutdown.wait(0.2)
                 continue
             try:
-                worked = execute_one("verify") or execute_one("research")
+                with self.lock:
+                    owned = list(self.run_ids)
+                worked = execute_one("verify", owned) or execute_one("research", owned)
                 if not worked:
                     self.shutdown.wait(0.2)
             except Exception as error:
@@ -316,9 +337,11 @@ class Controller:
                 run = db.get(Document, identity)
                 if run.value().get("execution_mode") != "swarm":
                     continue
+                cycle = run.value().get("resume_cycle", 0)
+                stem = identity + (".resume-" + str(cycle) if cycle else "")
                 for extension, kind in (("md", "markdown"), ("html", "html"), ("json", "json")):
                     report = generate_report(db, run, kind)
-                    (output / (identity + "." + extension)).write_text(report.value()["content"])
+                    (output / (stem + "." + extension)).write_text(report.value()["content"])
                 exported.append(identity)
             db.commit()
         self.exported.update(exported)
@@ -403,6 +426,7 @@ class Controller:
                      "targets": len(self.targets), "remaining": len(self.pending), "finished": self.finished.is_set(),
                      "events": list(self.events[-100:]), "tasks": [], "findings": [], "candidates": [], "observations": 0,
                      "model_calls": 0, "failed_tasks": 0, "completed_tasks": 0,
+                     "coverage_notes": [],
                      "usage_policy": "tracking_only", "tokens_used": 0, "token_usage_estimated": False,
                      "retry_policy": {"max_attempts": 4, "retry_unknown_billing": True}}
             ids = list(self.run_ids)
@@ -416,7 +440,18 @@ class Controller:
             state["failed_tasks"] = sum(t.status == "dead_letter" for t in tasks)
             state["completed_tasks"] = sum(t.status == "completed" for t in tasks)
             state["model_calls"] = sum(row.value().get("model_calls", 0) for identity in ids if (row := db.get(Document, identity)))
-            for item in db.query(Document).filter(Document.owner == self.owner_id, Document.kind.in_(["finding", "hypothesis", "http_observation", "usage"])).all():
+            from .skunk_evidence import leads, coverage_notes
+            for identity in ids:
+                run = db.get(Document, identity)
+                if run and run.value().get("execution_mode") == "swarm":
+                    state["candidates"].extend(leads(db, run))
+                    state["coverage_notes"].extend(coverage_notes(db, run))
+                    for alias, pin in run.value().get("models", {}).items():
+                        model = db.get(Document, pin.get("model_id", ""))
+                        if alias in MODELS and model:
+                            state["models"] = {**state["models"], alias: model.value().get("model_id", "unknown")}
+            state["coverage_notes"] = list(dict.fromkeys(state["coverage_notes"]))
+            for item in db.query(Document).filter(Document.owner == self.owner_id, Document.kind.in_(["finding", "http_observation", "usage"])).all():
                 value = item.value()
                 if value.get("run_id") not in ids:
                     continue
@@ -424,8 +459,6 @@ class Controller:
                     state["findings"].append({"id": item.id, "title": value.get("title", "Finding"),
                         "status": value.get("status", "candidate"), "severity": value.get("severity", "unscored"),
                         "verification": value.get("verification", {}).get("status", "unverified")})
-                elif item.kind == "hypothesis":
-                    state["candidates"].append({"id": item.id, "claim": value.get("claim", "Candidate"), "status": value.get("status", "candidate")})
                 elif item.kind == "http_observation":
                     state["observations"] += 1
                 elif item.kind == "usage":
