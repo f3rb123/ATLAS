@@ -1,0 +1,65 @@
+{
+  "release_url": "https://github.com/f3rb123/ATLAS/releases/tag/skunk-validate5-20261112",
+  "release_id": 442783083,
+  "tag": "skunk-validate5-20261112",
+  "source_commit": "78b0b2c814fe62a15804146ac83ed0073f326b30",
+  "published_at": "2026-11-12T10:22:46Z",
+  "prerelease": true,
+  "attachment_workflow_url": "https://github.com/f3rb123/ATLAS/actions/runs/43199681483",
+  "attachment_workflow_conclusion": "success",
+  "anonymous_patch_download_sha256_verified": true,
+  "application_test_suites_run": false,
+  "model_calls": 0,
+  "target_requests": 0,
+  "assets": [
+    {
+      "name": "skunk-source-validate5.tar.gz",
+      "size": 1387747,
+      "digest": "sha256:a1abfa45fdb1a5abc0e1ecb40d880b4abfb124075699d379f641de8b54e1f79c",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/skunk-source-validate5.tar.gz"
+    },
+    {
+      "name": "SKUNK-VALIDATE5-MANIFEST.json",
+      "size": 10881,
+      "digest": "sha256:73801c0366f15fc1b1d2e6f64abdf26952c9d0f4a160712adf47bca7c439de13",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/SKUNK-VALIDATE5-MANIFEST.json"
+    },
+    {
+      "name": "SKUNK-VALIDATE5-OFFLINE-CHECKS.json",
+      "size": 1208,
+      "digest": "sha256:29ffa466b597601aec537a236abba80171e8b82b7a066d390c00767bef0ef953",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/SKUNK-VALIDATE5-OFFLINE-CHECKS.json"
+    },
+    {
+      "name": "SKUNK-VALIDATE5-README.md",
+      "size": 4159,
+      "digest": "sha256:e04ed8699547cc63ffa41a35795cd41c22990b6838f8ec8bbef3ec7c78ad6d82",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/SKUNK-VALIDATE5-README.md"
+    },
+    {
+      "name": "SKUNK-VALIDATE5-SHA256SUMS",
+      "size": 571,
+      "digest": "sha256:a49ed74ce5a7edfe917dc94f8c67c8dde82b6080ab39b72e776463cd833db410",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/SKUNK-VALIDATE5-SHA256SUMS"
+    },
+    {
+      "name": "skunk-validate5.tar.gz",
+      "size": 96816,
+      "digest": "sha256:66fd2afc41f395ea2961fde1ffa466cbe8b4c6be6a5bd8a1dc512de9d44a632c",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/skunk-validate5.tar.gz"
+    },
+    {
+      "name": "skunk-validate5.tar.gz.sha256",
+      "size": 89,
+      "digest": "sha256:4c28d2554c5382dc0fcae7bc64abb9e7888d08443ca910ace5516174b738fad5",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/f3rb123/ATLAS/releases/download/skunk-validate5-20261112/skunk-validate5.tar.gz.sha256"
+    }
+  ]
+}

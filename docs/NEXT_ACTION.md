@@ -1,11 +1,21 @@
-# SKUNK validate5 continuation — 12 November 2026
+# SKUNK validate5 published — 12 November 2026
 
-Publish the cumulative validation update, verify all asset hashes and the pinned
-public installer, then provide `skunk diagnose --activity`. For the discovery
-handoff correction, the owner must explicitly start a fresh authorized --ra run;
-resume preserves completed discovery and old scope. Recoverable verifier failures
-can resume. Do not claim current VPS acceptance or guaranteed findings. Keep
-knowledge/vector files, credentials, billing history and scope guards.
+Published https://github.com/f3rb123/ATLAS/releases/tag/skunk-validate5-20261112.
+All seven remote asset sizes/digests match; anonymous patch download verified.
+Exit the old CLI with Ctrl+C, install scripts/skunk-validate5-update.sh from its
+pinned published commit, then obtain `skunk diagnose --activity` output. This is
+a read-only count summary with no paid model or target requests.
+
+Start a fresh authorized `--scope ... --ra` assessment to repeat discovery with
+the corrected planning order. Resume preserves completed discovery and old
+scope; only recoverable unfinished work repeats. No live assessment or VPS
+execution occurred here. Both code defects reproduced offline, but the current
+VPS cause of zero findings still needs its actual activity counts. Never promise
+findings or remove scope/destructive/OTP/identity/evidence checks. Knowledge,
+vector/model files, credentials, billing history/holds and old reports remain.
+See SKUNK_VALIDATION_UPDATE.md and release/skunk-validate5-20261112/.
+
+Earlier delivery history follows.
 
 # SKUNK resume4 published — 12 November 2026
 

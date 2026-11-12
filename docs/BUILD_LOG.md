@@ -365,3 +365,13 @@ broker. No application suite, paid model call, live target traffic or VPS action
 was performed. Current VPS causes still require its activity counts. Scope,
 destructive/OTP guards, identity provenance and evidence gates remain. See
 SKUNK_VALIDATION_UPDATE.md. Publication follows remote asset verification.
+
+### validate5 publication
+
+Published skunk-validate5-20261112 from source 78b0b2c814fe62a15804146ac83ed0073f326b30.
+All seven remote asset byte sizes and SHA256 digests match. The attachment-only
+workflow succeeded and started no application/test work. Anonymous download
+verified the 96,816-byte patch SHA256
+66fd2afc41f395ea2961fde1ffa466cbe8b4c6be6a5bd8a1dc512de9d44a632c.
+The updater checks that hash before application. Actual VPS activity/acceptance
+remains pending; no model inference, target traffic or VPS deployment occurred.

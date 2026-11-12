@@ -24,5 +24,13 @@
     "hypothesis_not_counted_as_validated_finding": true,
     "refuted_replay_explained": true,
     "response_bodies_cookies_and_claims_not_exported": true
+  },
+  "packaging": {
+    "cumulative_files": 24,
+    "resume4_plus_original_preimages_accepted": true,
+    "payload_hashes_verified": true,
+    "python_compiled": true,
+    "shell_syntax_valid": true,
+    "javascript_syntax_valid": true
   }
 }
